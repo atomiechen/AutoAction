@@ -82,6 +82,14 @@ public class ConfigCollector extends BaseCollector {
                 triggerAndUpload(CollectorManager.CollectorType.Bluetooth, triggerConfig, name, commit, context);
                 triggerAndUpload(CollectorManager.CollectorType.Wifi, triggerConfig, name, commit, context);
             }
+        } else if (ConfigContext.NEED_POSITION.equals(context.getContext())) {
+            // called every minute at most
+            if (current_call - last_position >= 5 * 60000) {
+                last_position = current_call;
+                String name = "Event_Position";
+                triggerAndUpload(CollectorManager.CollectorType.GPS, triggerConfig, name, commit, context);
+                triggerAndUpload(CollectorManager.CollectorType.Location, triggerConfig, name, commit, context);
+            }
         }
     }
 

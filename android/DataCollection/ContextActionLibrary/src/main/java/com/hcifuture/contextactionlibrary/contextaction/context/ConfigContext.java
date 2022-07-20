@@ -23,8 +23,10 @@ import com.hcifuture.contextactionlibrary.utils.JSONUtils;
 import com.hcifuture.shared.communicate.config.ContextConfig;
 import com.hcifuture.contextactionlibrary.contextaction.event.BroadcastEvent;
 import com.hcifuture.shared.communicate.config.RequestConfig;
+import com.hcifuture.shared.communicate.listener.ActionListener;
 import com.hcifuture.shared.communicate.listener.ContextListener;
 import com.hcifuture.shared.communicate.listener.RequestListener;
+import com.hcifuture.shared.communicate.result.ActionResult;
 import com.hcifuture.shared.communicate.result.ContextResult;
 
 import org.json.JSONArray;
@@ -34,6 +36,8 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.ScheduledExecutorService;
@@ -48,9 +52,14 @@ public class ConfigContext extends BaseContext {
     public static String NEED_AUDIO = "context.config.need_audio";
     public static String NEED_NONIMU = "context.config.need_nonimu";
     public static String NEED_SCAN = "context.config.need_scan";
+    public static String NEED_POSITION = "context.config.need_position";
 
 
+    private String last_packageName;
     private String packageName;
+    private List<String> valid_packageNames;
+    private List<String> useless_packageNames;
+    private List<String> rules;
     private int brightness;
     private final HashMap<String, Integer> volume;
 
@@ -86,6 +95,36 @@ public class ConfigContext extends BaseContext {
         volume.put("volume_tts_bt_a2dp", 0);
 
         last_record_all = 0;
+
+        rules = new ArrayList<>();
+        rules.add("rule1");
+        rules.add("rule2");
+        rules.add("rule3");
+
+        useless_packageNames = Arrays.asList("com.android.systemui",
+                "miui.systemui.plugin",
+                "com.huawei.android.launcher");
+        valid_packageNames = Arrays.asList("tv.danmaku.bili",//B站
+                "com.ss.android.ugc.aweme", //抖音
+                "com.tencent.mm", //微信
+                "com.tencent.qqmusic", //QQ音乐
+                "com.tencent.wemeet.app", //腾讯会议
+                "com.baidu.searchbox", //百度
+                "com.youku.phone", //优酷视频
+                "com.netease.cloudmusic", //网易云音乐
+                "com.gotokeep.keep", //Keep
+                "com.tencent.qqlive", //腾讯视频
+                "com.sina.weibo", //微博
+                "com.tencent.karaoke", //全民K歌
+                "com.xingin.xhs", //小红书
+                "com.tencent.mobileqq", //QQ
+                "com.taobao.taobao", //淘宝
+                "com.bilibili.app.blue", //B站极速版
+                "com.zhihu.android", //知乎
+                "com.qiyi.video", //爱奇艺
+                "com.baidu.tieba", //百度贴吧
+                "com.smile.gifmaker", //快手
+                "com.kuaishou.nebula"); //快手极速版
     }
 
     @Override
@@ -122,7 +161,24 @@ public class ConfigContext extends BaseContext {
     public void onAccessibilityEvent(AccessibilityEvent event) {
         CharSequence pkg = event.getPackageName();
         if (pkg != null) {
-            packageName = event.getPackageName().toString();
+            String present_name = event.getPackageName().toString();
+            if (valid_packageNames.contains(present_name)) {
+                packageName = present_name;
+                if (!(packageName.equals(last_packageName))) {
+                    if (requestListener != null) {
+                        RequestConfig requestConfig = new RequestConfig();
+                        requestConfig.putValue("needVolumeOverlay", true);
+                        requestConfig.putString("rules", rules.toString());
+                        requestListener.onRequest(requestConfig);
+                        long now = System.currentTimeMillis();
+                        int logID = incLogID();
+                        notifyContext(NEED_AUDIO, now, logID, "app changed: " + packageName);
+                        notifyContext(NEED_SCAN, now, logID, "app changed" + packageName);
+                        notifyContext(NEED_POSITION, now, logID, "app changed" + packageName);
+                    }
+                    last_packageName = packageName;
+                }
+            }
         }
     }
 
@@ -245,9 +301,11 @@ public class ConfigContext extends BaseContext {
                     case KeyEvent.KEYCODE_VOLUME_UP:
                         notifyContext(NEED_AUDIO, timestamp, logID, "key event: " + KeyEvent.keyCodeToString(keycode));
                         notifyContext(NEED_SCAN, timestamp, logID, "key event: " + KeyEvent.keyCodeToString(keycode));
+                        notifyContext(NEED_POSITION, timestamp, logID, "key event: " + KeyEvent.keyCodeToString(keycode));
                         if (requestListener != null) {
                             RequestConfig requestConfig = new RequestConfig();
                             requestConfig.putValue("needVolumeOverlay", true);
+                            requestConfig.putString("rules", rules.toString());
                             requestListener.onRequest(requestConfig);
                         }
                 }
@@ -269,7 +327,16 @@ public class ConfigContext extends BaseContext {
 
     @Override
     public void onExternalEvent(Bundle bundle) {
-
+        long timestamp = System.currentTimeMillis();
+        int logID = incLogID();
+        String type = "volume overlay return";
+        String action = "";
+        String tag = "";
+        JSONObject json = new JSONObject();
+        int selected_rule = bundle.getInt("selectedRule");
+        JSONUtils.jsonPut(json, "finalVolume", bundle.getInt("finalVolume"));
+        JSONUtils.jsonPut(json, "selectedRule", rules.get(selected_rule));
+        record(timestamp, logID, type, action, tag, json.toString());
     }
 
     private int incLogID() {

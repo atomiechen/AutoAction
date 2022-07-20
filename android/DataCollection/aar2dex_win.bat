@@ -14,7 +14,7 @@ chdir ..\..\..\..\..\..\backend\server\data\file\
 rem TODO: configurate d8 path
 rem set sdk_version=30.0.3
 rem set D8_PATH=%USERPROFILE%\AppData\Local\Android\Sdk\build-tools\%sdk_version%\d8.bat
-call "%D8_PATH%" classes.jar
+call "D:\SDK\build-tools\31.0.0\d8.bat" classes.jar
 if errorlevel 1 goto err else goto checkarg
 
 :checkarg
