@@ -15,7 +15,7 @@ public class VolumeRuleManager {
 
     List<RecordItem> mContextList;  // 暂时用列表存放，之后应建立持久化存储乃至数据库
 
-    VolumeRuleManager() {
+    public VolumeRuleManager() {
         mContextList = new ArrayList<RecordItem>();
 
         fillContextList(); // 手动生成一些数据，用于测试
@@ -157,5 +157,7 @@ public class VolumeRuleManager {
                 22.538565, 114.01, 40, "com.tencent.mm", "speaker"), 11));
     }
 
-
+    public int getContextListSize() {
+        return mContextList.size();
+    }
 }

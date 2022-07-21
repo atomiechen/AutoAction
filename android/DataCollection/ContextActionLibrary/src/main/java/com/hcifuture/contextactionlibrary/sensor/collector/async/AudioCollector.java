@@ -4,6 +4,7 @@ import android.content.Context;
 import android.media.AudioManager;
 import android.media.MediaRecorder;
 import android.os.Build;
+import android.os.Handler;
 
 import androidx.annotation.RequiresApi;
 
@@ -16,6 +17,7 @@ import com.hcifuture.contextactionlibrary.utils.FileUtils;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledExecutorService;
@@ -27,6 +29,8 @@ public class AudioCollector extends AsynchronousCollector {
     private MediaRecorder mMediaRecorder;
     private final AtomicBoolean isCollecting;
     private final AudioManager audioManager;
+    private List<Double> noiseCheckpoints;
+    public static double lastest_noise;
 
     /*
       Error code:
@@ -122,6 +126,29 @@ public class AudioCollector extends AsynchronousCollector {
         mMediaRecorder.setOutputFile(file);
         mMediaRecorder.prepare();
         mMediaRecorder.start();
+        noiseCheckpoints = new ArrayList<>();
+        updateNoise();
+    }
+
+    private final Handler mHandler = new Handler();
+    private final Runnable mUpdateNoiseTimer = new Runnable() {
+        @Override
+        public void run() {
+            updateNoise();
+        }
+    };
+
+    private void updateNoise() {
+        double BASE = 1.0;
+        int SPACE = 100;
+        if (mMediaRecorder != null) {
+            double ratio = mMediaRecorder.getMaxAmplitude() / BASE;
+            double db = 0;// 分贝
+            if (ratio > 1)
+                db = 20 * Math.log10(ratio);
+            noiseCheckpoints.add(db);
+            mHandler.postDelayed(mUpdateNoiseTimer, SPACE);
+        }
     }
 
     private void stopRecording() {
@@ -138,6 +165,13 @@ public class AudioCollector extends AsynchronousCollector {
                 e.printStackTrace();
             }
             mMediaRecorder = null;
+            if (noiseCheckpoints != null) {
+                double count = 0;
+                for (Double noiseCheckpoint: noiseCheckpoints) {
+                    count += noiseCheckpoint;
+                }
+                lastest_noise = count / noiseCheckpoints.size();
+            }
         }
     }
 

@@ -34,6 +34,7 @@ public class GPSCollector extends AsynchronousCollector implements LocationListe
     private final AtomicBoolean isCollecting = new AtomicBoolean(false);
     private boolean isProviderEnabled;
     private final GPSData data;
+    public static GPSData latest_data;
 
     /*
       Error code:
@@ -132,6 +133,7 @@ public class GPSCollector extends AsynchronousCollector implements LocationListe
                             unbindListener();
                             setCollectData(result);
                             ft.complete(result);
+                            latest_data = (GPSData) result.getData();
                             isCollecting.set(false);
                         }
                     }, config.getGPSRequestTime(), TimeUnit.MILLISECONDS));
