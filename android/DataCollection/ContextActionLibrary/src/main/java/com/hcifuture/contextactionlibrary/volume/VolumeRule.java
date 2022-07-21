@@ -1,4 +1,4 @@
-package com.example.volumerecommendation;
+package com.hcifuture.contextactionlibrary.volume;
 
 public class VolumeRule {
     Type type;

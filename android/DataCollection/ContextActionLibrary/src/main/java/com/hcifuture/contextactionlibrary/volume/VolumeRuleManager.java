@@ -1,4 +1,8 @@
-package com.example.volumerecommendation;
+package com.hcifuture.contextactionlibrary.volume;
+
+import android.os.Build;
+
+import androidx.annotation.RequiresApi;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -8,18 +12,13 @@ import java.util.stream.Collectors;
 
 public class VolumeRuleManager {
 
-    List<RecordItem> mContextList;  // 暂时用列表存放
+    List<RecordItem> mContextList;  // 暂时用列表存放，之后应建立持久化存储乃至数据库
 
     VolumeRuleManager() {
         mContextList = new ArrayList<RecordItem>();
 
         fillContextList(); // 手动生成一些数据，用于测试
     }
-
-    VolumeRuleManager(VolumeContext volumeContext) {
-//        mVolumeContext = volumeContext;
-    }
-
 
 
     class RecordItem {
@@ -39,7 +38,7 @@ public class VolumeRuleManager {
     }
 
     boolean closeInPlace(double latitudeA, double longitudeA, double latitudeB, double longitudeB){
-        double BLOCK_LENGTH = 0.0002; //经纬度分块粒度，先用0.0002
+        double BLOCK_LENGTH = 0.0002; // 经纬度分块粒度，先用0.0002
         return (latitudeA - latitudeB < BLOCK_LENGTH) && (longitudeA - longitudeB < BLOCK_LENGTH);
     }
 
@@ -48,8 +47,8 @@ public class VolumeRuleManager {
         return Math.abs(noise1 - noise2) < 20;
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.N)
     public List<Integer> getVolumes(VolumeRule.Type type, VolumeContext volumeContext) {  // 先用方差代替
-
         switch (type) {
             case TIME:
                 return mContextList.stream().filter(item -> closeInTime(item.volumeContext.getDate(), volumeContext.getDate()))
@@ -72,7 +71,7 @@ public class VolumeRuleManager {
         }
     }
 
-
+    @RequiresApi(api = Build.VERSION_CODES.N)
     public List<VolumeRule> getRecommendation(VolumeContext volumeContext){
         List<VolumeRule> ruleList = new ArrayList<>();
 
@@ -154,6 +153,4 @@ public class VolumeRuleManager {
         mContextList.add(new RecordItem(new VolumeContext(new Date(2022, 7, 20, 20, 0, 0),
                 22.538565, 114.015794, 40, "com.tencent.mm", "speaker"), 11));
     }
-
-
 }
