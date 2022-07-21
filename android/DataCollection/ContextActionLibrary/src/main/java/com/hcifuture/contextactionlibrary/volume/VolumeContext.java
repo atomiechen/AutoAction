@@ -1,5 +1,7 @@
 package com.hcifuture.contextactionlibrary.volume;
 
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.Date;
 
 public class VolumeContext {
@@ -116,5 +118,18 @@ public class VolumeContext {
         this.volumeMode = volumeMode;
         this.deviceType = deviceType;
         this.deviceId = deviceId;
+    }
+
+    @Override
+    public String toString() {
+        DateFormat df = new SimpleDateFormat("HH:mm:ss");
+        return "VolumeContext{" +
+                df.format(date) +
+                ", (" + latitude +
+                ", " + longitude +
+                "), noise=" + noise +
+                ", app='" + app + '\'' +
+                ", " + deviceType + '\'' +
+                '}';
     }
 }

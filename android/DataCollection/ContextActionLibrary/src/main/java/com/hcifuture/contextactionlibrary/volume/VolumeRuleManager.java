@@ -1,6 +1,7 @@
 package com.hcifuture.contextactionlibrary.volume;
 
 import android.os.Build;
+import android.util.Log;
 
 import androidx.annotation.RequiresApi;
 
@@ -20,7 +21,6 @@ public class VolumeRuleManager {
         fillContextList(); // 手动生成一些数据，用于测试
     }
 
-
     class RecordItem {
         public RecordItem(VolumeContext volumeContext, int volume) {
             this.volumeContext = volumeContext;
@@ -38,8 +38,9 @@ public class VolumeRuleManager {
     }
 
     boolean closeInPlace(double latitudeA, double longitudeA, double latitudeB, double longitudeB){
-        double BLOCK_LENGTH = 0.0002; // 经纬度分块粒度，先用0.0002
-        return (latitudeA - latitudeB < BLOCK_LENGTH) && (longitudeA - longitudeB < BLOCK_LENGTH);
+        double BLOCK_LENGTH = 0.0002; //经纬度分块粒度，先用0.0002
+        return (Math.abs(latitudeA - latitudeB) < BLOCK_LENGTH) &&
+                (Math.abs(longitudeA - longitudeB) < BLOCK_LENGTH);
     }
 
     boolean closeInNoise(double noise1, double noise2) {
@@ -49,6 +50,7 @@ public class VolumeRuleManager {
 
     @RequiresApi(api = Build.VERSION_CODES.N)
     public List<Integer> getVolumes(VolumeRule.Type type, VolumeContext volumeContext) {  // 先用方差代替
+
         switch (type) {
             case TIME:
                 return mContextList.stream().filter(item -> closeInTime(item.volumeContext.getDate(), volumeContext.getDate()))
@@ -77,6 +79,7 @@ public class VolumeRuleManager {
 
         for (VolumeRule.Type type : VolumeRule.Type.values()) {
             List<Integer> volumes = getVolumes(type, volumeContext);
+//            Log.i(type + " volumes", volumes.toString());
             int targetVolume = (int) volumes.stream().mapToDouble(x->x).average().orElse(0D);
 
             // 计算样本标准差
@@ -109,28 +112,28 @@ public class VolumeRuleManager {
     void fillContextList() {
         // time: night, around 2
         mContextList.add(new RecordItem(new VolumeContext(new Date(2022, 7, 20, 0, 0, 0),
-                22.533, 114.1, 40, "com.xingin.xhs", "speaker"), 2));
+                22.5301, 114.01, 40, "com.xingin.xhs", "speaker"), 3));
         mContextList.add(new RecordItem(new VolumeContext(new Date(2022, 7, 20, 1, 0, 0),
-                22.43, 114.2, 80, "com.netease.cloudmusic", "headset"), 2));
+                22.43, 114.2, 60, "com.netease.cloudmusic", "headset"), 2));
         mContextList.add(new RecordItem(new VolumeContext(new Date(2022, 7, 20, 0, 20, 0),
-                21.0, 114, 17, "com.netease.cloudmusic", "headset"), 1));
+                22.0, 114, 17, "com.netease.cloudmusic", "headset"), 1));
         mContextList.add(new RecordItem(new VolumeContext(new Date(2022, 7, 20, 2, 0, 0),
                 22.77, 114.015794, 35, "com.eusoft.ting.en", "bt_a2dp"), 2));
         // place: near(22.541364, 114.009766), around 6
         mContextList.add(new RecordItem(new VolumeContext(new Date(2022, 7, 20, 8, 0, 0),
                 22.541364, 114.009766, 30, "com.tencent.wemeet.app", "bt_a2dp"), 6));
         mContextList.add(new RecordItem(new VolumeContext(new Date(2022, 7, 20, 15, 20, 0),
-                22.541334, 114.009756, 72, "com.tencent.mm", "bt_a2dp"), 6));
+                22.541334, 114.009756, 50, "com.tencent.mm", "bt_a2dp"), 6));
         mContextList.add(new RecordItem(new VolumeContext(new Date(2022, 7, 20, 16, 20, 0),
-                22.541363, 114.009764, 27, "com.tencent.wemeet.app", "earpiece"), 7));
+                22.541363, 114.009764, 27, "com.tencent.karaoke", "earpiece"), 7));
         mContextList.add(new RecordItem(new VolumeContext(new Date(2022, 7, 20, 20, 0, 0),
-                22.541354, 114.009768, 40, "com.gotokeep.keep", "speaker"), 5));
+                22.541354, 114.009768, 40, "com.gotokeep.keep", "headset"), 5));
         // noise: loud, around 12
         mContextList.add(new RecordItem(new VolumeContext(new Date(2022, 7, 20, 8, 0, 0),
-                22.541364, 114.0, 80, "com.tencent.karaoke", "bt_a2dp"), 12));
+                22.53, 114.0, 80, "com.tencent.karaoke", "bt_a2dp"), 12));
         mContextList.add(new RecordItem(new VolumeContext(new Date(2022, 7, 20, 15, 20, 0),
                 22.541334, 114.01, 85, "com.tencent.mm", "speaker"), 13));
-        mContextList.add(new RecordItem(new VolumeContext(new Date(2022, 7, 20, 16, 20, 0),
+        mContextList.add(new RecordItem(new VolumeContext(new Date(2022, 7, 20, 7, 20, 0),
                 22.541363, 114.1, 90, "com.tencent.karaoke", "earpiece"), 11));
         mContextList.add(new RecordItem(new VolumeContext(new Date(2022, 7, 20, 20, 0, 0),
                 22.541354, 114.2, 82, "com.gotokeep.keep", "speaker"), 12));
@@ -138,19 +141,21 @@ public class VolumeRuleManager {
         mContextList.add(new RecordItem(new VolumeContext(new Date(2022, 7, 20, 3, 0, 0),
                 22.52, 114.015794, 30, "tv.danmaku.bili", "speaker"), 7));
         mContextList.add(new RecordItem(new VolumeContext(new Date(2022, 7, 20, 15, 0, 0),
-                22.538565, 114.015794, 72, "tv.danmaku.bili", "bt_a2dp"), 8));
+                22.538565, 114.015794, 12, "tv.danmaku.bili", "bt_a2dp"), 8));
         mContextList.add(new RecordItem(new VolumeContext(new Date(2022, 7, 20, 9, 20, 0),
                 22.53, 114.015794, 27, "tv.danmaku.bili", "speaker"), 8));
         mContextList.add(new RecordItem(new VolumeContext(new Date(2022, 7, 20, 21, 0, 0),
                 22.54, 114.015794, 40, "tv.danmaku.bili", "bt_a2dp"), 8));
         // device: speaker, around 10.5
         mContextList.add(new RecordItem(new VolumeContext(new Date(2022, 7, 20, 8, 0, 0),
-                22.538565, 114.015794, 30, "com.gotokeep.keep", "speaker"), 11));
+                22.53, 114.01001, 30, "com.gotokeep.keep", "speaker"), 11));
         mContextList.add(new RecordItem(new VolumeContext(new Date(2022, 7, 20, 15, 20, 0),
-                22.538565, 114.015794, 72, "com.youku.phone", "speaker"), 10));
+                22.534, 114.015794, 72, "com.youku.phone", "speaker"), 10));
         mContextList.add(new RecordItem(new VolumeContext(new Date(2022, 7, 20, 16, 20, 0),
-                22.538565, 114.015794, 27, "com.gotokeep.keep", "speaker"), 10));
+                22.536, 114.1, 27, "com.gotokeep.keep", "speaker"), 10));
         mContextList.add(new RecordItem(new VolumeContext(new Date(2022, 7, 20, 20, 0, 0),
-                22.538565, 114.015794, 40, "com.tencent.mm", "speaker"), 11));
+                22.538565, 114.01, 40, "com.tencent.mm", "speaker"), 11));
     }
+
+
 }
