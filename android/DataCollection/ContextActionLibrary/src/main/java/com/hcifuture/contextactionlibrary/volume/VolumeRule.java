@@ -14,6 +14,10 @@ public class VolumeRule {
         DEVICE("您使用的播放设备");
         String text;
         Type(String text) { this.text = text; }
+
+        public String getText() {
+            return text;
+        }
     }
 
     VolumeRule(Type type, String description, int volume, double priority){

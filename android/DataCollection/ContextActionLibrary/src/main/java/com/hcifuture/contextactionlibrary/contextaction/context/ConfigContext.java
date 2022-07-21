@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.hardware.display.DisplayManager;
+import android.location.LocationManager;
 import android.net.Uri;
 import android.net.wifi.WifiManager;
 import android.os.Build;
@@ -16,10 +17,15 @@ import android.view.Display;
 import android.view.KeyEvent;
 import android.view.accessibility.AccessibilityEvent;
 
+import com.hcifuture.contextactionlibrary.sensor.collector.async.AudioCollector;
+import com.hcifuture.contextactionlibrary.sensor.collector.async.GPSCollector;
 import com.hcifuture.contextactionlibrary.sensor.collector.sync.LogCollector;
 import com.hcifuture.contextactionlibrary.sensor.data.NonIMUData;
 import com.hcifuture.contextactionlibrary.sensor.data.SingleIMUData;
 import com.hcifuture.contextactionlibrary.utils.JSONUtils;
+import com.hcifuture.contextactionlibrary.volume.VolumeContext;
+import com.hcifuture.contextactionlibrary.volume.VolumeRule;
+import com.hcifuture.contextactionlibrary.volume.VolumeRuleManager;
 import com.hcifuture.shared.communicate.config.ContextConfig;
 import com.hcifuture.contextactionlibrary.contextaction.event.BroadcastEvent;
 import com.hcifuture.shared.communicate.config.RequestConfig;
@@ -38,6 +44,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.ScheduledExecutorService;
@@ -57,6 +64,8 @@ public class ConfigContext extends BaseContext {
 
     private String last_packageName;
     private String packageName;
+    private String present_name;
+    private String latest_deviceType;
     private List<String> valid_packageNames;
     private List<String> useless_packageNames;
     private List<String> rules;
@@ -64,15 +73,20 @@ public class ConfigContext extends BaseContext {
     private final HashMap<String, Integer> volume;
 
     private long last_record_all;
+    private VolumeRuleManager volumeRuleManager;
 
     private final AtomicInteger mLogID = new AtomicInteger(0);
 
     public ConfigContext(Context context, ContextConfig config, RequestListener requestListener, List<ContextListener> contextListener, LogCollector logCollector, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList) {
         super(context, config, requestListener, contextListener, scheduledExecutorService, futureList);
         this.logCollector = logCollector;
+        volumeRuleManager = new VolumeRuleManager();
 
         // initialize
         packageName = "";
+        present_name = "";
+        last_packageName = "";
+        latest_deviceType = "speaker";
         brightness = 0;
         volume = new HashMap<>();
         // speaker
@@ -96,14 +110,11 @@ public class ConfigContext extends BaseContext {
 
         last_record_all = 0;
 
-        rules = new ArrayList<>();
-        rules.add("rule1");
-        rules.add("rule2");
-        rules.add("rule3");
-
         useless_packageNames = Arrays.asList("com.android.systemui",
                 "miui.systemui.plugin",
-                "com.huawei.android.launcher");
+                "com.huawei.android.launcher",
+                "com.hcifuture.scanner",
+                "com.xiaomi.bsp.gps.nps");
         valid_packageNames = Arrays.asList("tv.danmaku.bili",//B站
                 "com.ss.android.ugc.aweme", //抖音
                 "com.tencent.mm", //微信
@@ -119,12 +130,18 @@ public class ConfigContext extends BaseContext {
                 "com.xingin.xhs", //小红书
                 "com.tencent.mobileqq", //QQ
                 "com.taobao.taobao", //淘宝
-                "com.bilibili.app.blue", //B站极速版
+                "com.bilibili.app.blue", //B站概念版
                 "com.zhihu.android", //知乎
                 "com.qiyi.video", //爱奇艺
                 "com.baidu.tieba", //百度贴吧
                 "com.smile.gifmaker", //快手
-                "com.kuaishou.nebula"); //快手极速版
+                "com.kuaishou.nebula", //快手极速版
+                "com.qiyi.video.lite", //爱奇艺极速版
+                "com.ss.android.ugc.aweme.lite", //抖音极速版
+                "com.ss.android.ugc.live", //火山小视频
+                "air.tv.douyu.android", //斗鱼
+                "com.duowan.kiwi", //虎牙
+                "com.sohu.sohuvideo"); //搜狐视频
     }
 
     @Override
@@ -161,25 +178,57 @@ public class ConfigContext extends BaseContext {
     public void onAccessibilityEvent(AccessibilityEvent event) {
         CharSequence pkg = event.getPackageName();
         if (pkg != null) {
-            String present_name = event.getPackageName().toString();
+            String tmp_name = event.getPackageName().toString();
+            if (!useless_packageNames.contains(tmp_name))
+                present_name = tmp_name;
             if (valid_packageNames.contains(present_name)) {
                 packageName = present_name;
                 if (!(packageName.equals(last_packageName))) {
+                    long now = System.currentTimeMillis();
+                    int logID = incLogID();
+                    notifyContext(NEED_AUDIO, now, logID, "app changed: " + packageName);
+                    notifyContext(NEED_SCAN, now, logID, "app changed: " + packageName);
+                    notifyContext(NEED_POSITION, now, logID, "app changed: " + packageName);
+                    Date date = new Date();
+                    double latitude = GPSCollector.latest_data.getLatitude();
+                    double longitude = GPSCollector.latest_data.getLongitude();
+                    double noise = AudioCollector.lastest_noise;
+                    String app = packageName;
+                    String deviceType = latest_deviceType;
+                    rules = getRules(date, latitude, longitude, noise, app, deviceType);
+                    List<Integer> volumes = getVolumes(date, latitude, longitude, noise, app, deviceType);
                     if (requestListener != null) {
                         RequestConfig requestConfig = new RequestConfig();
                         requestConfig.putValue("needVolumeOverlay", true);
                         requestConfig.putString("rules", rules.toString());
+                        requestConfig.putString("volumes", volumes.toString());
                         requestListener.onRequest(requestConfig);
-                        long now = System.currentTimeMillis();
-                        int logID = incLogID();
-                        notifyContext(NEED_AUDIO, now, logID, "app changed: " + packageName);
-                        notifyContext(NEED_SCAN, now, logID, "app changed" + packageName);
-                        notifyContext(NEED_POSITION, now, logID, "app changed" + packageName);
                     }
                     last_packageName = packageName;
                 }
             }
         }
+    }
+
+    public List<String> getRules(Date date, double latitude, double longitude, double noise, String app, String deviceType) {
+        VolumeContext volumeContext = new VolumeContext(date, latitude, longitude, noise, app, deviceType);
+        List<VolumeRule> volumeRules = volumeRuleManager.getRecommendation(volumeContext);
+        List<String> _rules = new ArrayList<>();
+        for (VolumeRule volumeRule: volumeRules) {
+            _rules.add(volumeRule.getType().getText() + " volume=" + volumeRule.getVolume());
+        }
+        _rules.add(date.toString() + " (" + latitude + "/" + longitude + ") " + noise + " " + app + " " + deviceType + " " + volumeRuleManager.getContextListSize());
+        return _rules;
+    }
+
+    public List<Integer> getVolumes(Date date, double latitude, double longitude, double noise, String app, String deviceType) {
+        VolumeContext volumeContext = new VolumeContext(date, latitude, longitude, noise, app, deviceType);
+        List<VolumeRule> volumeRules = volumeRuleManager.getRecommendation(volumeContext);
+        List<Integer> _volumes = new ArrayList<>();
+        for (VolumeRule volumeRule: volumeRules) {
+            _volumes.add(volumeRule.getVolume());
+        }
+        return _volumes;
     }
 
     @Override
@@ -238,6 +287,15 @@ public class ConfigContext extends BaseContext {
                         JSONUtils.jsonPut(json, "diff", diff);
                         notifyContext(NEED_AUDIO, timestamp, logID, "volume change: " + database_key);
                         notifyContext(NEED_SCAN, timestamp, logID, "volume change: " + database_key);
+                        String[] tmp = database_key.split("_");
+                        String deviceType = "";
+                        for (int index = 2; index < tmp.length; index++) {
+                            deviceType += tmp[index];
+                            if (index < tmp.length - 1) {
+                                deviceType += "_";
+                            }
+                        }
+                        latest_deviceType = deviceType;
                     } else if (Settings.Global.BLUETOOTH_ON.equals(database_key) && value == 1) {
 //                    notify(NEED_SCAN, timestamp, logID, "Bluetooth on via global setting");
                     } else if (Settings.Global.WIFI_ON.equals(database_key) && value == 2) {
@@ -302,10 +360,20 @@ public class ConfigContext extends BaseContext {
                         notifyContext(NEED_AUDIO, timestamp, logID, "key event: " + KeyEvent.keyCodeToString(keycode));
                         notifyContext(NEED_SCAN, timestamp, logID, "key event: " + KeyEvent.keyCodeToString(keycode));
                         notifyContext(NEED_POSITION, timestamp, logID, "key event: " + KeyEvent.keyCodeToString(keycode));
+
+                        Date date = new Date();
+                        double latitude = GPSCollector.latest_data.getLatitude();
+                        double longitude = GPSCollector.latest_data.getLongitude();
+                        double noise = AudioCollector.lastest_noise;
+                        String app = present_name;
+                        String deviceType = latest_deviceType;
+                        rules = getRules(date, latitude, longitude, noise, app, deviceType);
+                        List<Integer> volumes = getVolumes(date, latitude, longitude, noise, app, deviceType);
                         if (requestListener != null) {
                             RequestConfig requestConfig = new RequestConfig();
                             requestConfig.putValue("needVolumeOverlay", true);
                             requestConfig.putString("rules", rules.toString());
+                            requestConfig.putString("volumes", volumes.toString());
                             requestListener.onRequest(requestConfig);
                         }
                 }
@@ -336,6 +404,14 @@ public class ConfigContext extends BaseContext {
         int selected_rule = bundle.getInt("selectedRule");
         JSONUtils.jsonPut(json, "finalVolume", bundle.getInt("finalVolume"));
         JSONUtils.jsonPut(json, "selectedRule", rules.get(selected_rule));
+        Date date = new Date();
+        double latitude = GPSCollector.latest_data.getLatitude();
+        double longitude = GPSCollector.latest_data.getLongitude();
+        double noise = AudioCollector.lastest_noise;
+        String app = present_name;
+        String deviceType = latest_deviceType;
+        VolumeContext volumeContext = new VolumeContext(date, latitude, longitude, noise, app, deviceType);
+        volumeRuleManager.addRecord(volumeContext, bundle.getInt("finalVolume"));
         record(timestamp, logID, type, action, tag, json.toString());
     }
 
