@@ -195,6 +195,8 @@ public class ConfigContext extends BaseContext {
                 "com.huawei.browser",
                 "com.dianping.v1",
                 "com.taobao.idlefish",
+                "com.suirui.zhumu",
+                "us.zoom.videomeetings",
                 "com.baidu.BaiduMap"); //百度地图
         nochange_packageNames = Arrays.asList(
                 "com.sankuai.meituan",
@@ -225,7 +227,9 @@ public class ConfigContext extends BaseContext {
                 "com.icbc",
                 "com.intsig.camscanner",
                 "com.chinamworld.bocmbci",
-                "cn.tape.tapeapp"
+                "cn.tape.tapeapp",
+                "com.ss.android.lark",
+                "com.coolapk.market"
                 );
     }
 
@@ -276,8 +280,12 @@ public class ConfigContext extends BaseContext {
                         notifyContext(NEED_SCAN, now, logID, "app changed: " + packageName);
                         notifyContext(NEED_POSITION, now, logID, "app changed: " + packageName);
                         Date date = new Date();
-                        double latitude = GPSCollector.latest_data.getLatitude();
-                        double longitude = GPSCollector.latest_data.getLongitude();
+                        double latitude = 0.0;
+                        double longitude = 0.0;
+                        if (GPSCollector.latest_data != null) {
+                            latitude = GPSCollector.latest_data.getLatitude();
+                            longitude = GPSCollector.latest_data.getLongitude();
+                        }
                         double noise = AudioCollector.lastest_noise;
                         String app = packageName;
                         String deviceType = latest_deviceType;
@@ -482,24 +490,26 @@ public class ConfigContext extends BaseContext {
 
     @Override
     public void onExternalEvent(Bundle bundle) {
-        long timestamp = System.currentTimeMillis();
-        int logID = incLogID();
-        String type = "volume overlay return";
-        String action = "";
-        String tag = "";
-        JSONObject json = new JSONObject();
-        int selected_rule = bundle.getInt("selectedRule");
-        JSONUtils.jsonPut(json, "finalVolume", bundle.getInt("finalVolume"));
-        JSONUtils.jsonPut(json, "selectedRule", rules.get(selected_rule));
-        Date date = new Date();
-        double latitude = GPSCollector.latest_data.getLatitude();
-        double longitude = GPSCollector.latest_data.getLongitude();
-        double noise = AudioCollector.lastest_noise;
-        String app = present_name;
-        String deviceType = latest_deviceType;
-        VolumeContext volumeContext = new VolumeContext(date, latitude, longitude, noise, app, deviceType);
-        volumeRuleManager.addRecord(volumeContext, bundle.getInt("finalVolume"));
-        record(timestamp, logID, type, action, tag, json.toString());
+        if (bundle.containsKey("selectedRule") && bundle.containsKey("finalVolume")) {
+            long timestamp = System.currentTimeMillis();
+            int logID = incLogID();
+            String type = "volume overlay return";
+            String action = "";
+            String tag = "";
+            JSONObject json = new JSONObject();
+            int selected_rule = bundle.getInt("selectedRule");
+            JSONUtils.jsonPut(json, "finalVolume", bundle.getInt("finalVolume"));
+            JSONUtils.jsonPut(json, "selectedRule", rules.get(selected_rule));
+            Date date = new Date();
+            double latitude = GPSCollector.latest_data.getLatitude();
+            double longitude = GPSCollector.latest_data.getLongitude();
+            double noise = AudioCollector.lastest_noise;
+            String app = present_name;
+            String deviceType = latest_deviceType;
+            VolumeContext volumeContext = new VolumeContext(date, latitude, longitude, noise, app, deviceType);
+            volumeRuleManager.addRecord(volumeContext, bundle.getInt("finalVolume"));
+            record(timestamp, logID, type, action, tag, json.toString());
+        }
     }
 
     private int incLogID() {
