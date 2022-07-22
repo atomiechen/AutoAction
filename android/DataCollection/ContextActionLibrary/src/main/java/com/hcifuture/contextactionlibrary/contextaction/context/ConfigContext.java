@@ -457,8 +457,12 @@ public class ConfigContext extends BaseContext {
                         notifyContext(NEED_POSITION, timestamp, logID, "key event: " + KeyEvent.keyCodeToString(keycode));
 
                         Date date = new Date();
-                        double latitude = GPSCollector.latest_data.getLatitude();
-                        double longitude = GPSCollector.latest_data.getLongitude();
+                        double latitude = 0.0;
+                        double longitude = 0.0;
+                        if (GPSCollector.latest_data != null) {
+                            latitude = GPSCollector.latest_data.getLatitude();
+                            longitude = GPSCollector.latest_data.getLongitude();
+                        }
                         double noise = AudioCollector.lastest_noise;
                         String app = present_name;
                         String deviceType = latest_deviceType;
@@ -501,8 +505,12 @@ public class ConfigContext extends BaseContext {
             JSONUtils.jsonPut(json, "finalVolume", bundle.getInt("finalVolume"));
             JSONUtils.jsonPut(json, "selectedRule", rules.get(selected_rule));
             Date date = new Date();
-            double latitude = GPSCollector.latest_data.getLatitude();
-            double longitude = GPSCollector.latest_data.getLongitude();
+            double latitude = 0.0;
+            double longitude = 0.0;
+            if (GPSCollector.latest_data != null) {
+                latitude = GPSCollector.latest_data.getLatitude();
+                longitude = GPSCollector.latest_data.getLongitude();
+            }
             double noise = AudioCollector.lastest_noise;
             String app = present_name;
             String deviceType = latest_deviceType;

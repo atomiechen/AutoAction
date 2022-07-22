@@ -47,6 +47,8 @@ public class AudioCollector extends AsynchronousCollector {
         super(context, type, scheduledExecutorService, futureList);
         isCollecting = new AtomicBoolean(false);
         audioManager = (AudioManager) mContext.getSystemService(Context.AUDIO_SERVICE);
+        noiseCheckpoints = new ArrayList<>();
+        lastest_noise = 0.0;
     }
 
     @Override
@@ -130,14 +132,6 @@ public class AudioCollector extends AsynchronousCollector {
         updateNoise();
     }
 
-    private final Handler mHandler = new Handler();
-    private final Runnable mUpdateNoiseTimer = new Runnable() {
-        @Override
-        public void run() {
-            updateNoise();
-        }
-    };
-
     private void updateNoise() {
         double BASE = 1.0;
         int SPACE = 100;
@@ -146,8 +140,15 @@ public class AudioCollector extends AsynchronousCollector {
             double db = 0;// 分贝
             if (ratio > 1)
                 db = 20 * Math.log10(ratio);
-            noiseCheckpoints.add(db);
-            mHandler.postDelayed(mUpdateNoiseTimer, SPACE);
+            if (noiseCheckpoints != null)
+                noiseCheckpoints.add(db);
+            futureList.add(scheduledExecutorService.schedule(() -> {
+                try {
+                    updateNoise();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }, SPACE, TimeUnit.MILLISECONDS));
         }
     }
 
