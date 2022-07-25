@@ -3,6 +3,7 @@ package com.hcifuture.contextactionlibrary.volume;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.List;
 
 public class VolumeContext {
     // Time
@@ -10,8 +11,9 @@ public class VolumeContext {
     // Place
     double latitude;
     double longitude;
-    String wifiId;
-    String bluetoothId;
+    List<String> wifiId;
+    List<String> bluetoothId;
+    String place;
     // Noise
     double noise;
     // App
@@ -46,20 +48,28 @@ public class VolumeContext {
         this.longitude = longitude;
     }
 
-    public String getWifiId() {
+    public List<String> getWifiId() {
         return wifiId;
     }
 
-    public void setWifiId(String wifiId) {
+    public void setWifiId(List<String> wifiId) {
         this.wifiId = wifiId;
     }
 
-    public String getBluetoothId() {
+    public List<String> getBluetoothId() {
         return bluetoothId;
     }
 
-    public void setBluetoothId(String bluetoothId) {
+    public void setBluetoothId(List<String> bluetoothId) {
         this.bluetoothId = bluetoothId;
+    }
+
+    public String getPlace() {
+        return place;
+    }
+
+    public void setPlace(String place) {
+        this.place = place;
     }
 
     public double getNoise() {
@@ -105,8 +115,12 @@ public class VolumeContext {
         this(date, latitude, longitude, null, null, noise, app, null, deviceType, null);
     }
 
-    public VolumeContext(Date date, double latitude, double longitude, String wifiId,
-                         String bluetoothId, double noise, String app, String volumeMode,
+    public VolumeContext(Date date, double latitude, double longitude, List<String> wifiId,double noise, String app, String deviceType) {
+        this(date, latitude, longitude, wifiId, null, noise, app, null, deviceType, null);
+    }
+
+    public VolumeContext(Date date, double latitude, double longitude, List<String> wifiId,
+                         List<String> bluetoothId, double noise, String app, String volumeMode,
                          String deviceType, String deviceId) {
         this.date = date;
         this.latitude = latitude;

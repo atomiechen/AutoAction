@@ -19,9 +19,11 @@ import android.view.accessibility.AccessibilityEvent;
 
 import com.hcifuture.contextactionlibrary.sensor.collector.async.AudioCollector;
 import com.hcifuture.contextactionlibrary.sensor.collector.async.GPSCollector;
+import com.hcifuture.contextactionlibrary.sensor.collector.async.WifiCollector;
 import com.hcifuture.contextactionlibrary.sensor.collector.sync.LogCollector;
 import com.hcifuture.contextactionlibrary.sensor.data.NonIMUData;
 import com.hcifuture.contextactionlibrary.sensor.data.SingleIMUData;
+import com.hcifuture.contextactionlibrary.sensor.data.SingleWifiData;
 import com.hcifuture.contextactionlibrary.utils.JSONUtils;
 import com.hcifuture.contextactionlibrary.volume.VolumeContext;
 import com.hcifuture.contextactionlibrary.volume.VolumeRule;
@@ -279,18 +281,9 @@ public class ConfigContext extends BaseContext {
                         notifyContext(NEED_AUDIO, now, logID, "app changed: " + packageName);
                         notifyContext(NEED_SCAN, now, logID, "app changed: " + packageName);
                         notifyContext(NEED_POSITION, now, logID, "app changed: " + packageName);
-                        Date date = new Date();
-                        double latitude = 0.0;
-                        double longitude = 0.0;
-                        if (GPSCollector.latest_data != null) {
-                            latitude = GPSCollector.latest_data.getLatitude();
-                            longitude = GPSCollector.latest_data.getLongitude();
-                        }
-                        double noise = AudioCollector.lastest_noise;
-                        String app = packageName;
-                        String deviceType = latest_deviceType;
-                        rules = getRules(date, latitude, longitude, noise, app, deviceType);
-                        List<Integer> volumes = getVolumes(date, latitude, longitude, noise, app, deviceType);
+                        VolumeContext volumeContext = getPresentContext();
+                        rules = getRules(volumeContext);
+                        List<Integer> volumes = getVolumes(volumeContext);
                         if (requestListener != null) {
                             RequestConfig requestConfig = new RequestConfig();
                             requestConfig.putValue("needVolumeOverlay", true);
@@ -305,19 +298,39 @@ public class ConfigContext extends BaseContext {
         }
     }
 
-    public List<String> getRules(Date date, double latitude, double longitude, double noise, String app, String deviceType) {
-        VolumeContext volumeContext = new VolumeContext(date, latitude, longitude, noise, app, deviceType);
+    public VolumeContext getPresentContext() {
+        Date date = new Date();
+        double latitude = 0.0;
+        double longitude = 0.0;
+        if (GPSCollector.latest_data != null) {
+            latitude = GPSCollector.latest_data.getLatitude();
+            longitude = GPSCollector.latest_data.getLongitude();
+        }
+        List<String> wifiIds = new ArrayList<>();
+        if (WifiCollector.latest_data != null) {
+            List<SingleWifiData> singleWifiDataList = WifiCollector.latest_data.getAps();
+            for (SingleWifiData wifiData: singleWifiDataList) {
+                String key = wifiData.getSsid() + wifiData.getBssid();
+                wifiIds.add(key);
+            }
+        }
+        double noise = AudioCollector.lastest_noise;
+        String app = packageName;
+        String deviceType = latest_deviceType;
+        return new VolumeContext(date, latitude, longitude, wifiIds, noise, app, deviceType);
+    }
+
+    public List<String> getRules(VolumeContext volumeContext) {
         List<VolumeRule> volumeRules = volumeRuleManager.getRecommendation(volumeContext);
         List<String> _rules = new ArrayList<>();
         for (VolumeRule volumeRule: volumeRules) {
             _rules.add(volumeRule.getType().getText() + " volume=" + volumeRule.getVolume());
         }
-        _rules.add(date.toString() + " (" + latitude + "/" + longitude + ") " + noise + " " + app + " " + last_packageName + " " + deviceType + " " + volumeRuleManager.getContextListSize());
+        _rules.add(volumeContext.getDate().toString() + " (" + volumeContext.getLatitude() + "/" + volumeContext.getLongitude() + ") " + volumeContext.getNoise() + " " + volumeContext.getApp() + " " + last_packageName + " " + volumeContext.getDeviceType() + " " + volumeRuleManager.getContextListSize());
         return _rules;
     }
 
-    public List<Integer> getVolumes(Date date, double latitude, double longitude, double noise, String app, String deviceType) {
-        VolumeContext volumeContext = new VolumeContext(date, latitude, longitude, noise, app, deviceType);
+    public List<Integer> getVolumes(VolumeContext volumeContext) {
         List<VolumeRule> volumeRules = volumeRuleManager.getRecommendation(volumeContext);
         List<Integer> _volumes = new ArrayList<>();
         for (VolumeRule volumeRule: volumeRules) {
@@ -456,18 +469,9 @@ public class ConfigContext extends BaseContext {
                         notifyContext(NEED_SCAN, timestamp, logID, "key event: " + KeyEvent.keyCodeToString(keycode));
                         notifyContext(NEED_POSITION, timestamp, logID, "key event: " + KeyEvent.keyCodeToString(keycode));
 
-                        Date date = new Date();
-                        double latitude = 0.0;
-                        double longitude = 0.0;
-                        if (GPSCollector.latest_data != null) {
-                            latitude = GPSCollector.latest_data.getLatitude();
-                            longitude = GPSCollector.latest_data.getLongitude();
-                        }
-                        double noise = AudioCollector.lastest_noise;
-                        String app = present_name;
-                        String deviceType = latest_deviceType;
-                        rules = getRules(date, latitude, longitude, noise, app, deviceType);
-                        List<Integer> volumes = getVolumes(date, latitude, longitude, noise, app, deviceType);
+                        VolumeContext volumeContext = getPresentContext();
+                        rules = getRules(volumeContext);
+                        List<Integer> volumes = getVolumes(volumeContext);
                         if (requestListener != null) {
                             RequestConfig requestConfig = new RequestConfig();
                             requestConfig.putValue("needVolumeOverlay", true);
@@ -504,17 +508,8 @@ public class ConfigContext extends BaseContext {
             int selected_rule = bundle.getInt("selectedRule");
             JSONUtils.jsonPut(json, "finalVolume", bundle.getInt("finalVolume"));
             JSONUtils.jsonPut(json, "selectedRule", rules.get(selected_rule));
-            Date date = new Date();
-            double latitude = 0.0;
-            double longitude = 0.0;
-            if (GPSCollector.latest_data != null) {
-                latitude = GPSCollector.latest_data.getLatitude();
-                longitude = GPSCollector.latest_data.getLongitude();
-            }
-            double noise = AudioCollector.lastest_noise;
-            String app = present_name;
-            String deviceType = latest_deviceType;
-            VolumeContext volumeContext = new VolumeContext(date, latitude, longitude, noise, app, deviceType);
+
+            VolumeContext volumeContext = getPresentContext();
             volumeRuleManager.addRecord(volumeContext, bundle.getInt("finalVolume"));
             record(timestamp, logID, type, action, tag, json.toString());
         }

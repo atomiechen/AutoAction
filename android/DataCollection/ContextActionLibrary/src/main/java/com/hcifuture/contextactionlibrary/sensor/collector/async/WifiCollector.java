@@ -31,6 +31,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class WifiCollector extends AsynchronousCollector {
 
     private final WifiData data;
+    public static WifiData latest_data;
 
     private WifiManager wifiManager;
     private BroadcastReceiver receiver;
@@ -64,6 +65,7 @@ public class WifiCollector extends AsynchronousCollector {
         lockScan = new Object();
         lockStopScan = new Object();
         this.data = new WifiData();
+        latest_data = new WifiData();
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
@@ -101,6 +103,7 @@ public class WifiCollector extends AsynchronousCollector {
                                 } finally {
                                     setCollectData(result);
                                     mFt.complete(result);
+                                    latest_data = (WifiData) result.getData();
                                     isCollecting.set(false);
                                     isScanning.set(false);
                                 }
