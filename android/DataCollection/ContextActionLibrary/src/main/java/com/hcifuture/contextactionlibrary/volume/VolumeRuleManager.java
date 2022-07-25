@@ -9,15 +9,17 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public class VolumeRuleManager {
 
     List<RecordItem> mContextList;  // 暂时用列表存放，之后应建立持久化存储乃至数据库
+    List<Location> locations;
 
     public VolumeRuleManager() {
         mContextList = new ArrayList<RecordItem>();
-
+        locations = new ArrayList<>();
         fillContextList(); // 手动生成一些数据，用于测试
     }
 
@@ -101,12 +103,32 @@ public class VolumeRuleManager {
         return ruleList.stream().sorted(Comparator.comparing(VolumeRule::getPriority)).collect(Collectors.toList());
     }
 
+    public void addLocation(Location location) {
+        if (locations == null)
+            locations = new ArrayList<>();
+        locations.add(location);
+    }
+
     public boolean addRecord(VolumeContext volumeContext, int volume) {
         if (mContextList != null) {
+            volumeContext.setPlace(findPlace(volumeContext));
             mContextList.add(new RecordItem(volumeContext, volume));
             return true;
         }
         return false;
+    }
+
+    public String findPlace(VolumeContext volumeContext) {
+        String atWhere = "";
+        double max_score = -1;
+        for (Location location: locations) {
+            double score = location.getScore(volumeContext);
+            if (score > max_score && score > 0) {
+                atWhere = location.getName();
+                max_score = score;
+            }
+        }
+        return atWhere;
     }
 
     void fillContextList() {
