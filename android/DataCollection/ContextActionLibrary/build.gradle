@@ -48,6 +48,7 @@ android {
     kotlinOptions {
         jvmTarget = '1.8'
     }
+    useLibrary 'org.apache.http.legacy'
 }
 
 dependencies {
@@ -65,4 +66,6 @@ dependencies {
     api 'com.amap.api:3dmap:latest.integration'
     api 'com.amap.api:location:latest.integration'
     api 'com.amap.api:search:latest.integration'
+    implementation "com.google.guava:guava:31.0.1-android"
+    implementation 'com.google.firebase:firebase-crashlytics-buildtools:2.9.0'
 }
