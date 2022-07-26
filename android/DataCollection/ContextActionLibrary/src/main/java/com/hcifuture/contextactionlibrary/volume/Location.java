@@ -48,6 +48,29 @@ public class Location {
         this.wifiIds = wifiIds;
     }
 
+    public double getGpsScore(VolumeContext volumeContext) {
+        double score = 0;
+        double distance = getDistance(volumeContext);
+        if (distance > 200)
+            return -1;
+        else
+            score += 50 * (200 - distance) / 200;
+        return score;
+    }
+
+    public double getWifiScore(VolumeContext volumeContext) {
+        double score = 0;
+        List<String> wifiList = volumeContext.getWifiId();
+        double count = 0;
+        for (String wifiId: wifiIds) {
+            if (wifiList.contains(wifiId)) {
+                count += 1;
+            }
+        }
+        score += 50 * (count / wifiIds.size());
+        return score;
+    }
+
     public double getScore(VolumeContext volumeContext) {
         double score = 0;
         double distance = getDistance(volumeContext);

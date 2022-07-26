@@ -25,6 +25,7 @@ import com.hcifuture.contextactionlibrary.sensor.data.NonIMUData;
 import com.hcifuture.contextactionlibrary.sensor.data.SingleIMUData;
 import com.hcifuture.contextactionlibrary.sensor.data.SingleWifiData;
 import com.hcifuture.contextactionlibrary.utils.JSONUtils;
+import com.hcifuture.contextactionlibrary.volume.Location;
 import com.hcifuture.contextactionlibrary.volume.VolumeContext;
 import com.hcifuture.contextactionlibrary.volume.VolumeRule;
 import com.hcifuture.contextactionlibrary.volume.VolumeRuleManager;
@@ -62,7 +63,7 @@ public class ConfigContext extends BaseContext {
     public static String NEED_NONIMU = "context.config.need_nonimu";
     public static String NEED_SCAN = "context.config.need_scan";
     public static String NEED_POSITION = "context.config.need_position";
-
+    public static Location dormitory;
 
     private String last_packageName;
     private String packageName;
@@ -92,6 +93,7 @@ public class ConfigContext extends BaseContext {
         latest_deviceType = "speaker";
         brightness = 0;
         volume = new HashMap<>();
+        dormitory = getDormitoryPos();
         // speaker
         volume.put("volume_music_speaker", 0);
         volume.put("volume_ring_speaker", 0);
@@ -235,6 +237,58 @@ public class ConfigContext extends BaseContext {
                 );
     }
 
+    public Location getDormitoryPos() {
+        double latitude = 40.00826611;
+        double longitude = 116.31997283;
+        String name = "宿舍";
+        List<String> wifiList = Arrays.asList(
+                "\"Tsinghua-Secure\"a8:58:40:d7:13:b2",
+                "Tsinghuaa8:58:40:d7:13:a0",
+                "Tsinghua-Securea8:58:40:d7:13:a2",
+                "Tsinghua-IPv6-SAVAa8:58:40:d7:13:a3",
+                "Tsinghua-IPv6-SAVAa8:58:40:d7:13:b3",
+                "Tsinghua-5Ga8:58:40:d7:13:b5",
+                "Tsinghuaa8:58:40:d7:13:b0",
+                "Tsinghua-Securea8:58:40:d7:13:b2",
+                "Tsinghuaa8:58:40:d5:d5:40",
+                "Tsinghua-Securea8:58:40:d5:d5:42",
+                "Tsinghua-IPv6-SAVAa8:58:40:d5:d5:43",
+                "THU-Internet-Exchange74:59:09:f2:87:c4",
+                "Tsinghua-Securea8:58:40:d7:12:82",
+                "Tsinghua-Securea8:58:40:d6:d4:a2",
+                "Tsinghua-IPv6-SAVAa8:58:40:d7:07:a3",
+                "Tsinghuaa8:58:40:d5:ca:a0",
+                "Tsinghua-Securea8:58:40:d5:ca:a2",
+                "Tsinghua-IPv6-SAVAa8:58:40:d6:d1:b3",
+                "Tsinghua-5Ga8:58:40:d6:d1:b5",
+                "Tsinghuaa8:58:40:d6:d1:b0",
+                "Tsinghua-Securea8:58:40:d6:d1:b2",
+                "Tsinghua_unSecured8:32:14:74:ed:71",
+                "THU-Internet-Exchange74:59:09:f2:87:c8",
+                "Tsinghua-IPv6-SAVAa8:58:40:d7:07:b3",
+                "Tsinghua-5Ga8:58:40:d7:07:b5",
+                "Tsinghua-5Ga8:58:40:d7:12:95",
+                "Tsinghua-Securea8:58:40:d6:d4:b2",
+                "Tsinghuaa8:58:40:d7:12:90",
+                "Tsinghua-Securea8:58:40:d7:12:92",
+                "Tsinghua-IPv6-SAVAa8:58:40:d7:12:93",
+                "Tsinghua-IPv6-SAVAa8:58:40:d6:97:93",
+                "Tsinghuaa8:58:40:d6:97:90",
+                "Tsinghua-5Ga8:58:40:d6:97:95",
+                "Tsinghua-5Ga8:58:40:d5:d5:55",
+                "Tsinghua-IPv6-SAVAa8:58:40:d6:03:f3",
+                "Tsinghuaa8:58:40:d6:03:f0",
+                "Tsinghua-Securea8:58:40:d6:03:f2",
+                "Tsinghua-5Ga8:58:40:d6:03:f5",
+                "Tsinghua-Securea8:58:40:d0:6e:f2",
+                "Tsinghua-IPv6-SAVAa8:58:40:d0:6e:f3",
+                "Tsinghua-IPv6-SAVAa8:58:40:d0:f9:d3",
+                "Tsinghua-5Ga8:58:40:d0:6e:f5",
+                "Tsinghuaa8:58:40:d0:6e:f0"
+        );
+        return new Location(name, latitude, longitude, wifiList);
+    }
+
     @Override
     public void start() {
         record_all("start");
@@ -305,6 +359,7 @@ public class ConfigContext extends BaseContext {
         if (GPSCollector.latest_data != null) {
             latitude = GPSCollector.latest_data.getLatitude();
             longitude = GPSCollector.latest_data.getLongitude();
+            Log.e("GPS", GPSCollector.latest_data_string);
         }
         List<String> wifiIds = new ArrayList<>();
         if (WifiCollector.latest_data != null) {
@@ -327,6 +382,7 @@ public class ConfigContext extends BaseContext {
             _rules.add(volumeRule.getType().getText() + " volume=" + volumeRule.getVolume());
         }
         _rules.add(volumeContext.getDate().toString() + " (" + volumeContext.getLatitude() + "/" + volumeContext.getLongitude() + ") " + volumeContext.getNoise() + " " + volumeContext.getApp() + " " + last_packageName + " " + volumeContext.getDeviceType() + " " + volumeRuleManager.getContextListSize());
+        _rules.add(dormitory.getGpsScore(volumeContext) + " " + dormitory.getWifiScore(volumeContext) + " " + dormitory.getScore(volumeContext));
         return _rules;
     }
 
