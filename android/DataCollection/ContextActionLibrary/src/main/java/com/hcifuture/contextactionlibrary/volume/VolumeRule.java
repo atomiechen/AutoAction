@@ -1,10 +1,13 @@
 package com.hcifuture.contextactionlibrary.volume;
 
+import android.os.Bundle;
+
 public class VolumeRule {
     Type type;
     String description;
-    int volume;
+    double volume;
     double priority;
+    VolumeContext context;
 
     public enum Type {
         TIME("您以往在本时段使用的音量"),
@@ -27,6 +30,11 @@ public class VolumeRule {
         this.priority = priority;
     }
 
+    public VolumeRule(VolumeContext volumeContext, double volume) {
+        this.volume = volume;
+        this.context = volumeContext;
+    }
+
     public Type getType() {
         return type;
     }
@@ -43,7 +51,7 @@ public class VolumeRule {
         this.description = description;
     }
 
-    public int getVolume() {
+    public double getVolume() {
         return volume;
     }
 
@@ -67,5 +75,36 @@ public class VolumeRule {
                 ", volume=" + volume +
                 ", priority=" + priority +
                 '}';
+    }
+
+    public Bundle toBundle() {
+        Bundle result = new Bundle();
+        if (context.soundVolume >= 0) result.putInt("soundVolume", context.soundVolume);
+        if (context.device != null) result.putString("device", context.device);
+        if (context.time >= 0) {
+            result.putInt("time", context.time);
+            result.putInt("startTime", context.startTime);
+            result.putInt("endTime", context.endTime);
+        }
+        if (context.app != null) result.putString("app", context.app);
+        if (context.activity >= 0) result.putInt("activity", context.activity);
+        if (context.noise >= 0) {
+            if (context.noise < 50) result.putInt("noise", 0);
+            else if (context.noise > 70) result.putInt("noise", 2);
+            else result.putInt("noise", 1);
+        }
+        if (context.manAround >= 0) {
+            if (context.manAround == 1) result.putBoolean("manAround", true);
+            else if (context.manAround == 0) result.putBoolean("manAround", false);
+        }
+        if (context.share >= 0) {
+            if (context.share == 1) result.putBoolean("share", true);
+            else if (context.share == 0) result.putBoolean("share", false);
+        }
+        if (!(context.wifiId == null && context.latitude <= 0 && context.longitude <= 0)) {
+            result.putString("place", VolumeRuleManager.findPlace(context));
+        }
+        result.putDouble("volume", volume);
+        return result;
     }
 }

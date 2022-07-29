@@ -72,20 +72,34 @@ public class Location {
     }
 
     public double getScore(VolumeContext volumeContext) {
-        double score = 0;
-        double distance = getDistance(volumeContext);
-        if (distance > 200)
-            return -1;
-        else
-            score += 50 * (200 - distance) / 200;
-        List<String> wifiList = volumeContext.getWifiId();
-        double count = 0;
-        for (String wifiId: wifiIds) {
-            if (wifiList.contains(wifiId)) {
-                count += 1;
-            }
+        double wifi_score = 0;
+        double gps_score = 0;
+        boolean wifi_valid = false;
+        boolean gps_valid = false;
+        if (!(volumeContext.latitude <= 0 && volumeContext.longitude <= 0)) {
+            gps_valid = true;
+            double distance = getDistance(volumeContext);
+            if (distance > 200)
+                return -1;
+            else
+                gps_score = 50 * (200 - distance) / 200;
         }
-        score += 50 * (count / wifiIds.size());
+        List<String> wifiList = volumeContext.getWifiId();
+        if (wifiList != null && wifiList.size() > 0) {
+            wifi_valid = true;
+            double count = 0;
+            for (String wifiId : wifiIds) {
+                if (wifiList.contains(wifiId)) {
+                    count += 1;
+                }
+            }
+            wifi_score = 50 * (count / wifiIds.size());
+        }
+        double score = 0;
+        if(!wifi_valid && !gps_valid) score = -1;
+        if(wifi_valid && !gps_valid) score = 2 * wifi_score;
+        if(!wifi_valid && gps_valid) score = 2 * gps_score;
+        if(wifi_valid && gps_valid) score = wifi_score + gps_score;
         return score;
     }
 

@@ -72,7 +72,7 @@ public class ConfigContext extends BaseContext {
     private List<String> valid_packageNames;
     private List<String> useless_packageNames;
     private List<String> nochange_packageNames;
-    private List<String> rules;
+    private Bundle rules;
     private int brightness;
     private final HashMap<String, Integer> volume;
 
@@ -319,6 +319,18 @@ public class ConfigContext extends BaseContext {
         }
     }
 
+    void onRequest(Bundle rules) {
+        if (contextListener != null) {
+            for (ContextListener listener: contextListener) {
+                ContextResult contextResult = new ContextResult("", "");
+                Date date = new Date();
+                contextResult.setTimestamp(date.getTime());
+                contextResult.setExtras(rules);
+                listener.onContext(contextResult);
+            }
+        }
+    }
+
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
         CharSequence pkg = event.getPackageName();
@@ -336,15 +348,8 @@ public class ConfigContext extends BaseContext {
                         notifyContext(NEED_SCAN, now, logID, "app changed: " + packageName);
                         notifyContext(NEED_POSITION, now, logID, "app changed: " + packageName);
                         VolumeContext volumeContext = getPresentContext();
-                        rules = getRules(volumeContext);
-                        List<Integer> volumes = getVolumes(volumeContext);
-                        if (requestListener != null) {
-                            RequestConfig requestConfig = new RequestConfig();
-                            requestConfig.putValue("needVolumeOverlay", true);
-                            requestConfig.putString("rules", rules.toString());
-                            requestConfig.putString("volumes", volumes.toString());
-                            requestListener.onRequest(requestConfig);
-                        }
+                        rules = getRules(volumeContext, 1);
+                        onRequest(rules);
                     }
                     last_packageName = packageName;
                 }
@@ -370,30 +375,27 @@ public class ConfigContext extends BaseContext {
             }
         }
         double noise = AudioCollector.lastest_noise;
-        String app = packageName;
-        String deviceType = latest_deviceType;
-        return new VolumeContext(date, latitude, longitude, wifiIds, noise, app, deviceType);
+        //TODO
+        String app = "微信";
+        String device = "扬声器";
+        return new VolumeContext(-1, noise, device, -1, -1, latitude, longitude, wifiIds, 0, app, -1);
     }
 
-    public List<String> getRules(VolumeContext volumeContext) {
-        List<VolumeRule> volumeRules = volumeRuleManager.getRecommendation(volumeContext);
-        List<String> _rules = new ArrayList<>();
-        for (VolumeRule volumeRule: volumeRules) {
-            _rules.add(volumeRule.getType().getText() + " volume=" + volumeRule.getVolume());
-        }
-        _rules.add(volumeContext.getDate().toString() + " (" + volumeContext.getLatitude() + "/" + volumeContext.getLongitude() + ") " + volumeContext.getNoise() + " " + volumeContext.getApp() + " " + last_packageName + " " + volumeContext.getDeviceType() + " " + volumeRuleManager.getContextListSize());
-        _rules.add(dormitory.getGpsScore(volumeContext) + " " + dormitory.getWifiScore(volumeContext) + " " + dormitory.getScore(volumeContext));
-        return _rules;
+    public Bundle getRules(VolumeContext volumeContext, int type) {
+        Bundle result = volumeRuleManager.getRecommendation(volumeContext);
+        if (result != null)
+            result.putInt("type", type);
+        return result;
     }
 
-    public List<Integer> getVolumes(VolumeContext volumeContext) {
-        List<VolumeRule> volumeRules = volumeRuleManager.getRecommendation(volumeContext);
-        List<Integer> _volumes = new ArrayList<>();
-        for (VolumeRule volumeRule: volumeRules) {
-            _volumes.add(volumeRule.getVolume());
-        }
-        return _volumes;
-    }
+//    public List<Double> getVolumes(VolumeContext volumeContext) {
+//        List<VolumeRule> volumeRules = volumeRuleManager.getRecommendation(volumeContext);
+//        List<Double> _volumes = new ArrayList<>();
+//        for (VolumeRule volumeRule: volumeRules) {
+//            _volumes.add(volumeRule.getVolume());
+//        }
+//        return _volumes;
+//    }
 
     @Override
     public void onBroadcastEvent(BroadcastEvent event) {
@@ -526,15 +528,8 @@ public class ConfigContext extends BaseContext {
                         notifyContext(NEED_POSITION, timestamp, logID, "key event: " + KeyEvent.keyCodeToString(keycode));
 
                         VolumeContext volumeContext = getPresentContext();
-                        rules = getRules(volumeContext);
-                        List<Integer> volumes = getVolumes(volumeContext);
-                        if (requestListener != null) {
-                            RequestConfig requestConfig = new RequestConfig();
-                            requestConfig.putValue("needVolumeOverlay", true);
-                            requestConfig.putString("rules", rules.toString());
-                            requestConfig.putString("volumes", volumes.toString());
-                            requestListener.onRequest(requestConfig);
-                        }
+                        rules = getRules(volumeContext, 0);
+                        onRequest(rules);
                 }
             }
 
@@ -554,21 +549,22 @@ public class ConfigContext extends BaseContext {
 
     @Override
     public void onExternalEvent(Bundle bundle) {
-        if (bundle.containsKey("selectedRule") && bundle.containsKey("finalVolume")) {
-            long timestamp = System.currentTimeMillis();
-            int logID = incLogID();
-            String type = "volume overlay return";
-            String action = "";
-            String tag = "";
-            JSONObject json = new JSONObject();
-            int selected_rule = bundle.getInt("selectedRule");
-            JSONUtils.jsonPut(json, "finalVolume", bundle.getInt("finalVolume"));
-            JSONUtils.jsonPut(json, "selectedRule", rules.get(selected_rule));
-
-            VolumeContext volumeContext = getPresentContext();
-            volumeRuleManager.addRecord(volumeContext, bundle.getInt("finalVolume"));
-            record(timestamp, logID, type, action, tag, json.toString());
-        }
+        //TODO
+//        if (bundle.containsKey("selectedRule") && bundle.containsKey("finalVolume")) {
+//            long timestamp = System.currentTimeMillis();
+//            int logID = incLogID();
+//            String type = "volume overlay return";
+//            String action = "";
+//            String tag = "";
+//            JSONObject json = new JSONObject();
+//            int selected_rule = bundle.getInt("selectedRule");
+//            JSONUtils.jsonPut(json, "finalVolume", bundle.getInt("finalVolume"));
+////            JSONUtils.jsonPut(json, "selectedRule", rules.get(selected_rule));
+//
+//            VolumeContext volumeContext = getPresentContext();
+//            volumeRuleManager.addRecord(volumeContext, bundle.getInt("finalVolume"));
+//            record(timestamp, logID, type, action, tag, json.toString());
+//        }
     }
 
     private int incLogID() {
