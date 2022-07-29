@@ -105,20 +105,27 @@ public class VolumeRuleManager {
 //
 //        // 方差作为优先级时，优先级小者在前
 //        return ruleList.stream().sorted(Comparator.comparing(VolumeRule::getPriority)).collect(Collectors.toList());
-        ArrayList<Bundle> rules = getRules(volumeContext);
+        ArrayList<VolumeRule> rules = getRules(volumeContext);
+        ArrayList<Bundle> rules_bundle = new ArrayList<>();
+        ArrayList<String> rules_string = new ArrayList<>();
+        for (VolumeRule rule: rules) {
+            rules_bundle.add(rule.toBundle());
+            rules_string.add(rule.toString());
+        }
         Bundle context = getContext(volumeContext);
         Bundle valueRange = getValueRange();
         Bundle result = new Bundle();
-        result.putParcelableArrayList("rules", rules);
+        result.putParcelableArrayList("rules", rules_bundle);
+        result.putStringArrayList("rulesString", rules_string);
         result.putBundle("context", context);
         result.putBundle("valueRange", valueRange);
         return result;
     }
 
-    public ArrayList<Bundle> getRules(VolumeContext volumeContext) {
+    public ArrayList<VolumeRule> getRules(VolumeContext volumeContext) {
         //naive version
-        ArrayList<Bundle> result = new ArrayList<>();
-        result.add(new VolumeRule(volumeContext, 10).toBundle());
+        ArrayList<VolumeRule> result = new ArrayList<>();
+        result.add(new VolumeRule(volumeContext, 10));
         return result;
     }
 
