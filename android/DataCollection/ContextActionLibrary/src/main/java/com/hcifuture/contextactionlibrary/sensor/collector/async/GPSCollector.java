@@ -35,6 +35,7 @@ public class GPSCollector extends AsynchronousCollector implements LocationListe
     private boolean isProviderEnabled;
     private final GPSData data;
     public static GPSData latest_data;
+    public static String latest_data_string;
 
     /*
       Error code:
@@ -134,6 +135,7 @@ public class GPSCollector extends AsynchronousCollector implements LocationListe
                             setCollectData(result);
                             ft.complete(result);
                             latest_data = (GPSData) result.getData();
+                            latest_data_string = result.getDataString();
                             isCollecting.set(false);
                         }
                     }, config.getGPSRequestTime(), TimeUnit.MILLISECONDS));

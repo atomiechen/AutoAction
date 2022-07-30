@@ -25,6 +25,7 @@ import com.hcifuture.contextactionlibrary.sensor.data.NonIMUData;
 import com.hcifuture.contextactionlibrary.sensor.data.SingleIMUData;
 import com.hcifuture.contextactionlibrary.sensor.data.SingleWifiData;
 import com.hcifuture.contextactionlibrary.utils.JSONUtils;
+import com.hcifuture.contextactionlibrary.volume.Location;
 import com.hcifuture.contextactionlibrary.volume.VolumeContext;
 import com.hcifuture.contextactionlibrary.volume.VolumeRule;
 import com.hcifuture.contextactionlibrary.volume.VolumeRuleManager;
@@ -62,7 +63,7 @@ public class ConfigContext extends BaseContext {
     public static String NEED_NONIMU = "context.config.need_nonimu";
     public static String NEED_SCAN = "context.config.need_scan";
     public static String NEED_POSITION = "context.config.need_position";
-
+    public static Location dormitory;
 
     private String last_packageName;
     private String packageName;
@@ -71,7 +72,7 @@ public class ConfigContext extends BaseContext {
     private List<String> valid_packageNames;
     private List<String> useless_packageNames;
     private List<String> nochange_packageNames;
-    private List<String> rules;
+    private Bundle rules;
     private int brightness;
     private final HashMap<String, Integer> volume;
 
@@ -92,6 +93,7 @@ public class ConfigContext extends BaseContext {
         latest_deviceType = "speaker";
         brightness = 0;
         volume = new HashMap<>();
+        dormitory = getDormitoryPos();
         // speaker
         volume.put("volume_music_speaker", 0);
         volume.put("volume_ring_speaker", 0);
@@ -235,6 +237,58 @@ public class ConfigContext extends BaseContext {
                 );
     }
 
+    public Location getDormitoryPos() {
+        double latitude = 40.00826611;
+        double longitude = 116.31997283;
+        String name = "宿舍";
+        List<String> wifiList = Arrays.asList(
+                "\"Tsinghua-Secure\"a8:58:40:d7:13:b2",
+                "Tsinghuaa8:58:40:d7:13:a0",
+                "Tsinghua-Securea8:58:40:d7:13:a2",
+                "Tsinghua-IPv6-SAVAa8:58:40:d7:13:a3",
+                "Tsinghua-IPv6-SAVAa8:58:40:d7:13:b3",
+                "Tsinghua-5Ga8:58:40:d7:13:b5",
+                "Tsinghuaa8:58:40:d7:13:b0",
+                "Tsinghua-Securea8:58:40:d7:13:b2",
+                "Tsinghuaa8:58:40:d5:d5:40",
+                "Tsinghua-Securea8:58:40:d5:d5:42",
+                "Tsinghua-IPv6-SAVAa8:58:40:d5:d5:43",
+                "THU-Internet-Exchange74:59:09:f2:87:c4",
+                "Tsinghua-Securea8:58:40:d7:12:82",
+                "Tsinghua-Securea8:58:40:d6:d4:a2",
+                "Tsinghua-IPv6-SAVAa8:58:40:d7:07:a3",
+                "Tsinghuaa8:58:40:d5:ca:a0",
+                "Tsinghua-Securea8:58:40:d5:ca:a2",
+                "Tsinghua-IPv6-SAVAa8:58:40:d6:d1:b3",
+                "Tsinghua-5Ga8:58:40:d6:d1:b5",
+                "Tsinghuaa8:58:40:d6:d1:b0",
+                "Tsinghua-Securea8:58:40:d6:d1:b2",
+                "Tsinghua_unSecured8:32:14:74:ed:71",
+                "THU-Internet-Exchange74:59:09:f2:87:c8",
+                "Tsinghua-IPv6-SAVAa8:58:40:d7:07:b3",
+                "Tsinghua-5Ga8:58:40:d7:07:b5",
+                "Tsinghua-5Ga8:58:40:d7:12:95",
+                "Tsinghua-Securea8:58:40:d6:d4:b2",
+                "Tsinghuaa8:58:40:d7:12:90",
+                "Tsinghua-Securea8:58:40:d7:12:92",
+                "Tsinghua-IPv6-SAVAa8:58:40:d7:12:93",
+                "Tsinghua-IPv6-SAVAa8:58:40:d6:97:93",
+                "Tsinghuaa8:58:40:d6:97:90",
+                "Tsinghua-5Ga8:58:40:d6:97:95",
+                "Tsinghua-5Ga8:58:40:d5:d5:55",
+                "Tsinghua-IPv6-SAVAa8:58:40:d6:03:f3",
+                "Tsinghuaa8:58:40:d6:03:f0",
+                "Tsinghua-Securea8:58:40:d6:03:f2",
+                "Tsinghua-5Ga8:58:40:d6:03:f5",
+                "Tsinghua-Securea8:58:40:d0:6e:f2",
+                "Tsinghua-IPv6-SAVAa8:58:40:d0:6e:f3",
+                "Tsinghua-IPv6-SAVAa8:58:40:d0:f9:d3",
+                "Tsinghua-5Ga8:58:40:d0:6e:f5",
+                "Tsinghuaa8:58:40:d0:6e:f0"
+        );
+        return new Location(name, latitude, longitude, wifiList);
+    }
+
     @Override
     public void start() {
         record_all("start");
@@ -265,6 +319,18 @@ public class ConfigContext extends BaseContext {
         }
     }
 
+    void onRequest(Bundle rules) {
+        if (contextListener != null) {
+            for (ContextListener listener: contextListener) {
+                ContextResult contextResult = new ContextResult("data from context-package", "");
+                Date date = new Date();
+                contextResult.setTimestamp(date.getTime());
+                contextResult.setExtras(rules);
+                listener.onContext(contextResult);
+            }
+        }
+    }
+
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
         CharSequence pkg = event.getPackageName();
@@ -282,15 +348,8 @@ public class ConfigContext extends BaseContext {
                         notifyContext(NEED_SCAN, now, logID, "app changed: " + packageName);
                         notifyContext(NEED_POSITION, now, logID, "app changed: " + packageName);
                         VolumeContext volumeContext = getPresentContext();
-                        rules = getRules(volumeContext);
-                        List<Integer> volumes = getVolumes(volumeContext);
-                        if (requestListener != null) {
-                            RequestConfig requestConfig = new RequestConfig();
-                            requestConfig.putValue("needVolumeOverlay", true);
-                            requestConfig.putString("rules", rules.toString());
-                            requestConfig.putString("volumes", volumes.toString());
-                            requestListener.onRequest(requestConfig);
-                        }
+                        rules = getRules(volumeContext, 1);
+                        onRequest(rules);
                     }
                     last_packageName = packageName;
                 }
@@ -305,6 +364,7 @@ public class ConfigContext extends BaseContext {
         if (GPSCollector.latest_data != null) {
             latitude = GPSCollector.latest_data.getLatitude();
             longitude = GPSCollector.latest_data.getLongitude();
+            Log.e("GPS", GPSCollector.latest_data_string);
         }
         List<String> wifiIds = new ArrayList<>();
         if (WifiCollector.latest_data != null) {
@@ -315,29 +375,27 @@ public class ConfigContext extends BaseContext {
             }
         }
         double noise = AudioCollector.lastest_noise;
-        String app = packageName;
-        String deviceType = latest_deviceType;
-        return new VolumeContext(date, latitude, longitude, wifiIds, noise, app, deviceType);
+        //TODO
+        String app = "微信";
+        String device = "扬声器";
+        return new VolumeContext(-1, noise, device, -1, -1, latitude, longitude, wifiIds, 0, app, -1);
     }
 
-    public List<String> getRules(VolumeContext volumeContext) {
-        List<VolumeRule> volumeRules = volumeRuleManager.getRecommendation(volumeContext);
-        List<String> _rules = new ArrayList<>();
-        for (VolumeRule volumeRule: volumeRules) {
-            _rules.add(volumeRule.getType().getText() + " volume=" + volumeRule.getVolume());
-        }
-        _rules.add(volumeContext.getDate().toString() + " (" + volumeContext.getLatitude() + "/" + volumeContext.getLongitude() + ") " + volumeContext.getNoise() + " " + volumeContext.getApp() + " " + last_packageName + " " + volumeContext.getDeviceType() + " " + volumeRuleManager.getContextListSize());
-        return _rules;
+    public Bundle getRules(VolumeContext volumeContext, int type) {
+        Bundle result = volumeRuleManager.getRecommendation(volumeContext);
+        if (result != null)
+            result.putInt("type", type);
+        return result;
     }
 
-    public List<Integer> getVolumes(VolumeContext volumeContext) {
-        List<VolumeRule> volumeRules = volumeRuleManager.getRecommendation(volumeContext);
-        List<Integer> _volumes = new ArrayList<>();
-        for (VolumeRule volumeRule: volumeRules) {
-            _volumes.add(volumeRule.getVolume());
-        }
-        return _volumes;
-    }
+//    public List<Double> getVolumes(VolumeContext volumeContext) {
+//        List<VolumeRule> volumeRules = volumeRuleManager.getRecommendation(volumeContext);
+//        List<Double> _volumes = new ArrayList<>();
+//        for (VolumeRule volumeRule: volumeRules) {
+//            _volumes.add(volumeRule.getVolume());
+//        }
+//        return _volumes;
+//    }
 
     @Override
     public void onBroadcastEvent(BroadcastEvent event) {
@@ -470,15 +528,8 @@ public class ConfigContext extends BaseContext {
                         notifyContext(NEED_POSITION, timestamp, logID, "key event: " + KeyEvent.keyCodeToString(keycode));
 
                         VolumeContext volumeContext = getPresentContext();
-                        rules = getRules(volumeContext);
-                        List<Integer> volumes = getVolumes(volumeContext);
-                        if (requestListener != null) {
-                            RequestConfig requestConfig = new RequestConfig();
-                            requestConfig.putValue("needVolumeOverlay", true);
-                            requestConfig.putString("rules", rules.toString());
-                            requestConfig.putString("volumes", volumes.toString());
-                            requestListener.onRequest(requestConfig);
-                        }
+                        rules = getRules(volumeContext, 0);
+                        onRequest(rules);
                 }
             }
 
@@ -498,21 +549,22 @@ public class ConfigContext extends BaseContext {
 
     @Override
     public void onExternalEvent(Bundle bundle) {
-        if (bundle.containsKey("selectedRule") && bundle.containsKey("finalVolume")) {
-            long timestamp = System.currentTimeMillis();
-            int logID = incLogID();
-            String type = "volume overlay return";
-            String action = "";
-            String tag = "";
-            JSONObject json = new JSONObject();
-            int selected_rule = bundle.getInt("selectedRule");
-            JSONUtils.jsonPut(json, "finalVolume", bundle.getInt("finalVolume"));
-            JSONUtils.jsonPut(json, "selectedRule", rules.get(selected_rule));
-
-            VolumeContext volumeContext = getPresentContext();
-            volumeRuleManager.addRecord(volumeContext, bundle.getInt("finalVolume"));
-            record(timestamp, logID, type, action, tag, json.toString());
-        }
+        //TODO
+//        if (bundle.containsKey("selectedRule") && bundle.containsKey("finalVolume")) {
+//            long timestamp = System.currentTimeMillis();
+//            int logID = incLogID();
+//            String type = "volume overlay return";
+//            String action = "";
+//            String tag = "";
+//            JSONObject json = new JSONObject();
+//            int selected_rule = bundle.getInt("selectedRule");
+//            JSONUtils.jsonPut(json, "finalVolume", bundle.getInt("finalVolume"));
+////            JSONUtils.jsonPut(json, "selectedRule", rules.get(selected_rule));
+//
+//            VolumeContext volumeContext = getPresentContext();
+//            volumeRuleManager.addRecord(volumeContext, bundle.getInt("finalVolume"));
+//            record(timestamp, logID, type, action, tag, json.toString());
+//        }
     }
 
     private int incLogID() {
