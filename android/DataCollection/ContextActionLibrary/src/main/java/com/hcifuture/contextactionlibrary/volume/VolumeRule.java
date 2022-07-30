@@ -155,7 +155,11 @@ public class VolumeRule {
             else if (context.share == 0) result.putBoolean("share", false);
         }
         if (!(context.wifiId == null && context.latitude <= 0 && context.longitude <= 0)) {
-            result.putString("place", VolumeRuleManager.findPlace(context));
+            String place = VolumeRuleManager.findPlace(context);
+            if (place.equals("unknown"))
+                result.putString("place", "未知地点");
+            else
+                result.putString("place", place);
         }
         result.putDouble("volume", volume);
         return result;

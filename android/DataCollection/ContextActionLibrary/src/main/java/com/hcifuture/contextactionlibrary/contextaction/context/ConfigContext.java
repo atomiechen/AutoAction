@@ -322,7 +322,7 @@ public class ConfigContext extends BaseContext {
     void onRequest(Bundle rules) {
         if (contextListener != null) {
             for (ContextListener listener: contextListener) {
-                ContextResult contextResult = new ContextResult("", "");
+                ContextResult contextResult = new ContextResult("data from context-package", "");
                 Date date = new Date();
                 contextResult.setTimestamp(date.getTime());
                 contextResult.setExtras(rules);

@@ -134,9 +134,9 @@ public class VolumeRuleManager {
     }
 
     public Bundle getValueRange() {
-        ArrayList<String> device = (ArrayList<String>) Arrays.asList("扬声器", "耳机");
-        ArrayList<String> place = (ArrayList<String>) Arrays.asList("家", "宿舍");
-        ArrayList<String> app = (ArrayList<String>) Arrays.asList("微信", "QQ");
+        ArrayList<String> device = new ArrayList<>(Arrays.asList("扬声器", "耳机"));
+        ArrayList<String> place = new ArrayList<>(Arrays.asList("家", "宿舍"));
+        ArrayList<String> app = new ArrayList<>(Arrays.asList("微信", "QQ"));
         Bundle result = new Bundle();
         result.putStringArrayList("device", device);
         result.putStringArrayList("place", place);
