@@ -134,8 +134,10 @@ public class GPSCollector extends AsynchronousCollector implements LocationListe
                             unbindListener();
                             setCollectData(result);
                             ft.complete(result);
-                            latest_data = (GPSData) result.getData();
-                            latest_data_string = result.getDataString();
+                            if (((GPSData) result.getData()).getSatelliteCount() > 0) {
+                                latest_data = (GPSData) result.getData();
+                                latest_data_string = result.getDataString();
+                            }
                             isCollecting.set(false);
                         }
                     }, config.getGPSRequestTime(), TimeUnit.MILLISECONDS));

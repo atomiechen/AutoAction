@@ -149,7 +149,9 @@ public class AppList {
             "斗鱼",
             "虎牙",
             "搜狐视频",
-            "AcFun"
+            "AcFun",
+            "腾讯视频",
+            "哔哩哔哩"
     );
     public static final List<String> meeting_appNames = Arrays.asList(
             "腾讯会议",
@@ -159,7 +161,6 @@ public class AppList {
             "钉钉"
     );
     public static final List<String> social_appNames = Arrays.asList(
-            "微信",
             "QQ",
             "Soul",
             "陌陌",
@@ -169,22 +170,12 @@ public class AppList {
     public static final List<String> information_appNames = Arrays.asList(
             "微博",
             "小红书",
-            "知乎",
             "百度",
             "今日头条",
             "搜狐新闻",
             "网易新闻",
             "澎湃新闻",
-            "腾讯新闻",
-            "美团",
-            "大众点评",
-            "淘宝",
-            "京东",
-            "闲鱼",
-            "苏宁易购",
-            "拼多多",
-            "唯品会",
-            "当当"
+            "腾讯新闻"
     );
     public static final List<String> music_appNames = Arrays.asList(
             "网易云音乐",
@@ -196,9 +187,22 @@ public class AppList {
             "全民K歌"
     );
     public static final List<String> others_appNames = Arrays.asList(
-            "Keep",
+            "Keep"
+    );
+    public static final List<String> neednot_overlay_appNames = Arrays.asList(
+            "微信",
             "高德地图",
             "腾讯地图",
-            "百度地图"
+            "百度地图",
+            "美团",
+            "大众点评",
+            "淘宝",
+            "京东",
+            "闲鱼",
+            "苏宁易购",
+            "拼多多",
+            "唯品会",
+            "当当",
+            "知乎"
     );
 }

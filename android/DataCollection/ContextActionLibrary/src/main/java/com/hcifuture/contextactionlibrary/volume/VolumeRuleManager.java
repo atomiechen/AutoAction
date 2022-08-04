@@ -82,30 +82,6 @@ public class VolumeRuleManager {
 
     @RequiresApi(api = Build.VERSION_CODES.N)
     public Bundle getRecommendation(VolumeContext volumeContext){
-//        List<VolumeRule> ruleList = new ArrayList<>();
-//
-//        for (VolumeRule.Type type : VolumeRule.Type.values()) {
-//            List<Integer> volumes = getVolumes(type, volumeContext);
-////            Log.i(type + " volumes", volumes.toString());
-//            int targetVolume = (int) volumes.stream().mapToDouble(x->x).average().orElse(0D);
-//
-//            // 计算样本标准差
-//            double rval = 0;
-//            if (volumes.size() == 0) rval = 500;  // largest
-//            else if (volumes.size() == 1) rval = 200;  // second largest
-//            else {
-//                for (Integer volume : volumes) {
-//                    rval += Math.pow((volume - targetVolume), 2);
-//                }
-//                rval = Math.sqrt(rval / (volumes.size() - 1));
-//            }
-//            // 暂时用样本标准差作为priority
-//            ruleList.add(new VolumeRule(type, String.format("根据%s，已为您推荐目前的最适音量。", type.text), targetVolume, rval));
-//
-//        }
-//
-//        // 方差作为优先级时，优先级小者在前
-//        return ruleList.stream().sorted(Comparator.comparing(VolumeRule::getPriority)).collect(Collectors.toList());
         ArrayList<VolumeRule> rules = getRules(volumeContext);
         ArrayList<Bundle> rules_bundle = new ArrayList<>();
         ArrayList<String> rules_string = new ArrayList<>();
@@ -145,8 +121,8 @@ public class VolumeRuleManager {
     }
 
     public boolean equalValue(Bundle context, Bundle rule, String key) {
-        if (!context.containsKey(key) || !rule.containsKey(key))
-            return false;
+        if (!rule.containsKey(key) || !context.containsKey(key))
+            return true;
         if (key.equals("noise")) {
             return context.getInt("noise") == rule.getInt("noise");
         } else if (key.equals("device") || key.equals("place") || key.equals("app")) {
