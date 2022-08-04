@@ -1,5 +1,7 @@
 package com.hcifuture.contextactionlibrary.volume;
 
+import android.os.Bundle;
+
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -116,4 +118,38 @@ public class VolumeContext {
 //                ", " + device + '\'' +
 //                '}';
 //    }
+
+    public Bundle toBundle() {
+        Bundle result = new Bundle();
+        if (soundVolume >= 0) result.putInt("soundVolume", soundVolume);
+        if (device != null) result.putString("device", device);
+        if (time >= 0) {
+            result.putInt("time", time);
+            result.putInt("startTime", startTime);
+            result.putInt("endTime", endTime);
+        }
+        if (app != null) result.putString("app", app);
+        if (activity >= 0) result.putInt("activity", activity);
+        if (noise >= 0) {
+            if (noise < 50) result.putInt("noise", 0);
+            else if (noise > 70) result.putInt("noise", 2);
+            else result.putInt("noise", 1);
+        }
+        if (manAround >= 0) {
+            if (manAround == 1) result.putBoolean("manAround", true);
+            else if (manAround == 0) result.putBoolean("manAround", false);
+        }
+        if (share >= 0) {
+            if (share == 1) result.putBoolean("share", true);
+            else if (share == 0) result.putBoolean("share", false);
+        }
+        if (!(wifiId == null && latitude <= 0 && longitude <= 0)) {
+            String place = VolumeRuleManager.findPlace(this);
+            if (place.equals("unknown"))
+                result.putString("place", "未知地点");
+            else
+                result.putString("place", place);
+        }
+        return result;
+    }
 }
