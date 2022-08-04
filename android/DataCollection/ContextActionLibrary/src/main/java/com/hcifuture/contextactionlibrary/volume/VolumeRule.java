@@ -94,7 +94,7 @@ public class VolumeRule {
             if (!result.equals("")) result += "·";
             String dev;
             if (context.device.endsWith("speaker")) dev = "扬声器";
-            else if (context.device.endsWith("earpiece") || context.device.endsWith("headset") || context.device.contains("bt"))
+            else if (context.device.endsWith("earpiece") || context.device.endsWith("headset") || context.device.contains("bt") || context.device.endsWith("headphone"))
                 dev = "耳机";
             else dev = "未知类型";
             result += dev;
@@ -108,28 +108,32 @@ public class VolumeRule {
         }
         if (!(context.wifiId == null && context.latitude <= 0 && context.longitude <= 0)) {
             if (!result.equals("")) result += "·";
-            result += VolumeRuleManager.findPlace(context);
+            String place = VolumeRuleManager.findPlace(context);
+            if (place.equals("unknown"))
+                result += "未知地点";
+            else
+                result += place;
         }
-        if (context.activity >= 0) {
-            if (!result.equals("")) result += "·";
-            String[] activity = {"静止", "走路", "跑步", "骑车", "开车", "其他"};
-            result += activity[context.activity];
-        }
-        if (context.soundVolume >= 0) {
-            if (!result.equals("")) result += "·";
-            String[] soundVolume = {"小", "中", "大"};
-            result += "音频音量" + soundVolume[context.soundVolume];
-        }
-        if (context.manAround >= 0) {
-            if (!result.equals("")) result += "·";
-            if (context.manAround == 1) result += "周围有人";
-            else if (context.manAround == 0) result += "周围无人";
-        }
-        if (context.share >= 0) {
-            if (!result.equals("")) result += "·";
-            if (context.share == 1) result += "与人共享";
-            else if (context.share == 0) result += "非与人共享";
-        }
+//        if (context.activity >= 0) {
+//            if (!result.equals("")) result += "·";
+//            String[] activity = {"静止", "走路", "跑步", "骑车", "开车", "其他"};
+//            result += activity[context.activity];
+//        }
+//        if (context.soundVolume >= 0) {
+//            if (!result.equals("")) result += "·";
+//            String[] soundVolume = {"小", "中", "大"};
+//            result += "音频音量" + soundVolume[context.soundVolume];
+//        }
+//        if (context.manAround >= 0) {
+//            if (!result.equals("")) result += "·";
+//            if (context.manAround == 1) result += "周围有人";
+//            else if (context.manAround == 0) result += "周围无人";
+//        }
+//        if (context.share >= 0) {
+//            if (!result.equals("")) result += "·";
+//            if (context.share == 1) result += "与人共享";
+//            else if (context.share == 0) result += "非与人共享";
+//        }
         if (!result.equals("")) result += "·";
         result += "音量" + volume + "%";
         return result;

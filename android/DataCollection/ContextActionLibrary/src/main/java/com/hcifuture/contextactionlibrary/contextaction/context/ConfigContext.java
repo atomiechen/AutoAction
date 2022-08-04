@@ -316,6 +316,7 @@ public class ConfigContext extends BaseContext {
         double noise = AudioCollector.lastest_noise;
         String app = appName;
         String device = latest_deviceType;
+        Log.e("version", "1952");
         Log.e("noise", "" + noise);
         Log.e("device", device);
         Log.e("latitude", "" + latitude);
