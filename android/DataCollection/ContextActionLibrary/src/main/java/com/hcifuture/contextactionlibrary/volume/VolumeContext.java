@@ -81,11 +81,11 @@ public class VolumeContext {
             startTime = 1400;
             endTime = 1800;
         } else if (time == 1) {
-            startTime = 1200;
+            startTime = 1100;
             endTime = 1400;
         } else if (time == 0) {
             startTime = 0;
-            endTime = 1200;
+            endTime = 1100;
         }
     }
 
