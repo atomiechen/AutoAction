@@ -24,7 +24,7 @@ public class VolumeRuleManager {
     public VolumeRuleManager() {
         mRuleList = new ArrayList<VolumeRule>();
         locations = new ArrayList<>();
-        locations.add(getDormitoryPos());
+        fillLocations();
 //        fillContextList(); // 手动生成一些数据，用于测试
         fillManualRuleList();
     }
@@ -162,7 +162,7 @@ public class VolumeRuleManager {
     }
 
     public Bundle getValueRange() {
-        ArrayList<String> device = new ArrayList<>(Arrays.asList("扬声器", "耳机"));
+        ArrayList<String> device = new ArrayList<>(Arrays.asList("扬声器", "耳机", "未知设备"));
         ArrayList<String> place = new ArrayList<>(Arrays.asList("家", "宿舍"));
         ArrayList<String> app = new ArrayList<>(Arrays.asList("微信", "QQ"));
         Bundle result = new Bundle();
@@ -202,54 +202,6 @@ public class VolumeRuleManager {
         else
             return "unknown";
     }
-
-//    void fillContextList() {
-//        // time: night, around 2
-//        mContextList.add(new RecordItem(new VolumeContext(new Date(2022, 7, 20, 0, 0, 0),
-//                22.5301, 114.01, 40, "com.xingin.xhs", "speaker"), 3));
-//        mContextList.add(new RecordItem(new VolumeContext(new Date(2022, 7, 20, 1, 0, 0),
-//                22.43, 114.2, 60, "com.netease.cloudmusic", "headset"), 2));
-//        mContextList.add(new RecordItem(new VolumeContext(new Date(2022, 7, 20, 0, 20, 0),
-//                22.0, 114, 17, "com.netease.cloudmusic", "headset"), 1));
-//        mContextList.add(new RecordItem(new VolumeContext(new Date(2022, 7, 20, 2, 0, 0),
-//                22.77, 114.015794, 35, "com.eusoft.ting.en", "bt_a2dp"), 2));
-//        // place: near(22.541364, 114.009766), around 6
-//        mContextList.add(new RecordItem(new VolumeContext(new Date(2022, 7, 20, 8, 0, 0),
-//                22.541364, 114.009766, 30, "com.tencent.wemeet.app", "bt_a2dp"), 6));
-//        mContextList.add(new RecordItem(new VolumeContext(new Date(2022, 7, 20, 15, 20, 0),
-//                22.541334, 114.009756, 50, "com.tencent.mm", "bt_a2dp"), 6));
-//        mContextList.add(new RecordItem(new VolumeContext(new Date(2022, 7, 20, 16, 20, 0),
-//                22.541363, 114.009764, 27, "com.tencent.karaoke", "earpiece"), 7));
-//        mContextList.add(new RecordItem(new VolumeContext(new Date(2022, 7, 20, 20, 0, 0),
-//                22.541354, 114.009768, 40, "com.gotokeep.keep", "headset"), 5));
-//        // noise: loud, around 12
-//        mContextList.add(new RecordItem(new VolumeContext(new Date(2022, 7, 20, 8, 0, 0),
-//                22.53, 114.0, 80, "com.tencent.karaoke", "bt_a2dp"), 12));
-//        mContextList.add(new RecordItem(new VolumeContext(new Date(2022, 7, 20, 15, 20, 0),
-//                22.541334, 114.01, 85, "com.tencent.mm", "speaker"), 13));
-//        mContextList.add(new RecordItem(new VolumeContext(new Date(2022, 7, 20, 7, 20, 0),
-//                22.541363, 114.1, 90, "com.tencent.karaoke", "earpiece"), 11));
-//        mContextList.add(new RecordItem(new VolumeContext(new Date(2022, 7, 20, 20, 0, 0),
-//                22.541354, 114.2, 82, "com.gotokeep.keep", "speaker"), 12));
-//        // app: bilibli, around 8
-//        mContextList.add(new RecordItem(new VolumeContext(new Date(2022, 7, 20, 3, 0, 0),
-//                22.52, 114.015794, 30, "tv.danmaku.bili", "speaker"), 7));
-//        mContextList.add(new RecordItem(new VolumeContext(new Date(2022, 7, 20, 15, 0, 0),
-//                22.538565, 114.015794, 12, "tv.danmaku.bili", "bt_a2dp"), 8));
-//        mContextList.add(new RecordItem(new VolumeContext(new Date(2022, 7, 20, 9, 20, 0),
-//                22.53, 114.015794, 27, "tv.danmaku.bili", "speaker"), 8));
-//        mContextList.add(new RecordItem(new VolumeContext(new Date(2022, 7, 20, 21, 0, 0),
-//                22.54, 114.015794, 40, "tv.danmaku.bili", "bt_a2dp"), 8));
-//        // device: speaker, around 10.5
-//        mContextList.add(new RecordItem(new VolumeContext(new Date(2022, 7, 20, 8, 0, 0),
-//                22.53, 114.01001, 30, "com.gotokeep.keep", "speaker"), 11));
-//        mContextList.add(new RecordItem(new VolumeContext(new Date(2022, 7, 20, 15, 20, 0),
-//                22.534, 114.015794, 72, "com.youku.phone", "speaker"), 10));
-//        mContextList.add(new RecordItem(new VolumeContext(new Date(2022, 7, 20, 16, 20, 0),
-//                22.536, 114.1, 27, "com.gotokeep.keep", "speaker"), 10));
-//        mContextList.add(new RecordItem(new VolumeContext(new Date(2022, 7, 20, 20, 0, 0),
-//                22.538565, 114.01, 40, "com.tencent.mm", "speaker"), 11));
-//    }
 
     void fillManualRuleList() {
 //        double noise, String device, double latitude, double longitude, List<String> wifiId, int time, int startTime, int endTime, String app
@@ -367,7 +319,7 @@ public class VolumeRuleManager {
         return mRuleList.size();
     }
 
-    public Location getDormitoryPos() {
+    public void fillLocations() {
         double latitude = 40.00826611;
         double longitude = 116.31997283;
         String name = "宿舍";
@@ -416,6 +368,12 @@ public class VolumeRuleManager {
                 "Tsinghua-5Ga8:58:40:d0:6e:f5",
                 "Tsinghuaa8:58:40:d0:6e:f0"
         );
-        return new Location(name, latitude, longitude, wifiList);
+        addLocation(new Location(name, latitude, longitude, wifiList));
+        addLocation(new Location("FIT楼", 39.9957763, 116.3255634, null));
+        addLocation(new Location("紫荆操场", 40.0086677, 116.3233307, null));
+        addLocation(new Location("文科图书馆", 40.0029605, 116.3224965, null));
+        addLocation(new Location("李文正馆", 40.0043092, 116.3178216, null));
+        addLocation(new Location("六教", 40.0016146, 116.3238986, null));
+        addLocation(new Location("桃李园食堂", 40.0104485, 116.3223971, null));
     }
 }

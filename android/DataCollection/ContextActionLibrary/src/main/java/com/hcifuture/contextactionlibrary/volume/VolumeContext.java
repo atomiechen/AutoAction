@@ -167,12 +167,9 @@ public class VolumeContext {
             if (share == 1) result.putBoolean("share", true);
             else if (share == 0) result.putBoolean("share", false);
         }
-        if (!(wifiId == null && latitude < -90 && longitude < -180)) {
+        if (!(wifiId == null && (latitude < -90 || longitude < -180))) {
             String place = VolumeRuleManager.findPlace(this);
-            if (place.equals("unknown"))
-                result.putString("place", "未知地点");
-            else
-                result.putString("place", place);
+            result.putString("place", place);
         }
         return result;
     }
