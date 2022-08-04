@@ -104,6 +104,11 @@ public class VolumeContext {
         this.time = time;
         this.startTime = startTime;
         this.endTime = endTime;
+        // 其他变量均设为“任意”
+        this.soundVolume = -1;
+        this.manAround = -1;
+        this.share = -1;
+        this.activity = -1;
     }
 
     public VolumeContext(int soundVolume, double noise, String device, int manAround, int share, double latitude, double longitude,
