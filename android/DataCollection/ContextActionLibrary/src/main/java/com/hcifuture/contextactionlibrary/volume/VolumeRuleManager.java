@@ -26,6 +26,7 @@ public class VolumeRuleManager {
         locations = new ArrayList<>();
         locations.add(getDormitoryPos());
 //        fillContextList(); // 手动生成一些数据，用于测试
+        fillManualRuleList();
     }
 
 //    class RecordItem {

@@ -92,7 +92,12 @@ public class VolumeRule {
         }
         if (context.device != null) {
             if (!result.equals("")) result += "·";
-            result += context.device;
+            String dev;
+            if (context.device.endsWith("speaker")) dev = "扬声器";
+            else if (context.device.endsWith("earpiece") || context.device.endsWith("headset") || context.device.contains("bt"))
+                dev = "耳机";
+            else dev = "未知类型";
+            result += dev;
         }
         if (context.noise >= 0) {
             if (!result.equals("")) result += "·";
