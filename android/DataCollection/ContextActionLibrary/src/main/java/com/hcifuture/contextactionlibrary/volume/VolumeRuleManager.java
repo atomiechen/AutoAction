@@ -24,6 +24,7 @@ public class VolumeRuleManager {
     public VolumeRuleManager() {
         mRuleList = new ArrayList<VolumeRule>();
         locations = new ArrayList<>();
+        locations.add(getDormitoryPos());
 //        fillContextList(); // 手动生成一些数据，用于测试
     }
 
@@ -124,13 +125,63 @@ public class VolumeRuleManager {
 
     public ArrayList<VolumeRule> getRules(VolumeContext volumeContext) {
         //naive version
+        List<String> keys = Arrays.asList("noise", "device", "place", "time", "app");
         ArrayList<VolumeRule> result = new ArrayList<>();
-        result.add(new VolumeRule(volumeContext, 10));
+        Bundle context = volumeContext.toBundle();
+        for (VolumeRule rule: mRuleList) {
+            Bundle mRule = rule.toBundle();
+            boolean bundles_value_equal = true;
+            for (String key: keys) {
+                if (!equalValue(context, mRule, key)) {
+                    bundles_value_equal = false;
+                    break;
+                }
+            }
+            if (bundles_value_equal) {
+                result.add(rule);
+            }
+        }
         return result;
     }
 
+    public boolean equalValue(Bundle context, Bundle rule, String key) {
+        if (!context.containsKey(key) || !rule.containsKey(key))
+            return false;
+        if (key.equals("noise")) {
+            return context.getInt("noise") == rule.getInt("noise");
+        } else if (key.equals("device") || key.equals("place") || key.equals("app")) {
+            return context.getString(key).equals(rule.getString(key));
+        } else if (key.equals("time")) {
+            if (context.getInt("time") < 4)
+                return context.getInt("time") == rule.getInt("time");
+            else {
+                int startTime = 2500;
+                int endtime = -1000;
+                if (rule.getInt("time") == 0) {
+                    startTime = 0;
+                    endtime = 1100;
+                } else if (rule.getInt("time") == 1) {
+                    startTime = 1100;
+                    endtime = 1400;
+                } else if (rule.getInt("time") == 2) {
+                    startTime = 1400;
+                    endtime = 1800;
+                } else if (rule.getInt("time") == 3) {
+                    startTime = 1800;
+                    endtime = 2400;
+                } else if (rule.getInt("time") == 4) {
+                    startTime = rule.getInt("startTime");
+                    endtime = rule.getInt("endTime");
+                }
+                return context.getInt("startTime") >= startTime
+                        && context.getInt("endTime") <= endtime;
+            }
+        }
+        return false;
+    }
+
     public Bundle getContext(VolumeContext volumeContext) {
-        return new VolumeRule(volumeContext, 10).toBundle();
+        return new VolumeRule(volumeContext, 0).toBundle();
     }
 
     public Bundle getValueRange() {
@@ -225,5 +276,57 @@ public class VolumeRuleManager {
 
     public int getRuleListSize() {
         return mRuleList.size();
+    }
+
+    public Location getDormitoryPos() {
+        double latitude = 40.00826611;
+        double longitude = 116.31997283;
+        String name = "宿舍";
+        List<String> wifiList = Arrays.asList(
+                "\"Tsinghua-Secure\"a8:58:40:d7:13:b2",
+                "Tsinghuaa8:58:40:d7:13:a0",
+                "Tsinghua-Securea8:58:40:d7:13:a2",
+                "Tsinghua-IPv6-SAVAa8:58:40:d7:13:a3",
+                "Tsinghua-IPv6-SAVAa8:58:40:d7:13:b3",
+                "Tsinghua-5Ga8:58:40:d7:13:b5",
+                "Tsinghuaa8:58:40:d7:13:b0",
+                "Tsinghua-Securea8:58:40:d7:13:b2",
+                "Tsinghuaa8:58:40:d5:d5:40",
+                "Tsinghua-Securea8:58:40:d5:d5:42",
+                "Tsinghua-IPv6-SAVAa8:58:40:d5:d5:43",
+                "THU-Internet-Exchange74:59:09:f2:87:c4",
+                "Tsinghua-Securea8:58:40:d7:12:82",
+                "Tsinghua-Securea8:58:40:d6:d4:a2",
+                "Tsinghua-IPv6-SAVAa8:58:40:d7:07:a3",
+                "Tsinghuaa8:58:40:d5:ca:a0",
+                "Tsinghua-Securea8:58:40:d5:ca:a2",
+                "Tsinghua-IPv6-SAVAa8:58:40:d6:d1:b3",
+                "Tsinghua-5Ga8:58:40:d6:d1:b5",
+                "Tsinghuaa8:58:40:d6:d1:b0",
+                "Tsinghua-Securea8:58:40:d6:d1:b2",
+                "Tsinghua_unSecured8:32:14:74:ed:71",
+                "THU-Internet-Exchange74:59:09:f2:87:c8",
+                "Tsinghua-IPv6-SAVAa8:58:40:d7:07:b3",
+                "Tsinghua-5Ga8:58:40:d7:07:b5",
+                "Tsinghua-5Ga8:58:40:d7:12:95",
+                "Tsinghua-Securea8:58:40:d6:d4:b2",
+                "Tsinghuaa8:58:40:d7:12:90",
+                "Tsinghua-Securea8:58:40:d7:12:92",
+                "Tsinghua-IPv6-SAVAa8:58:40:d7:12:93",
+                "Tsinghua-IPv6-SAVAa8:58:40:d6:97:93",
+                "Tsinghuaa8:58:40:d6:97:90",
+                "Tsinghua-5Ga8:58:40:d6:97:95",
+                "Tsinghua-5Ga8:58:40:d5:d5:55",
+                "Tsinghua-IPv6-SAVAa8:58:40:d6:03:f3",
+                "Tsinghuaa8:58:40:d6:03:f0",
+                "Tsinghua-Securea8:58:40:d6:03:f2",
+                "Tsinghua-5Ga8:58:40:d6:03:f5",
+                "Tsinghua-Securea8:58:40:d0:6e:f2",
+                "Tsinghua-IPv6-SAVAa8:58:40:d0:6e:f3",
+                "Tsinghua-IPv6-SAVAa8:58:40:d0:f9:d3",
+                "Tsinghua-5Ga8:58:40:d0:6e:f5",
+                "Tsinghuaa8:58:40:d0:6e:f0"
+        );
+        return new Location(name, latitude, longitude, wifiList);
     }
 }
