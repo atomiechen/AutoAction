@@ -143,7 +143,7 @@ public class VolumeContext {
 //        if (device != null) result.putString("device", device);
         if (device != null) {
             if (device.endsWith("speaker")) result.putString("device", "扬声器");
-            else if (device.endsWith("earpiece") || device.endsWith("headset") || device.contains("bt"))
+            else if (device.endsWith("earpiece") || device.endsWith("headset") || device.contains("bt") || device.endsWith("headphone"))
                 result.putString("device", "耳机");
             else result.putString("device", "未知类型");
         }
@@ -167,7 +167,7 @@ public class VolumeContext {
             if (share == 1) result.putBoolean("share", true);
             else if (share == 0) result.putBoolean("share", false);
         }
-        if (!(wifiId == null && latitude <= 0 && longitude <= 0)) {
+        if (!(wifiId == null && latitude < -90 && longitude < -180)) {
             String place = VolumeRuleManager.findPlace(this);
             if (place.equals("unknown"))
                 result.putString("place", "未知地点");

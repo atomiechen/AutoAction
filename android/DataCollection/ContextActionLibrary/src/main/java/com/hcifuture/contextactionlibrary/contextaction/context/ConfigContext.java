@@ -48,6 +48,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -66,10 +67,10 @@ public class ConfigContext extends BaseContext {
     public static String NEED_POSITION = "context.config.need_position";
     public static Location dormitory;
 
-    private String last_packageName;
+    private String last_appName;
     private String last_valid_widget;
     private boolean overlay_has_showed_for_other_reason;
-    private String packageName;
+    private String appName;
     private String present_name;
     private String latest_deviceType;
     private Bundle rules;
@@ -87,9 +88,9 @@ public class ConfigContext extends BaseContext {
         volumeRuleManager = new VolumeRuleManager();
 
         // initialize
-        packageName = "";
+        appName = "";
         present_name = "";
-        last_packageName = "";
+        last_appName = "";
         latest_deviceType = "speaker";
         last_valid_widget = "";
         overlay_has_showed_for_other_reason = true;
@@ -201,6 +202,7 @@ public class ConfigContext extends BaseContext {
     }
 
     void onRequest(Bundle rules) {
+        Log.e("To TapTapHelper", "------------------------");
         if (contextListener != null) {
             for (ContextListener listener: contextListener) {
                 ContextResult contextResult = new ContextResult("data from context-package", "");
@@ -214,7 +216,25 @@ public class ConfigContext extends BaseContext {
 
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
-        boolean widget_valid = false;
+        if (event.getText() != null && event.getText().size() > 0) {
+            String tmp_name = event.getText().get(0).toString();
+            if (isValidApp(tmp_name) || isNeedNotOverlayApp(tmp_name)) {
+                appName = tmp_name;
+                if (!(appName.equals(last_appName))) {
+                    if (isValidApp(appName) && !(event.getClassName() != null && AppList.video_widgets.contains(event.getClassName().toString()))) {
+                        long now = System.currentTimeMillis();
+                        int logID = incLogID();
+                        notifyContext(NEED_AUDIO, now, logID, "app changed from " + appName + " to " + last_appName);
+                        notifyContext(NEED_SCAN, now, logID, "app changed from " + appName + " to " + last_appName);
+                        notifyContext(NEED_POSITION, now, logID, "app changed from " + appName + " to " + last_appName);
+
+                        toTapTapHelper(1);
+                        overlay_has_showed_for_other_reason = true;
+                    }
+                    last_appName = appName;
+                }
+            }
+        }
         if (event.getClassName() != null) {
             Log.e("AccessibilityEventType", event.getClassName().toString() + "--------------------------");
             Log.e("Event", event.toString());
@@ -237,34 +257,49 @@ public class ConfigContext extends BaseContext {
                 overlay_has_showed_for_other_reason = true;
             }
         }
-        CharSequence pkg = event.getPackageName();
-        if (pkg != null) {
-            String tmp_name = event.getPackageName().toString();
-            if (!AppList.useless_packageNames.contains(tmp_name))
-                present_name = tmp_name;
-            if (AppList.valid_packageNames.contains(present_name) || AppList.nochange_packageNames.contains(present_name)) {
-                packageName = present_name;
-                if (!(packageName.equals(last_packageName))) {
-                    if (AppList.valid_packageNames.contains(packageName) && !AppList.video_widgets.contains(event.getClassName().toString())) {
-                        long now = System.currentTimeMillis();
-                        int logID = incLogID();
-                        notifyContext(NEED_AUDIO, now, logID, "app changed: " + packageName);
-                        notifyContext(NEED_SCAN, now, logID, "app changed: " + packageName);
-                        notifyContext(NEED_POSITION, now, logID, "app changed: " + packageName);
+    }
 
-                        toTapTapHelper(1);
-                        overlay_has_showed_for_other_reason = true;
-                    }
-                    last_packageName = packageName;
-                }
-            }
+    public boolean isValidApp(String _name) {
+        for (String name: AppList.video_appNames) {
+            if (name.equals(_name))
+                return true;
         }
+        for (String name: AppList.information_appNames) {
+            if (name.equals(_name))
+                return true;
+        }
+        for (String name: AppList.meeting_appNames) {
+            if (name.equals(_name))
+                return true;
+        }
+        for (String name: AppList.social_appNames) {
+            if (name.equals(_name))
+                return true;
+        }
+        for (String name: AppList.music_appNames) {
+            if (name.equals(_name))
+                return true;
+        }
+        for (String name: AppList.others_appNames) {
+            if (name.equals(_name))
+                return true;
+        }
+        return false;
+    }
+
+    public boolean isNeedNotOverlayApp(String _name) {
+        for (String name: AppList.neednot_overlay_appNames) {
+            if (name.equals(_name))
+                return true;
+        }
+        return false;
     }
 
     public VolumeContext getPresentContext() {
-        Date date = new Date();
-        double latitude = 0.0;
-        double longitude = 0.0;
+        Calendar c = Calendar.getInstance();
+        int time = c.get(Calendar.HOUR_OF_DAY) * 100 + c.get(Calendar.MINUTE);
+        double latitude = -200;
+        double longitude = -200;
         if (GPSCollector.latest_data != null) {
             latitude = GPSCollector.latest_data.getLatitude();
             longitude = GPSCollector.latest_data.getLongitude();
@@ -279,10 +314,15 @@ public class ConfigContext extends BaseContext {
             }
         }
         double noise = AudioCollector.lastest_noise;
-        //TODO
-        String app = "微信";
-        String device = "扬声器";
-        return new VolumeContext(-1, noise, device, -1, -1, latitude, longitude, wifiIds, 0, app, -1);
+        String app = appName;
+        String device = latest_deviceType;
+        Log.e("noise", "" + noise);
+        Log.e("device", device);
+        Log.e("latitude", "" + latitude);
+        Log.e("longitude", "" + longitude);
+        Log.e("time", "" + time);
+        Log.e("app", app);
+        return new VolumeContext(-1, noise, device, -1, -1, latitude, longitude, wifiIds, 4, time, time, app, -1);
     }
 
     public Bundle getRules(VolumeContext volumeContext, int type) {
@@ -436,13 +476,13 @@ public class ConfigContext extends BaseContext {
             }
 
             if (record) {
-                JSONUtils.jsonPut(json, "package", packageName);
+                JSONUtils.jsonPut(json, "package", appName);
                 JSONUtils.jsonPutBundle(json, extras);
                 record(timestamp, logID, type, action, tag, json.toString());
             }
         } catch (Exception e) {
             e.printStackTrace();
-            JSONUtils.jsonPut(json, "package", packageName);
+            JSONUtils.jsonPut(json, "package", appName);
             JSONUtils.jsonPutBundle(json, extras);
             JSONUtils.jsonPut(json, "exception", e.toString());
             record(timestamp, logID, type, action, tag, json.toString());

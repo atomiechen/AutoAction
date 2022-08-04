@@ -16,6 +16,20 @@ public class Location {
         this.wifiIds = wifiIds;
     }
 
+    public Location(String name, double latitude, double longitude) {
+        this.name = name;
+        this.latitude = latitude;
+        this.longitude = longitude;
+        this.wifiIds = null;
+    }
+
+    public Location(String name, List<String> wifiIds) {
+        this.name = name;
+        this.latitude = -200;
+        this.longitude = -200;
+        this.wifiIds = wifiIds;
+    }
+
     public double getLatitude() {
         return latitude;
     }
@@ -76,7 +90,7 @@ public class Location {
         double gps_score = 0;
         boolean wifi_valid = false;
         boolean gps_valid = false;
-        if (!(volumeContext.latitude <= 0 && volumeContext.longitude <= 0)) {
+        if (!(volumeContext.latitude < -90 && volumeContext.longitude < -180) && !(latitude < -90 && longitude < -180) ) {
             gps_valid = true;
             double distance = getDistance(volumeContext);
             if (distance > 200)
@@ -85,7 +99,7 @@ public class Location {
                 gps_score = 50 * (200 - distance) / 200;
         }
         List<String> wifiList = volumeContext.getWifiId();
-        if (wifiList != null && wifiList.size() > 0) {
+        if (wifiList != null && wifiList.size() > 0 && wifiIds != null && wifiIds.size() > 0) {
             wifi_valid = true;
             double count = 0;
             for (String wifiId : wifiIds) {
