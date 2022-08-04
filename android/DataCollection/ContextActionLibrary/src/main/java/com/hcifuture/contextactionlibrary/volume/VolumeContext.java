@@ -148,7 +148,7 @@ public class VolumeContext {
 //        if (device != null) result.putString("device", device);
         if (device != null) {
             if (device.endsWith("speaker")) result.putString("device", "扬声器");
-            else if (device.endsWith("earpiece") || device.endsWith("headset") || device.contains("bt") || device.endsWith("headphone"))
+            else if (device.endsWith("earpiece") || device.endsWith("headset") || device.contains("bt") || device.contains("sco") || device.endsWith("headphone"))
                 result.putString("device", "耳机");
             else result.putString("device", "未知类型");
         }

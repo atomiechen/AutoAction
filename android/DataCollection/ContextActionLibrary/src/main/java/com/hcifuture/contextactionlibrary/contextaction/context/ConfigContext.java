@@ -1,12 +1,15 @@
 package com.hcifuture.contextactionlibrary.contextaction.context;
 
 import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.hardware.display.DisplayManager;
 import android.location.LocationManager;
+import android.media.AudioDeviceInfo;
+import android.media.AudioManager;
 import android.net.Uri;
 import android.net.wifi.WifiManager;
 import android.os.Build;
@@ -54,6 +57,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import androidx.annotation.RequiresApi;
@@ -89,7 +93,7 @@ public class ConfigContext extends BaseContext {
         // initialize
         appName = "";
         last_appName = "";
-        latest_deviceType = "speaker";
+        setDeviceType();
         last_valid_widget = "";
         overlay_has_showed_for_other_reason = true;
         brightness = 0;
@@ -398,15 +402,15 @@ public class ConfigContext extends BaseContext {
                         JSONUtils.jsonPut(json, "diff", diff);
                         notifyContext(NEED_AUDIO, timestamp, logID, "volume change: " + database_key);
                         notifyContext(NEED_SCAN, timestamp, logID, "volume change: " + database_key);
-                        String[] tmp = database_key.split("_");
-                        String deviceType = "";
-                        for (int index = 2; index < tmp.length; index++) {
-                            deviceType += tmp[index];
-                            if (index < tmp.length - 1) {
-                                deviceType += "_";
-                            }
-                        }
-                        latest_deviceType = deviceType;
+//                        String[] tmp = database_key.split("_");
+//                        String deviceType = "";
+//                        for (int index = 2; index < tmp.length; index++) {
+//                            deviceType += tmp[index];
+//                            if (index < tmp.length - 1) {
+//                                deviceType += "_";
+//                            }
+//                        }
+//                        latest_deviceType = deviceType;
                     } else if (Settings.Global.BLUETOOTH_ON.equals(database_key) && value == 1) {
 //                    notify(NEED_SCAN, timestamp, logID, "Bluetooth on via global setting");
                     } else if (Settings.Global.WIFI_ON.equals(database_key) && value == 2) {
@@ -433,6 +437,17 @@ public class ConfigContext extends BaseContext {
                             }
                             JSONUtils.jsonPut(json, "displays", states);
                         }
+                        break;
+                    case Intent.ACTION_HEADSET_PLUG:
+                    case BluetoothDevice.ACTION_ACL_DISCONNECTED:
+                    case BluetoothDevice.ACTION_ACL_CONNECTED:
+                        futureList.add(scheduledExecutorService.schedule(() -> {
+                            try {
+                                setDeviceType();
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                        }, 3000, TimeUnit.MILLISECONDS));
                         break;
                 }
                 if (Intent.ACTION_SCREEN_ON.equals(action)) {
@@ -488,6 +503,23 @@ public class ConfigContext extends BaseContext {
             JSONUtils.jsonPut(json, "exception", e.toString());
             record(timestamp, logID, type, action, tag, json.toString());
         }
+    }
+
+    public void setDeviceType() {
+        AudioManager audioManager = (AudioManager) mContext.getSystemService(Context.AUDIO_SERVICE);
+        AudioDeviceInfo[] audioDeviceInfos = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS);
+        boolean headset_connected = false;
+        for (AudioDeviceInfo audioDeviceInfo: audioDeviceInfos) {
+            if (audioDeviceInfo.getType() == AudioDeviceInfo.TYPE_BLE_HEADSET || audioDeviceInfo.getType() == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP || audioDeviceInfo.getType() == AudioDeviceInfo.TYPE_BLUETOOTH_SCO || audioDeviceInfo.getType() == AudioDeviceInfo.TYPE_USB_HEADSET
+                    || audioDeviceInfo.getType() == AudioDeviceInfo.TYPE_WIRED_HEADPHONES || audioDeviceInfo.getType() == AudioDeviceInfo.TYPE_WIRED_HEADSET) {
+                headset_connected = true;
+                Log.e("HeadSetType", "" + audioDeviceInfo.getType());
+                latest_deviceType = "headset";
+                break;
+            }
+        }
+        if (!headset_connected)
+            latest_deviceType = "speaker";
     }
 
     public void toTapTapHelper(int type) {
