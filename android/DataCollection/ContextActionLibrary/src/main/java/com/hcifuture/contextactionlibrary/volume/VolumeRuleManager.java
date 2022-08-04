@@ -84,6 +84,9 @@ public class VolumeRuleManager {
     @RequiresApi(api = Build.VERSION_CODES.N)
     public Bundle getRecommendation(VolumeContext volumeContext){
         ArrayList<VolumeRule> rules = getRules(volumeContext);
+        rules.sort(Comparator.comparing(VolumeRule::getPriority).reversed());
+//        ArrayList<VolumeRule> rules = new ArrayList<>(_rules.stream().sorted(Comparator.comparing(VolumeRule::getPriority).reversed())
+//                .collect(Collectors.toList()));
         ArrayList<Bundle> rules_bundle = new ArrayList<>();
         ArrayList<String> rules_string = new ArrayList<>();
         for (VolumeRule rule: rules) {
@@ -162,9 +165,22 @@ public class VolumeRuleManager {
     }
 
     public Bundle getValueRange() {
+        // device
         ArrayList<String> device = new ArrayList<>(Arrays.asList("扬声器", "耳机", "未知设备"));
-        ArrayList<String> place = new ArrayList<>(Arrays.asList("家", "宿舍"));
-        ArrayList<String> app = new ArrayList<>(Arrays.asList("微信", "QQ"));
+        // place
+        ArrayList<String> place = new ArrayList<>();
+        for (Location location: locations) {
+            place.add(location.getName());
+        }
+        // app
+        ArrayList<String> app = new ArrayList<>();
+        app.addAll(AppList.video_appNames);
+        app.addAll(AppList.information_appNames);
+        app.addAll(AppList.meeting_appNames);
+        app.addAll(AppList.social_appNames);
+        app.addAll(AppList.music_appNames);
+        app.addAll(AppList.others_appNames);
+
         Bundle result = new Bundle();
         result.putStringArrayList("device", device);
         result.putStringArrayList("place", place);
@@ -207,110 +223,113 @@ public class VolumeRuleManager {
 //        double noise, String device, double latitude, double longitude, List<String> wifiId, int time, int startTime, int endTime, String app
         // 全部任意，默认30%
         mRuleList.add(new VolumeRule(new VolumeContext(-1, null, -200, -200, null,
-                -1, 0, 0, null), 30));
+                -1, 0, 0, null), 30, 0));
         // 环境噪音
         mRuleList.add(new VolumeRule(new VolumeContext(40, null, -200, -200, null,
-                -1, 0, 0, null), 25)); // 噪音小
+                -1, 0, 0, null), 25, 1)); // 噪音小
         mRuleList.add(new VolumeRule(new VolumeContext(60, null, -200, -200, null,
-                -1, 0, 0, null), 50)); // 噪音中
+                -1, 0, 0, null), 50, 1)); // 噪音中
         mRuleList.add(new VolumeRule(new VolumeContext(80, null, -200, -200, null,
-                -1, 0, 0, null), 75)); // 噪音大
+                -1, 0, 0, null), 75, 1)); // 噪音大
         // 时间
         mRuleList.add(new VolumeRule(new VolumeContext(-1, null, -200, -200, null,
-                0, 0, 0, null), 50)); // 早上
+                0, 0, 0, null), 50, 1)); // 早上
         mRuleList.add(new VolumeRule(new VolumeContext(-1, null, -200, -200, null,
-                1, 0, 0, null), 40)); // 中午
+                1, 0, 0, null), 40, 1)); // 中午
         mRuleList.add(new VolumeRule(new VolumeContext(-1, null, -200, -200, null,
-                2, 0, 0, null), 50)); // 下午
+                2, 0, 0, null), 50, 1)); // 下午
         mRuleList.add(new VolumeRule(new VolumeContext(-1, null, -200, -200, null,
-                3, 0, 0, null), 30)); // 晚间
+                3, 0, 0, null), 30, 1)); // 晚间
         mRuleList.add(new VolumeRule(new VolumeContext(-1, null, -200, -200, null,
-                4, 0, 630, null), 15)); // 深夜
+                4, 0, 630, null), 15, 1)); // 深夜
         // 地点
         // wifi列表暂时均设为null
         mRuleList.add(new VolumeRule(new VolumeContext(-1, null, 40.00826611, 116.31997283, null,
-                -1, 0, 0, null), 30)); // 宿舍（紫荆2号楼）
+                -1, 0, 0, null), 30, 1)); // 宿舍（紫荆2号楼）
         mRuleList.add(new VolumeRule(new VolumeContext(-1, null, 39.9957763, 116.3255634, null,
-                -1, 0, 0, null), 40)); // FIT楼
+                -1, 0, 0, null), 40, 1)); // FIT楼
         mRuleList.add(new VolumeRule(new VolumeContext(-1, null, 40.0086677, 116.3233307, null,
-                -1, 0, 0, null), 75)); // 紫荆操场
+                -1, 0, 0, null), 75, 1)); // 紫荆操场
         mRuleList.add(new VolumeRule(new VolumeContext(-1, null, 40.0029605, 116.3224965, null,
-                -1, 0, 0, null), 0)); // 文科图书馆
+                -1, 0, 0, null), 0, 1)); // 文科图书馆
         mRuleList.add(new VolumeRule(new VolumeContext(-1, null, 40.0043092, 116.3178216, null,
-                -1, 0, 0, null), 0)); // 李文正馆
+                -1, 0, 0, null), 0, 1)); // 李文正馆
         mRuleList.add(new VolumeRule(new VolumeContext(-1, null, 40.0016146, 116.3238986, null,
-                -1, 0, 0, null), 20)); // 第六教室楼
+                -1, 0, 0, null), 20, 1)); // 第六教室楼
         mRuleList.add(new VolumeRule(new VolumeContext(-1, null, 40.0104485, 116.3223971, null,
-                -1, 0, 0, null), 60)); // 桃李园食堂
+                -1, 0, 0, null), 60, 1)); // 桃李园食堂
 
         // APP
         for (String appName : AppList.video_appNames)
             mRuleList.add(new VolumeRule(new VolumeContext(-1, null, -200, -200, null,
-                    -1, 0, 0, appName), 40));
+                    -1, 0, 0, appName), 40, 1));
         for (String appName : AppList.meeting_appNames)
             mRuleList.add(new VolumeRule(new VolumeContext(-1, null, -200, -200, null,
-                    -1, 0, 0, appName), 60));
+                    -1, 0, 0, appName), 60, 1));
         for (String appName : AppList.social_appNames)
             mRuleList.add(new VolumeRule(new VolumeContext(-1, null, -200, -200, null,
-                    -1, 0, 0, appName), 30));
+                    -1, 0, 0, appName), 30, 1));
         for (String appName : AppList.information_appNames)
             mRuleList.add(new VolumeRule(new VolumeContext(-1, null, -200, -200, null,
-                    -1, 0, 0, appName), 30));
+                    -1, 0, 0, appName), 30, 1));
         for (String appName : AppList.music_appNames)
             mRuleList.add(new VolumeRule(new VolumeContext(-1, null, -200, -200, null,
-                    -1, 0, 0, appName), 50));
+                    -1, 0, 0, appName), 50, 1));
         for (String appName : AppList.others_appNames)
             mRuleList.add(new VolumeRule(new VolumeContext(-1, null, -200, -200, null,
-                    -1, 0, 0, appName), 30));
+                    -1, 0, 0, appName), 30, 1));
+        for (String appName : AppList.neednot_overlay_appNames)
+            mRuleList.add(new VolumeRule(new VolumeContext(-1, null, -200, -200, null,
+                    -1, 0, 0, appName), 30, 1));
         // 设备
         mRuleList.add(new VolumeRule(new VolumeContext(-1, "speaker", -200, -200, null,
-                -1, 0, 0, null), 25)); // 扬声器例子
+                -1, 0, 0, null), 25, 1)); // 扬声器例子
         mRuleList.add(new VolumeRule(new VolumeContext(-1, "headphone", -200, -200, null,
-                -1, 0, 0, null), 50)); // 耳机例子
+                -1, 0, 0, null), 50, 1)); // 耳机例子
         // 组合因素：环境噪音+设备
         mRuleList.add(new VolumeRule(new VolumeContext(40, "speaker", -200, -200, null,
-                -1, 0, 0, null), 30)); // 噪音小，扬声器
+                -1, 0, 0, null), 30, 2)); // 噪音小，扬声器
         mRuleList.add(new VolumeRule(new VolumeContext(60, "speaker", -200, -200, null,
-                -1, 0, 0, null), 60)); // 噪音中，扬声器
+                -1, 0, 0, null), 60, 2)); // 噪音中，扬声器
         mRuleList.add(new VolumeRule(new VolumeContext(80, "speaker", -200, -200, null,
-                -1, 0, 0, null), 90)); // 噪音大，扬声器
+                -1, 0, 0, null), 90, 2)); // 噪音大，扬声器
 
         mRuleList.add(new VolumeRule(new VolumeContext(40, "headphone", -200, -200, null,
-                -1, 0, 0, null), 20)); // 噪音小，耳机
+                -1, 0, 0, null), 20, 2)); // 噪音小，耳机
         mRuleList.add(new VolumeRule(new VolumeContext(60, "headphone", -200, -200, null,
-                -1, 0, 0, null), 40)); // 噪音中，耳机
+                -1, 0, 0, null), 40, 2)); // 噪音中，耳机
         mRuleList.add(new VolumeRule(new VolumeContext(80, "headphone", -200, -200, null,
-                -1, 0, 0, null), 60)); // 噪音大，耳机
+                -1, 0, 0, null), 60, 2)); // 噪音大，耳机
 
         // 组合因素：时间+设备
         mRuleList.add(new VolumeRule(new VolumeContext(-1, "speaker", -200, -200, null,
-                4, 0, 630, null), 25)); // 深夜，扬声器
+                4, 0, 630, null), 25, 2)); // 深夜，扬声器
         mRuleList.add(new VolumeRule(new VolumeContext(-1, "headphone", -200, -200, null,
-                4, 0, 630, null), 15)); // 深夜，耳机
+                4, 0, 630, null), 15, 2)); // 深夜，耳机
         // 组合因素：APP、设备、环境噪音
         for (String appName : AppList.meeting_appNames) {
             mRuleList.add(new VolumeRule(new VolumeContext(-1, "headphone", -200, -200, null,
-                    -1, 0, 0, appName), 40)); // 耳机
+                    -1, 0, 0, appName), 40, 3)); // 耳机
             mRuleList.add(new VolumeRule(new VolumeContext(80, "headphone", -200, -200, null,
-                    -1, 0, 0, appName), 60)); // 耳机 + 噪声大
+                    -1, 0, 0, appName), 60, 3)); // 耳机 + 噪声大
             mRuleList.add(new VolumeRule(new VolumeContext(40, "speaker", -200, -200, null,
-                    -1, 0, 0, appName), 70)); // 扬声器 + 噪声小
+                    -1, 0, 0, appName), 70, 3)); // 扬声器 + 噪声小
             mRuleList.add(new VolumeRule(new VolumeContext(60, "speaker", -200, -200, null,
-                    -1, 0, 0, appName), 80)); // 扬声器 + 噪声中
+                    -1, 0, 0, appName), 80, 3)); // 扬声器 + 噪声中
             mRuleList.add(new VolumeRule(new VolumeContext(80, "speaker", -200, -200, null,
-                    -1, 0, 0, appName), 100)); // 扬声器 + 噪声大
+                    -1, 0, 0, appName), 100,3)); // 扬声器 + 噪声大
         }
         for (String appName : AppList.video_appNames) {
             mRuleList.add(new VolumeRule(new VolumeContext(-1, "headphone", -200, -200, null,
-                    -1, 0, 0, appName), 40)); // 耳机
+                    -1, 0, 0, appName), 40, 3)); // 耳机
             mRuleList.add(new VolumeRule(new VolumeContext(80, "headphone", -200, -200, null,
-                    -1, 0, 0, appName), 60)); // 耳机 + 噪声大
+                    -1, 0, 0, appName), 60, 3)); // 耳机 + 噪声大
             mRuleList.add(new VolumeRule(new VolumeContext(40, "speaker", -200, -200, null,
-                    -1, 0, 0, appName), 40)); // 扬声器 + 噪声小
+                    -1, 0, 0, appName), 40, 3)); // 扬声器 + 噪声小
             mRuleList.add(new VolumeRule(new VolumeContext(60, "speaker", -200, -200, null,
-                    -1, 0, 0, appName), 60)); // 扬声器 + 噪声中
+                    -1, 0, 0, appName), 60, 3)); // 扬声器 + 噪声中
             mRuleList.add(new VolumeRule(new VolumeContext(80, "speaker", -200, -200, null,
-                    -1, 0, 0, appName), 90)); // 扬声器 + 噪声大
+                    -1, 0, 0, appName), 90, 3)); // 扬声器 + 噪声大
         }
 
     }

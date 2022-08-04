@@ -6,7 +6,7 @@ public class VolumeRule {
     Type type;
     String description;
     double volume;
-    double priority;
+    int priority;
     VolumeContext context;
 
     public enum Type {
@@ -23,7 +23,7 @@ public class VolumeRule {
         }
     }
 
-    VolumeRule(Type type, String description, int volume, double priority){
+    VolumeRule(Type type, String description, int volume, int priority){
         this.type = type;
         this.description = description;
         this.volume = volume;
@@ -33,6 +33,13 @@ public class VolumeRule {
     public VolumeRule(VolumeContext volumeContext, double volume) {
         this.volume = volume;
         this.context = volumeContext;
+        this.priority = 0;
+    }
+
+    public VolumeRule(VolumeContext volumeContext, double volume, int priority) {
+        this.volume = volume;
+        this.context = volumeContext;
+        this.priority = priority;
     }
 
     public Type getType() {
@@ -63,7 +70,7 @@ public class VolumeRule {
         return priority;
     }
 
-    public void setPriority(double priority) {
+    public void setPriority(int priority) {
         this.priority = priority;
     }
 
@@ -134,14 +141,15 @@ public class VolumeRule {
 //            if (context.share == 1) result += "与人共享";
 //            else if (context.share == 0) result += "非与人共享";
 //        }
-        if (!result.equals("")) result += "·";
-        result += "音量" + volume + "%";
+        if (result.equals("")) result += "任意条件";
+        result += "·音量" + volume + "%";
         return result;
     }
 
     public Bundle toBundle() {
         Bundle result = context.toBundle();
         result.putDouble("volume", volume);
+        result.putInt("priority", priority);
         return result;
     }
 }

@@ -71,7 +71,6 @@ public class ConfigContext extends BaseContext {
     private String last_valid_widget;
     private boolean overlay_has_showed_for_other_reason;
     private String appName;
-    private String present_name;
     private String latest_deviceType;
     private Bundle rules;
     private int brightness;
@@ -89,7 +88,6 @@ public class ConfigContext extends BaseContext {
 
         // initialize
         appName = "";
-        present_name = "";
         last_appName = "";
         latest_deviceType = "speaker";
         last_valid_widget = "";
@@ -216,6 +214,8 @@ public class ConfigContext extends BaseContext {
 
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
+        if (event.getPackageName() != null && event.getPackageName().toString().equals("com.hcifuture.scanner"))
+            return;
         if (event.getText() != null && event.getText().size() > 0) {
             String tmp_name = event.getText().get(0).toString();
             if (isValidApp(tmp_name) || isNeedNotOverlayApp(tmp_name)) {
