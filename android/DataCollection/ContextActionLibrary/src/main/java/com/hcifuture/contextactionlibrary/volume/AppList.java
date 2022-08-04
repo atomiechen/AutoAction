@@ -134,4 +134,71 @@ public class AppList {
     public static final List<String> blank_widgets = Arrays.asList(
             "com.tencent.mm.ui.LauncherUI"
     );
+
+    // 直接使用App名称，待补充
+    public static final List<String> video_appNames = Arrays.asList(
+            "抖音",
+            "抖音极速版",
+            "抖音火山版",
+            "快手",
+            "快手极速版",
+            "快手概念版",
+            "西瓜视频",
+            "优酷视频",
+            "爱奇艺",
+            "斗鱼",
+            "虎牙",
+            "搜狐视频",
+            "AcFun"
+    );
+    public static final List<String> meeting_appNames = Arrays.asList(
+            "腾讯会议",
+            "Zoom",
+            "华为云会议",
+            "飞书",
+            "钉钉"
+    );
+    public static final List<String> social_appNames = Arrays.asList(
+            "微信",
+            "QQ",
+            "Soul",
+            "陌陌",
+            "Summer",
+            "百度贴吧"
+    );
+    public static final List<String> information_appNames = Arrays.asList(
+            "微博",
+            "小红书",
+            "知乎",
+            "百度",
+            "今日头条",
+            "搜狐新闻",
+            "网易新闻",
+            "澎湃新闻",
+            "腾讯新闻",
+            "美团",
+            "大众点评",
+            "淘宝",
+            "京东",
+            "闲鱼",
+            "苏宁易购",
+            "拼多多",
+            "唯品会",
+            "当当"
+    );
+    public static final List<String> music_appNames = Arrays.asList(
+            "网易云音乐",
+            "QQ音乐",
+            "酷狗音乐",
+            "酷我音乐",
+            "咪咕音乐",
+            "蜻蜓FM",
+            "全民K歌"
+    );
+    public static final List<String> others_appNames = Arrays.asList(
+            "Keep",
+            "高德地图",
+            "腾讯地图",
+            "百度地图"
+    );
 }

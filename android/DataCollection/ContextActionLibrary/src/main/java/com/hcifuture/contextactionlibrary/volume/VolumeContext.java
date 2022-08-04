@@ -89,6 +89,23 @@ public class VolumeContext {
         }
     }
 
+    public VolumeContext(double noise, String device, double latitude, double longitude,
+                         List<String> wifiId, int time, int startTime, int endTime, String app) {
+        this.latitude = latitude;
+        this.longitude = longitude;
+        this.wifiId = wifiId;
+
+        this.noise = noise;
+
+        this.app = app;
+
+        this.device = device;
+
+        this.time = time;
+        this.startTime = startTime;
+        this.endTime = endTime;
+    }
+
     public VolumeContext(int soundVolume, double noise, String device, int manAround, int share, double latitude, double longitude,
                          List<String> wifiId, int time, int startTime, int endTime, String app, int activity) {
         this.latitude = latitude;
@@ -106,6 +123,7 @@ public class VolumeContext {
         this.endTime = endTime;
     }
 
+
 //    @Override
 //    public String toString() {
 //        DateFormat df = new SimpleDateFormat("HH:mm:ss");
@@ -122,7 +140,13 @@ public class VolumeContext {
     public Bundle toBundle() {
         Bundle result = new Bundle();
         if (soundVolume >= 0) result.putInt("soundVolume", soundVolume);
-        if (device != null) result.putString("device", device);
+//        if (device != null) result.putString("device", device);
+        if (device != null) {
+            if (device.endsWith("speaker")) result.putString("device", "扬声器");
+            else if (device.endsWith("earpiece") || device.endsWith("headset") || device.contains("bt"))
+                result.putString("device", "耳机");
+            else result.putString("device", "未知类型");
+        }
         if (time >= 0) {
             result.putInt("time", time);
             result.putInt("startTime", startTime);
