@@ -88,6 +88,8 @@ public class ConfigContext extends BaseContext {
     private CollectorManager collectorManager;
     private AudioCollector audioCollector;
 
+    private boolean isVolumeOn = false;
+
     public ConfigContext(Context context, ContextConfig config, RequestListener requestListener, List<ContextListener> contextListener, LogCollector logCollector, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, CollectorManager collectorManager) {
         super(context, config, requestListener, contextListener, scheduledExecutorService, futureList);
         this.logCollector = logCollector;
@@ -541,9 +543,12 @@ public class ConfigContext extends BaseContext {
     }
 
     public void toTapTapHelper(int type) {
-        VolumeContext volumeContext = getPresentContext();
-        rules = getRules(volumeContext, type);
-        onRequest(rules);
+        if (!isVolumeOn) {
+            VolumeContext volumeContext = getPresentContext();
+            rules = getRules(volumeContext, type);
+            onRequest(rules);
+            isVolumeOn = true;
+        }
     }
 
     @Override
@@ -570,11 +575,13 @@ public class ConfigContext extends BaseContext {
                 int behavior = bundle.getInt("behavior");
                 double finalVolume = bundle.getDouble("finalVolume");
                 Log.e("from PAIPAI_HELPER", "from:" + from + ", behavior:" + behavior + ", finalVolume:" + finalVolume);
+                isVolumeOn = false;
             } else if (from == 2) {
                 int editedRank = bundle.getInt("editedRank");
                 boolean action = bundle.getBoolean("action");
                 double finalVolume = bundle.getDouble("finalVolume");
                 Log.e("from PAIPAI_HELPER", "from:" + from + ", editedRank:" + editedRank + ", action:" + action + ", finalVolume:" + finalVolume);
+                isVolumeOn = false;
             }
         }
     }
