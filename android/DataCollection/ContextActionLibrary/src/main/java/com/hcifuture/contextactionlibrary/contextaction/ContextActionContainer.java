@@ -649,7 +649,7 @@ public class ContextActionContainer implements ActionListener, ContextListener {
                                 break;
                             case "Config":
                                 LogCollector configLogCollector = collectorManager.newLogCollector("Config", 8192);
-                                contexts.add(new ConfigContext(mContext, contextConfig, requestListener, Arrays.asList(this, contextListener), configLogCollector, scheduledExecutorService, futureList));
+                                contexts.add(new ConfigContext(mContext, contextConfig, requestListener, Arrays.asList(this, contextListener), configLogCollector, scheduledExecutorService, futureList, collectorManager));
                                 //                            setLogCollector(ConfigContext.class, configLogCollector);
                                 timedCollector.scheduleTimedLogUpload(
                                         configLogCollector,

@@ -5,6 +5,7 @@ import android.media.AudioManager;
 import android.media.MediaRecorder;
 import android.os.Build;
 import android.os.Handler;
+import android.util.Log;
 
 import androidx.annotation.RequiresApi;
 
@@ -26,11 +27,13 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class AudioCollector extends AsynchronousCollector {
+    private static final String TAG = "AudioCollector";
+
     private MediaRecorder mMediaRecorder;
     private final AtomicBoolean isCollecting;
     private final AudioManager audioManager;
     private List<Double> noiseCheckpoints;
-    public static double lastest_noise;
+    public double lastest_noise;
 
     /*
       Error code:
@@ -194,5 +197,96 @@ public class AudioCollector extends AsynchronousCollector {
     @Override
     public String getExt() {
         return ".mp3";
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.N)
+    public CompletableFuture<Double> detectNoiseLevel(long length) {
+        Log.e(TAG, "detectNoiseLevel: start");
+        CompletableFuture<Double> ft = new CompletableFuture<>();
+        if (isCollecting.compareAndSet(false, true)) {
+            try {
+                // check mic availability
+                // ref: https://stackoverflow.com/a/67458025/11854304
+//                MODE_NORMAL -> You good to go. Mic not in use
+//                MODE_RINGTONE -> Incoming call. The phone is ringing
+//                MODE_IN_CALL -> A phone call is in progress
+//                MODE_IN_COMMUNICATION -> The Mic is being used by another application
+                int micMode = audioManager.getMode();
+                if (micMode != AudioManager.MODE_NORMAL) {
+                    ft.completeExceptionally(new CollectorException(6, "Mic not available: " + micMode));
+                    isCollecting.set(false);
+                } else {
+                    Log.e(TAG, "detectNoiseLevel: try open MediaRecorder");
+
+                    try {
+                        mMediaRecorder = new MediaRecorder();
+                        // may throw IllegalStateException due to lack of permission
+                        mMediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
+                        mMediaRecorder.setAudioChannels(2);
+                        mMediaRecorder.setAudioSamplingRate(44100);
+                        mMediaRecorder.setAudioEncodingBitRate(16 * 44100);
+                        mMediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
+                        mMediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
+                        mMediaRecorder.setOutputFile("/dev/null");
+                        mMediaRecorder.prepare();
+                        mMediaRecorder.start();
+                        Log.e(TAG, "detectNoiseLevel: MediaRecorder started, length: " + length + " ms");
+
+                        // first call returns 0
+                        mMediaRecorder.getMaxAmplitude();
+
+                        futureList.add(scheduledExecutorService.schedule(() -> {
+                            try {
+                                double BASE = 1.0;
+                                // Returns the maximum absolute amplitude that was sampled since the last call to this method
+                                int maxAmplitude = mMediaRecorder.getMaxAmplitude();
+                                double ratio = maxAmplitude / BASE;
+                                double db = 0;// 分贝
+                                if (ratio > 1)
+                                    db = 20 * Math.log10(ratio);
+                                Log.e(TAG, "detectNoiseLevel: maxAmplitude: " + maxAmplitude);
+                                Log.e(TAG, "detectNoiseLevel: ratio: " + ratio);
+                                Log.e(TAG, "detectNoiseLevel: db: " + db);
+
+                                try {
+                                    // may throw IllegalStateException because no valid audio data has been received
+                                    mMediaRecorder.stop();
+                                } catch (Exception e) {
+                                    e.printStackTrace();
+                                }
+                                try {
+                                    mMediaRecorder.release();
+                                } catch (Exception e) {
+                                    e.printStackTrace();
+                                }
+                                mMediaRecorder = null;
+
+                                lastest_noise = db;
+                                ft.complete(db);
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                                ft.completeExceptionally(new CollectorException(5, e));
+                            } finally {
+                                isCollecting.set(false);
+                                Log.e(TAG, "detectNoiseLevel: complete result");
+                            }
+                        }, length, TimeUnit.MILLISECONDS));
+
+                    } catch (Exception e) {
+                        ft.completeExceptionally(new CollectorException(7, e));
+                        isCollecting.set(false);
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                stopRecording();
+                ft.completeExceptionally(new CollectorException(4, e));
+                isCollecting.set(false);
+            }
+        } else {
+            ft.completeExceptionally(new CollectorException(3, "Concurrent task of audio recording"));
+        }
+
+        return ft;
     }
 }

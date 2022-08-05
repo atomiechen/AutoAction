@@ -7,7 +7,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.hardware.display.DisplayManager;
-import android.location.LocationManager;
 import android.media.AudioDeviceInfo;
 import android.media.AudioManager;
 import android.net.Uri;
@@ -20,6 +19,7 @@ import android.view.Display;
 import android.view.KeyEvent;
 import android.view.accessibility.AccessibilityEvent;
 
+import com.hcifuture.contextactionlibrary.sensor.collector.CollectorManager;
 import com.hcifuture.contextactionlibrary.sensor.collector.async.AudioCollector;
 import com.hcifuture.contextactionlibrary.sensor.collector.async.GPSCollector;
 import com.hcifuture.contextactionlibrary.sensor.collector.async.WifiCollector;
@@ -31,15 +31,11 @@ import com.hcifuture.contextactionlibrary.utils.JSONUtils;
 import com.hcifuture.contextactionlibrary.volume.AppList;
 import com.hcifuture.contextactionlibrary.volume.Location;
 import com.hcifuture.contextactionlibrary.volume.VolumeContext;
-import com.hcifuture.contextactionlibrary.volume.VolumeRule;
 import com.hcifuture.contextactionlibrary.volume.VolumeRuleManager;
 import com.hcifuture.shared.communicate.config.ContextConfig;
 import com.hcifuture.contextactionlibrary.contextaction.event.BroadcastEvent;
-import com.hcifuture.shared.communicate.config.RequestConfig;
-import com.hcifuture.shared.communicate.listener.ActionListener;
 import com.hcifuture.shared.communicate.listener.ContextListener;
 import com.hcifuture.shared.communicate.listener.RequestListener;
-import com.hcifuture.shared.communicate.result.ActionResult;
 import com.hcifuture.shared.communicate.result.ContextResult;
 
 import org.json.JSONArray;
@@ -55,15 +51,19 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import androidx.annotation.RequiresApi;
 
 @RequiresApi(api = Build.VERSION_CODES.N)
 public class ConfigContext extends BaseContext {
+
+    private static final String TAG = "ConfigContext";
 
     public static String NEED_AUDIO = "context.config.need_audio";
     public static String NEED_NONIMU = "context.config.need_nonimu";
@@ -85,9 +85,17 @@ public class ConfigContext extends BaseContext {
 
     private final AtomicInteger mLogID = new AtomicInteger(0);
 
-    public ConfigContext(Context context, ContextConfig config, RequestListener requestListener, List<ContextListener> contextListener, LogCollector logCollector, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList) {
+    private CollectorManager collectorManager;
+    private AudioCollector audioCollector;
+
+    public ConfigContext(Context context, ContextConfig config, RequestListener requestListener, List<ContextListener> contextListener, LogCollector logCollector, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, CollectorManager collectorManager) {
         super(context, config, requestListener, contextListener, scheduledExecutorService, futureList);
         this.logCollector = logCollector;
+
+        // get references of used sensor collectors
+        this.collectorManager = collectorManager;
+        this.audioCollector = (AudioCollector) collectorManager.getCollector(CollectorManager.CollectorType.Audio);
+
         volumeRuleManager = new VolumeRuleManager();
 
         // initialize
@@ -228,7 +236,7 @@ public class ConfigContext extends BaseContext {
                     if (isValidApp(appName) && !(event.getClassName() != null && AppList.video_widgets.contains(event.getClassName().toString()))) {
                         long now = System.currentTimeMillis();
                         int logID = incLogID();
-                        notifyContext(NEED_AUDIO, now, logID, "app changed from " + appName + " to " + last_appName);
+//                        notifyContext(NEED_AUDIO, now, logID, "app changed from " + appName + " to " + last_appName);
                         notifyContext(NEED_SCAN, now, logID, "app changed from " + appName + " to " + last_appName);
                         notifyContext(NEED_POSITION, now, logID, "app changed from " + appName + " to " + last_appName);
 
@@ -250,7 +258,7 @@ public class ConfigContext extends BaseContext {
                     overlay_has_showed_for_other_reason = false;
                     last_valid_widget = event.getClassName().toString();
                     int logID = incLogID();
-                    notifyContext(NEED_AUDIO, now, logID, "widget changed: " + event.getClassName().toString());
+//                    notifyContext(NEED_AUDIO, now, logID, "widget changed: " + event.getClassName().toString());
                     notifyContext(NEED_SCAN, now, logID, "widget changed: " + event.getClassName().toString());
                     notifyContext(NEED_POSITION, now, logID, "widget changed: " + event.getClassName().toString());
 
@@ -317,7 +325,17 @@ public class ConfigContext extends BaseContext {
                 wifiIds.add(key);
             }
         }
-        double noise = AudioCollector.lastest_noise;
+//        double noise = AudioCollector.lastest_noise;
+        double noise = 0;
+        try {
+            // length: 300 is ok, 200 is not
+            noise = audioCollector.detectNoiseLevel(300).get(500, TimeUnit.MILLISECONDS);
+        } catch (ExecutionException | InterruptedException | TimeoutException e) {
+            e.printStackTrace();
+            Log.e(TAG, "getPresentContext: error happens");
+            noise = audioCollector.lastest_noise;
+        }
+        Log.e(TAG, "getPresentContext: noise = " + noise);
         String app = appName;
         String device = latest_deviceType;
         Log.e("version", "1952");
@@ -400,7 +418,7 @@ public class ConfigContext extends BaseContext {
                         // record volume value difference and update
                         int diff = value - volume.put(database_key, value);
                         JSONUtils.jsonPut(json, "diff", diff);
-                        notifyContext(NEED_AUDIO, timestamp, logID, "volume change: " + database_key);
+//                        notifyContext(NEED_AUDIO, timestamp, logID, "volume change: " + database_key);
                         notifyContext(NEED_SCAN, timestamp, logID, "volume change: " + database_key);
 //                        String[] tmp = database_key.split("_");
 //                        String deviceType = "";
@@ -483,7 +501,7 @@ public class ConfigContext extends BaseContext {
                     case KeyEvent.KEYCODE_VOLUME_DOWN:
                     case KeyEvent.KEYCODE_VOLUME_MUTE:
                     case KeyEvent.KEYCODE_VOLUME_UP:
-                        notifyContext(NEED_AUDIO, timestamp, logID, "key event: " + KeyEvent.keyCodeToString(keycode));
+//                        notifyContext(NEED_AUDIO, timestamp, logID, "key event: " + KeyEvent.keyCodeToString(keycode));
                         notifyContext(NEED_SCAN, timestamp, logID, "key event: " + KeyEvent.keyCodeToString(keycode));
                         notifyContext(NEED_POSITION, timestamp, logID, "key event: " + KeyEvent.keyCodeToString(keycode));
 
