@@ -4,7 +4,6 @@ import android.content.Context;
 import android.media.AudioManager;
 import android.media.MediaRecorder;
 import android.os.Build;
-import android.os.Handler;
 import android.util.Log;
 
 import androidx.annotation.RequiresApi;
@@ -202,8 +201,8 @@ public class AudioCollector extends AsynchronousCollector {
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
-    public CompletableFuture<List<Double>> detectNoiseLevel(long period, int number) {
-        CompletableFuture<List<Double>> ft = new CompletableFuture<>();
+    public CompletableFuture<List<Integer>> getMaxAmplitudeSequence(long length, long period) {
+        CompletableFuture<List<Integer>> ft = new CompletableFuture<>();
         if (isCollecting.compareAndSet(false, true)) {
             try {
                 // check mic availability
@@ -229,26 +228,19 @@ public class AudioCollector extends AsynchronousCollector {
                         mMediaRecorder.setOutputFile("/dev/null");
                         mMediaRecorder.prepare();
                         mMediaRecorder.start();
-                        Log.e(TAG, String.format("detectNoiseLevel: MediaRecorder started, period: %dms number: %d", period, number));
+                        Log.e(TAG, String.format("getMaxAmplitudeSequence: MediaRecorder started, length: %dms period: %dms", length, period));
 
                         // first call returns 0
                         mMediaRecorder.getMaxAmplitude();
 
-                        List<Double> sampledNoise = new ArrayList<>();
+                        List<Integer> sampledNoise = new ArrayList<>();
+                        long start_time = System.currentTimeMillis();
                         repeatedSampleFt = scheduledExecutorService.scheduleAtFixedRate(() -> {
                             try {
-                                double BASE = 1.0;
                                 // Returns the maximum absolute amplitude that was sampled since the last call to this method
                                 int maxAmplitude = mMediaRecorder.getMaxAmplitude();
-                                double ratio = maxAmplitude / BASE;
-                                double db = 0;// 分贝
-                                if (ratio > 1)
-                                    db = 20 * Math.log10(ratio);
-                                Log.e(TAG, "detectNoiseLevel: " + String.format("maxAmplitude: %d ratio: %f db: %f", maxAmplitude, ratio, db));
-
-                                lastest_noise = db;
-                                sampledNoise.add(db);
-                                if (sampledNoise.size() == number) {
+                                sampledNoise.add(maxAmplitude);
+                                if (System.currentTimeMillis() - start_time >= length) {
                                     try {
                                         // may throw IllegalStateException because no valid audio data has been received
                                         mMediaRecorder.stop();
@@ -289,5 +281,59 @@ public class AudioCollector extends AsynchronousCollector {
         }
 
         return ft;
+    }
+
+    // get current noise level
+    @RequiresApi(api = Build.VERSION_CODES.N)
+    public CompletableFuture<Double> getNoiseLevel(long length, long period) {
+        return getMaxAmplitudeSequence(period, length).thenApply(seq -> {
+//            Log.e(TAG, "getNoiseLevel: seq: " + seq);
+            double BASE = 1.0;
+            double sum = 0.0;
+            int count = 0;
+
+            int idx = 0;
+            double db;
+            int next_idx;
+            double next_db;
+            int maxAmplitude = 0;
+
+            // 找到第一个非零值
+            while (idx < seq.size() && (maxAmplitude = seq.get(idx)) == 0) {
+                idx++;
+            }
+            if (idx >= seq.size()) {
+                // 没有非零值
+                return 0.0;
+            }
+            db = 20 * Math.log10(maxAmplitude / BASE);
+            next_idx = idx + 1;
+//            Log.e(TAG, "getNoiseLevel: " + String.format("idx: %d maxAmplitude: %d db: %f", idx, maxAmplitude, db));
+            // 采样为0时使用两边非零值线性插值
+            while (true) {
+                while (next_idx < seq.size() && (maxAmplitude = seq.get(next_idx)) == 0) {
+                    next_idx++;
+                }
+                if (next_idx >= seq.size()) {
+                    sum += db;
+                    count += 1;
+                    break;
+                }
+                next_db = 20 * Math.log10(maxAmplitude / BASE);
+                sum += db + (db + next_db) * 0.5 * (next_idx - idx - 1);
+                count += next_idx - idx;
+
+                idx = next_idx++;
+                db = next_db;
+
+//                Log.e(TAG, "getNoiseLevel: " + String.format("idx: %d maxAmplitude: %d db: %f", idx, maxAmplitude, db));
+            }
+
+            double average_noise = (count > 0)? (sum / count) : 0.0;
+            lastest_noise = average_noise;
+
+            Log.e(TAG, String.format("getNoiseLevel: %d sampled, average %fdb", count, average_noise));
+            return average_noise;
+        });
     }
 }

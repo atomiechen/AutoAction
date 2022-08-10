@@ -327,13 +327,11 @@ public class ConfigContext extends BaseContext {
                 wifiIds.add(key);
             }
         }
-//        double noise = AudioCollector.lastest_noise;
-        double noise = 0;
+        
+        double noise;
         try {
             // length: 300 is ok, 200 is not
-            List<Double> result = audioCollector.detectNoiseLevel(300, 1).get(500, TimeUnit.MILLISECONDS);
-            Log.e(TAG, "getPresentContext: noise seq " + result);
-            noise = result.get(0);
+            noise = audioCollector.getNoiseLevel(300, 10).get(500, TimeUnit.MILLISECONDS);
         } catch (ExecutionException | InterruptedException | TimeoutException e) {
             e.printStackTrace();
             Log.e(TAG, "getPresentContext: error happens");
