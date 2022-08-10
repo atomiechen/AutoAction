@@ -35,6 +35,8 @@ public class AudioCollector extends AsynchronousCollector {
     private List<Double> noiseCheckpoints;
     public double lastest_noise;
 
+    private ScheduledFuture<?> repeatedSampleFt;
+
     /*
       Error code:
         0: No error
@@ -200,9 +202,8 @@ public class AudioCollector extends AsynchronousCollector {
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
-    public CompletableFuture<Double> detectNoiseLevel(long length) {
-        Log.e(TAG, "detectNoiseLevel: start");
-        CompletableFuture<Double> ft = new CompletableFuture<>();
+    public CompletableFuture<List<Double>> detectNoiseLevel(long period, int number) {
+        CompletableFuture<List<Double>> ft = new CompletableFuture<>();
         if (isCollecting.compareAndSet(false, true)) {
             try {
                 // check mic availability
@@ -216,8 +217,6 @@ public class AudioCollector extends AsynchronousCollector {
                     ft.completeExceptionally(new CollectorException(6, "Mic not available: " + micMode));
                     isCollecting.set(false);
                 } else {
-                    Log.e(TAG, "detectNoiseLevel: try open MediaRecorder");
-
                     try {
                         mMediaRecorder = new MediaRecorder();
                         // may throw IllegalStateException due to lack of permission
@@ -230,12 +229,13 @@ public class AudioCollector extends AsynchronousCollector {
                         mMediaRecorder.setOutputFile("/dev/null");
                         mMediaRecorder.prepare();
                         mMediaRecorder.start();
-                        Log.e(TAG, "detectNoiseLevel: MediaRecorder started, length: " + length + " ms");
+                        Log.e(TAG, String.format("detectNoiseLevel: MediaRecorder started, period: %dms number: %d", period, number));
 
                         // first call returns 0
                         mMediaRecorder.getMaxAmplitude();
 
-                        futureList.add(scheduledExecutorService.schedule(() -> {
+                        List<Double> sampledNoise = new ArrayList<>();
+                        repeatedSampleFt = scheduledExecutorService.scheduleAtFixedRate(() -> {
                             try {
                                 double BASE = 1.0;
                                 // Returns the maximum absolute amplitude that was sampled since the last call to this method
@@ -244,33 +244,34 @@ public class AudioCollector extends AsynchronousCollector {
                                 double db = 0;// 分贝
                                 if (ratio > 1)
                                     db = 20 * Math.log10(ratio);
-                                Log.e(TAG, "detectNoiseLevel: maxAmplitude: " + maxAmplitude);
-                                Log.e(TAG, "detectNoiseLevel: ratio: " + ratio);
-                                Log.e(TAG, "detectNoiseLevel: db: " + db);
-
-                                try {
-                                    // may throw IllegalStateException because no valid audio data has been received
-                                    mMediaRecorder.stop();
-                                } catch (Exception e) {
-                                    e.printStackTrace();
-                                }
-                                try {
-                                    mMediaRecorder.release();
-                                } catch (Exception e) {
-                                    e.printStackTrace();
-                                }
-                                mMediaRecorder = null;
+                                Log.e(TAG, "detectNoiseLevel: " + String.format("maxAmplitude: %d ratio: %f db: %f", maxAmplitude, ratio, db));
 
                                 lastest_noise = db;
-                                ft.complete(db);
+                                sampledNoise.add(db);
+                                if (sampledNoise.size() == number) {
+                                    try {
+                                        // may throw IllegalStateException because no valid audio data has been received
+                                        mMediaRecorder.stop();
+                                    } catch (Exception e) {
+                                        e.printStackTrace();
+                                    }
+                                    try {
+                                        mMediaRecorder.release();
+                                    } catch (Exception e) {
+                                        e.printStackTrace();
+                                    }
+                                    mMediaRecorder = null;
+                                    ft.complete(sampledNoise);
+                                    repeatedSampleFt.cancel(false);
+                                }
                             } catch (Exception e) {
                                 e.printStackTrace();
                                 ft.completeExceptionally(new CollectorException(5, e));
                             } finally {
                                 isCollecting.set(false);
-                                Log.e(TAG, "detectNoiseLevel: complete result");
                             }
-                        }, length, TimeUnit.MILLISECONDS));
+                        }, period, period, TimeUnit.MILLISECONDS);
+                        futureList.add(repeatedSampleFt);
 
                     } catch (Exception e) {
                         ft.completeExceptionally(new CollectorException(7, e));

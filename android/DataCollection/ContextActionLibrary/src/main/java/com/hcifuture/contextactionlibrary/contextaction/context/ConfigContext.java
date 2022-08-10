@@ -331,7 +331,9 @@ public class ConfigContext extends BaseContext {
         double noise = 0;
         try {
             // length: 300 is ok, 200 is not
-            noise = audioCollector.detectNoiseLevel(300).get(500, TimeUnit.MILLISECONDS);
+            List<Double> result = audioCollector.detectNoiseLevel(300, 1).get(500, TimeUnit.MILLISECONDS);
+            Log.e(TAG, "getPresentContext: noise seq " + result);
+            noise = result.get(0);
         } catch (ExecutionException | InterruptedException | TimeoutException e) {
             e.printStackTrace();
             Log.e(TAG, "getPresentContext: error happens");
@@ -548,6 +550,9 @@ public class ConfigContext extends BaseContext {
             rules = getRules(volumeContext, type);
             onRequest(rules);
             isVolumeOn = true;
+            Log.e(TAG, "toTapTapHelper: Volume UI pops up, type: " + type);
+        } else {
+            Log.e(TAG, "toTapTapHelper: not pop up because already on");
         }
     }
 
@@ -574,13 +579,13 @@ public class ConfigContext extends BaseContext {
             if (from == 1) {
                 int behavior = bundle.getInt("behavior");
                 double finalVolume = bundle.getDouble("finalVolume");
-                Log.e("from PAIPAI_HELPER", "from:" + from + ", behavior:" + behavior + ", finalVolume:" + finalVolume);
+                Log.e(TAG, "from PAIPAI_HELPER from:" + from + ", behavior:" + behavior + ", finalVolume:" + finalVolume);
                 isVolumeOn = false;
             } else if (from == 2) {
                 int editedRank = bundle.getInt("editedRank");
                 boolean action = bundle.getBoolean("action");
                 double finalVolume = bundle.getDouble("finalVolume");
-                Log.e("from PAIPAI_HELPER", "from:" + from + ", editedRank:" + editedRank + ", action:" + action + ", finalVolume:" + finalVolume);
+                Log.e(TAG, "from PAIPAI_HELPER from:" + from + ", editedRank:" + editedRank + ", action:" + action + ", finalVolume:" + finalVolume);
                 isVolumeOn = false;
             }
         }
