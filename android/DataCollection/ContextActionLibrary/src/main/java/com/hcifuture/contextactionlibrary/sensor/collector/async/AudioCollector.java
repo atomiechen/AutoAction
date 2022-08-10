@@ -217,6 +217,8 @@ public class AudioCollector extends AsynchronousCollector {
                     isCollecting.set(false);
                 } else {
                     try {
+                        long start_time = System.currentTimeMillis();
+
                         mMediaRecorder = new MediaRecorder();
                         // may throw IllegalStateException due to lack of permission
                         mMediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
@@ -234,13 +236,12 @@ public class AudioCollector extends AsynchronousCollector {
                         mMediaRecorder.getMaxAmplitude();
 
                         List<Integer> sampledNoise = new ArrayList<>();
-                        long start_time = System.currentTimeMillis();
                         repeatedSampleFt = scheduledExecutorService.scheduleAtFixedRate(() -> {
                             try {
                                 // Returns the maximum absolute amplitude that was sampled since the last call to this method
                                 int maxAmplitude = mMediaRecorder.getMaxAmplitude();
                                 sampledNoise.add(maxAmplitude);
-                                if (System.currentTimeMillis() - start_time >= length) {
+                                if (System.currentTimeMillis() - start_time + period > length) {
                                     try {
                                         // may throw IllegalStateException because no valid audio data has been received
                                         mMediaRecorder.stop();
@@ -255,11 +256,12 @@ public class AudioCollector extends AsynchronousCollector {
                                     mMediaRecorder = null;
                                     ft.complete(sampledNoise);
                                     repeatedSampleFt.cancel(false);
+                                    isCollecting.set(false);
                                 }
                             } catch (Exception e) {
                                 e.printStackTrace();
                                 ft.completeExceptionally(new CollectorException(5, e));
-                            } finally {
+                                repeatedSampleFt.cancel(false);
                                 isCollecting.set(false);
                             }
                         }, period, period, TimeUnit.MILLISECONDS);
@@ -286,7 +288,7 @@ public class AudioCollector extends AsynchronousCollector {
     // get current noise level
     @RequiresApi(api = Build.VERSION_CODES.N)
     public CompletableFuture<Double> getNoiseLevel(long length, long period) {
-        return getMaxAmplitudeSequence(period, length).thenApply(seq -> {
+        return getMaxAmplitudeSequence(length, period).thenApply(seq -> {
 //            Log.e(TAG, "getNoiseLevel: seq: " + seq);
             double BASE = 1.0;
             double sum = 0.0;
