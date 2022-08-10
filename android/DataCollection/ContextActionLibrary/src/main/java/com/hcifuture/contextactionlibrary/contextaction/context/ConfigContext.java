@@ -89,6 +89,8 @@ public class ConfigContext extends BaseContext {
     private AudioCollector audioCollector;
 
     private boolean isVolumeOn = false;
+    private ScheduledFuture<?> scheduledNoiseDetection;
+    private double lastNoise = 0;
 
     public ConfigContext(Context context, ContextConfig config, RequestListener requestListener, List<ContextListener> contextListener, LogCollector logCollector, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, CollectorManager collectorManager) {
         super(context, config, requestListener, contextListener, scheduledExecutorService, futureList);
@@ -129,6 +131,20 @@ public class ConfigContext extends BaseContext {
         volume.put("volume_tts_bt_a2dp", 0);
 
         last_record_all = 0;
+
+        long period = 30000;  // detect noise every 30s
+        Log.e(TAG, "schedule periodic noise detection");
+        scheduledNoiseDetection = scheduledExecutorService.scheduleAtFixedRate(() -> {
+            try {
+                Log.e(TAG, "start to detect noise level");
+                lastNoise = audioCollector.getNoiseLevel(5000, 10).get(5020, TimeUnit.MILLISECONDS);
+                // adjust volume according to noise
+                Log.e(TAG, "noise level detected: " + lastNoise);
+            } catch (Exception e) {
+                Log.e(TAG, "error during noise detection: " + e);
+            }
+        }, 5000, period, TimeUnit.MILLISECONDS);
+        futureList.add(scheduledNoiseDetection);
     }
 
     public Location getDormitoryPos() {
@@ -328,15 +344,15 @@ public class ConfigContext extends BaseContext {
             }
         }
         
-        double noise;
-        try {
-            // length: 300 is ok, 200 is not
-            noise = audioCollector.getNoiseLevel(300, 10).get(500, TimeUnit.MILLISECONDS);
-        } catch (ExecutionException | InterruptedException | TimeoutException e) {
-            e.printStackTrace();
-            Log.e(TAG, "getPresentContext: error happens");
-            noise = audioCollector.lastest_noise;
-        }
+        double noise = lastNoise;
+//        try {
+//            // length: 300 is ok, 200 is not
+//            noise = audioCollector.getNoiseLevel(300, 10).get(500, TimeUnit.MILLISECONDS);
+//        } catch (ExecutionException | InterruptedException | TimeoutException e) {
+//            e.printStackTrace();
+//            Log.e(TAG, "getPresentContext: error happens");
+//            noise = audioCollector.lastest_noise;
+//        }
         Log.e(TAG, "getPresentContext: noise = " + noise);
         String app = appName;
         String device = latest_deviceType;
