@@ -30,7 +30,9 @@ import com.hcifuture.contextactionlibrary.sensor.data.SingleWifiData;
 import com.hcifuture.contextactionlibrary.utils.JSONUtils;
 import com.hcifuture.contextactionlibrary.volume.AppList;
 import com.hcifuture.contextactionlibrary.volume.Location;
+import com.hcifuture.contextactionlibrary.volume.VolEventListener;
 import com.hcifuture.contextactionlibrary.volume.VolumeContext;
+import com.hcifuture.contextactionlibrary.volume.NoiseManager;
 import com.hcifuture.contextactionlibrary.volume.VolumeRuleManager;
 import com.hcifuture.shared.communicate.config.ContextConfig;
 import com.hcifuture.contextactionlibrary.contextaction.event.BroadcastEvent;
@@ -51,17 +53,15 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import androidx.annotation.RequiresApi;
 
 @RequiresApi(api = Build.VERSION_CODES.N)
-public class ConfigContext extends BaseContext {
+public class ConfigContext extends BaseContext implements VolEventListener {
 
     private static final String TAG = "ConfigContext";
 
@@ -85,22 +85,16 @@ public class ConfigContext extends BaseContext {
 
     private final AtomicInteger mLogID = new AtomicInteger(0);
 
-    private CollectorManager collectorManager;
-    private AudioCollector audioCollector;
-
     private boolean isVolumeOn = false;
-    private ScheduledFuture<?> scheduledNoiseDetection;
-    private double lastNoise = 0;
+    private NoiseManager noiseManager;
 
     public ConfigContext(Context context, ContextConfig config, RequestListener requestListener, List<ContextListener> contextListener, LogCollector logCollector, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, CollectorManager collectorManager) {
         super(context, config, requestListener, contextListener, scheduledExecutorService, futureList);
         this.logCollector = logCollector;
 
-        // get references of used sensor collectors
-        this.collectorManager = collectorManager;
-        this.audioCollector = (AudioCollector) collectorManager.getCollector(CollectorManager.CollectorType.Audio);
-
         volumeRuleManager = new VolumeRuleManager();
+        noiseManager = new NoiseManager(scheduledExecutorService, futureList, (AudioCollector) collectorManager.getCollector(CollectorManager.CollectorType.Audio), this);
+        noiseManager.start();
 
         // initialize
         appName = "";
@@ -132,19 +126,6 @@ public class ConfigContext extends BaseContext {
 
         last_record_all = 0;
 
-        long period = 30000;  // detect noise every 30s
-        Log.e(TAG, "schedule periodic noise detection");
-        scheduledNoiseDetection = scheduledExecutorService.scheduleAtFixedRate(() -> {
-            try {
-                Log.e(TAG, "start to detect noise level");
-                lastNoise = audioCollector.getNoiseLevel(5000, 10).get(5020, TimeUnit.MILLISECONDS);
-                // adjust volume according to noise
-                Log.e(TAG, "noise level detected: " + lastNoise);
-            } catch (Exception e) {
-                Log.e(TAG, "error during noise detection: " + e);
-            }
-        }, 5000, period, TimeUnit.MILLISECONDS);
-        futureList.add(scheduledNoiseDetection);
     }
 
     public Location getDormitoryPos() {
@@ -344,7 +325,7 @@ public class ConfigContext extends BaseContext {
             }
         }
         
-        double noise = lastNoise;
+        double noise = noiseManager.lastNoise;
 //        try {
 //            // length: 300 is ok, 200 is not
 //            noise = audioCollector.getNoiseLevel(300, 10).get(500, TimeUnit.MILLISECONDS);
@@ -688,6 +669,20 @@ public class ConfigContext extends BaseContext {
                 contextResult.getExtras().putInt("logID", logID);
                 listener.onContext(contextResult);
             }
+        }
+    }
+
+    @Override
+    public void onVolEvent(EventType eventType, Bundle bundle) {
+        switch (eventType) {
+            case Noise:
+                double noise = bundle.getDouble("noise");
+                // TODO: map noise to volume and adjust
+                break;
+            // TODO
+            case Device:
+            case App:
+            case Position:
         }
     }
 }
