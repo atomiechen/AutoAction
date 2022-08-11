@@ -6,6 +6,8 @@ import android.util.Log;
 
 import androidx.annotation.RequiresApi;
 
+import com.hcifuture.contextactionlibrary.sensor.collector.Collector;
+import com.hcifuture.contextactionlibrary.sensor.collector.CollectorResult;
 import com.hcifuture.contextactionlibrary.sensor.collector.async.GPSCollector;
 import com.hcifuture.contextactionlibrary.sensor.collector.async.WifiCollector;
 import com.hcifuture.contextactionlibrary.sensor.data.GPSData;
@@ -15,9 +17,12 @@ import com.hcifuture.contextactionlibrary.sensor.trigger.TriggerConfig;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 public class PositionManager {
     private static final String TAG = "PositionManager";
@@ -103,11 +108,12 @@ public class PositionManager {
 
     @RequiresApi(api = Build.VERSION_CODES.N)
     public String scanAndGetId() {
-        // TODO
-        futureList.add(scheduledExecutorService.schedule(() -> {
-            scanAndUpdate();
-        }, 0, TimeUnit.MILLISECONDS));
-        return lastPosition.getId();
+        try {
+            return scanAndUpdate().get().getId();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return "ERROR";
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
@@ -121,43 +127,57 @@ public class PositionManager {
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
-    public void scanAndUpdate() {
-        try {
-            Log.e(TAG, "start to detect position");
-            GPSData gpsData = (GPSData) gpsCollector.getData(new TriggerConfig()).get(4000, TimeUnit.MILLISECONDS).getData();
-            WifiData wifiData = (WifiData) wifiCollector.getData(new TriggerConfig()).get(11000, TimeUnit.MILLISECONDS).getData();
+    public CompletableFuture<Position> scanAndUpdate() {
+        CompletableFuture<Position> ft = new CompletableFuture<>();
 
-            List<String> wifiIds = new ArrayList<>();
-            if (wifiData != null) {
-                List<SingleWifiData> singleWifiDataList = wifiData.getAps();
-                for (SingleWifiData singleWifiData: singleWifiDataList) {
-                    String key = singleWifiData.getSsid() + singleWifiData.getBssid();
-                    wifiIds.add(key);
+        Log.e(TAG, "start to detect position");
+        List<CompletableFuture<CollectorResult>> fts = new ArrayList<>();
+        fts.add(gpsCollector.getData(new TriggerConfig()));
+        fts.add(wifiCollector.getData(new TriggerConfig()));
+        CompletableFuture<Void> allFutures = CompletableFuture.allOf(fts.toArray(new CompletableFuture[0]));
+        allFutures.thenAccept(v -> {
+            try {
+                GPSData gpsData = (GPSData) fts.get(0).get().getData();
+                WifiData wifiData = (WifiData) fts.get(1).get().getData();
+                List<String> wifiIds = new ArrayList<>();
+                if (wifiData != null) {
+                    List<SingleWifiData> singleWifiDataList = wifiData.getAps();
+                    for (SingleWifiData singleWifiData: singleWifiDataList) {
+                        String key = singleWifiData.getSsid() + singleWifiData.getBssid();
+                        wifiIds.add(key);
+                    }
                 }
+                double latitude = -200;
+                double longitude = -200;
+                if (gpsData != null) {
+                    latitude = gpsData.getLatitude();
+                    longitude = gpsData.getLongitude();
+                }
+                Position position = new Position("" + System.currentTimeMillis(), "unknown", latitude, longitude, wifiIds);
+                if (lastPosition == null || !lastPosition.sameAs(position)) {
+                    // 查找是否是新地点
+                    Position tmp = findInList(position);
+                    if (tmp == null) {
+                        positions.add(position);
+                        tmp = position;
+                    }
+                    // 更新地点历史
+                    if (history.size() > 0) {
+                        HistoryItem historyItem = history.get(history.size() - 1);
+                        historyItem.setOutTime(System.currentTimeMillis());
+                        history.remove(history.size() - 1);
+                        history.add(historyItem);
+                    }
+                    history.add(new HistoryItem(tmp.getId(), System.currentTimeMillis(), -1));
+                    lastPosition = tmp;
+                }
+                ft.complete(lastPosition);
+            } catch (Exception e) {
+                e.printStackTrace();
             }
-            double latitude = gpsData.getLatitude();
-            double longitude = gpsData.getLongitude();
-            Position position = new Position("" + System.currentTimeMillis(), "unknown", latitude, longitude, wifiIds);
-            if (lastPosition == null || !lastPosition.sameAs(position)) {
-                // 查找是否是新地点
-                Position tmp = findInList(position);
-                if (tmp == null) {
-                    positions.add(position);
-                    tmp = position;
-                }
-                // 更新地点历史
-                if (history.size() > 0) {
-                    HistoryItem historyItem = history.get(history.size() - 1);
-                    historyItem.setOutTime(System.currentTimeMillis());
-                    history.remove(history.size() - 1);
-                    history.add(historyItem);
-                }
-                history.add(new HistoryItem(tmp.getId(), System.currentTimeMillis(), -1));
-                lastPosition = tmp;
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "error during position detection: " + e);
-        }
+        });
+
+        return ft;
     }
 
     public Position findInList(Position position) {
