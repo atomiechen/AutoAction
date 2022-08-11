@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public abstract class Collector {
 
-    protected static final Gson gson = new GsonBuilder().disableHtmlEscaping()
+    public static final Gson gson = new GsonBuilder().disableHtmlEscaping()
             .registerTypeAdapter(Bundle.class, GsonUtils.bundleSerializer)
             .registerTypeAdapter(ScanResult.class, GsonUtils.scanResultSerializer)
             .registerTypeAdapter(new TypeToken<SparseArray<byte[]>>(){}.getType(), new GsonUtils.SparseArraySerializer<byte[]>())

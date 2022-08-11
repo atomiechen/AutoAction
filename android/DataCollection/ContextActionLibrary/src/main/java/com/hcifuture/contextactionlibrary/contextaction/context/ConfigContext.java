@@ -67,6 +67,8 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
     private static final String TAG = "ConfigContext";
 
+    public static String VOLUME_SAVE_FOLDER;
+    
     public static String NEED_AUDIO = "context.config.need_audio";
     public static String NEED_NONIMU = "context.config.need_nonimu";
     public static String NEED_SCAN = "context.config.need_scan";
@@ -95,8 +97,11 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         super(context, config, requestListener, contextListener, scheduledExecutorService, futureList);
         this.logCollector = logCollector;
 
+        VOLUME_SAVE_FOLDER = context.getExternalMediaDirs()[0].getAbsolutePath() + "/Data/Volume/";
+
         volumeRuleManager = new VolumeRuleManager();
-        noiseManager = new NoiseManager(scheduledExecutorService, futureList, (AudioCollector) collectorManager.getCollector(CollectorManager.CollectorType.Audio), this);
+        noiseManager = new NoiseManager(scheduledExecutorService, futureList,
+                (AudioCollector) collectorManager.getCollector(CollectorManager.CollectorType.Audio), this);
         noiseManager.start();
 
         appManager = new AppManager(this);
