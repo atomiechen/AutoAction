@@ -113,7 +113,7 @@ public class ContextActionContainer implements ActionListener, ContextListener {
     private ScheduledExecutorService scheduledExecutorService;
     private final List<ScheduledFuture<?>> futureList;
     private HandlerThread handlerThread;
-    private Handler handler;
+    public static Handler handler;
 
     private ScheduledFuture<?> actionFuture;
     private ScheduledFuture<?> contextFuture;
