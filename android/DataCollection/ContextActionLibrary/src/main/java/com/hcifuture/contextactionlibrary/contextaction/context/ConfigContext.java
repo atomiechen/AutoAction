@@ -73,9 +73,6 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     public static String NEED_SCAN = "context.config.need_scan";
     public static String NEED_POSITION = "context.config.need_position";
 
-    private String last_appName;
-    private String last_valid_widget;
-    private boolean overlay_has_showed_for_other_reason;
     private String appName;
     private String latest_deviceType;
     private Bundle rules;
@@ -113,10 +110,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
         // initialize
         appName = "";
-        last_appName = "";
         setDeviceType();
-        last_valid_widget = "";
-        overlay_has_showed_for_other_reason = true;
         brightness = 0;
         volume = new HashMap<>();
         // speaker
