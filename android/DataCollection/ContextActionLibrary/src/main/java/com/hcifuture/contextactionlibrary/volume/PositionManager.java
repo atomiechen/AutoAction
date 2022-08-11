@@ -6,6 +6,9 @@ import android.util.Log;
 
 import androidx.annotation.RequiresApi;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+import com.hcifuture.contextactionlibrary.contextaction.context.ConfigContext;
 import com.hcifuture.contextactionlibrary.sensor.collector.Collector;
 import com.hcifuture.contextactionlibrary.sensor.collector.CollectorResult;
 import com.hcifuture.contextactionlibrary.sensor.collector.async.GPSCollector;
@@ -14,7 +17,11 @@ import com.hcifuture.contextactionlibrary.sensor.data.GPSData;
 import com.hcifuture.contextactionlibrary.sensor.data.SingleWifiData;
 import com.hcifuture.contextactionlibrary.sensor.data.WifiData;
 import com.hcifuture.contextactionlibrary.sensor.trigger.TriggerConfig;
+import com.hcifuture.contextactionlibrary.sensor.uploader.TaskMetaBean;
+import com.hcifuture.contextactionlibrary.utils.FileUtils;
 
+import java.io.File;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -39,6 +46,7 @@ public class PositionManager {
     private List<HistoryItem> history;
     private Position lastPosition;
 
+    @RequiresApi(api = Build.VERSION_CODES.N)
     public PositionManager(ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, GPSCollector gpsCollector, WifiCollector wifiCollector, VolEventListener volEventListener) {
         this.volEventListener = volEventListener;
         this.scheduledExecutorService = scheduledExecutorService;
@@ -72,22 +80,36 @@ public class PositionManager {
         public void setOutTime(long outTime) { this.outTime = outTime; }
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.N)
     public List<Position> getPositionsFromFile() {
-        // TODO
-        return new ArrayList<>();
+        Type type = new TypeToken<List<Position>>(){}.getType();
+        List<Position> result = Collector.gson.fromJson(
+                FileUtils.getFileContent(ConfigContext.VOLUME_SAVE_FOLDER + "position.json"),
+                type
+        );
+        return result;
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.N)
     public void writePositionsToFile() {
-        // TODO
+        String result = Collector.gson.toJson(positions);
+        FileUtils.writeStringToFile(result, new File(ConfigContext.VOLUME_SAVE_FOLDER + "position.json"));
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.N)
     public List<HistoryItem> getPositionHistoryFromFile() {
-        // TODO
-        return new ArrayList<>();
+        Type type = new TypeToken<List<HistoryItem>>(){}.getType();
+        List<HistoryItem> result = Collector.gson.fromJson(
+                FileUtils.getFileContent(ConfigContext.VOLUME_SAVE_FOLDER + "position_history.json"),
+                type
+        );
+        return result;
     }
 
-    public void writePositionHistoryToFile() {
-        // TODO
+    @RequiresApi(api = Build.VERSION_CODES.N)
+    public void writeHistoryToFile() {
+        String result = Collector.gson.toJson(history);
+        FileUtils.writeStringToFile(result, new File(ConfigContext.VOLUME_SAVE_FOLDER + "position_history.json"));
     }
 
     public List<String> getPositionList() {
@@ -159,6 +181,7 @@ public class PositionManager {
                     Position tmp = findInList(position);
                     if (tmp == null) {
                         positions.add(position);
+                        writePositionsToFile();
                         tmp = position;
                     }
                     // 更新地点历史
@@ -169,6 +192,13 @@ public class PositionManager {
                         history.add(historyItem);
                     }
                     history.add(new HistoryItem(tmp.getId(), System.currentTimeMillis(), -1));
+                    writeHistoryToFile();
+                    if (lastPosition != null) {
+                        Bundle bundle = new Bundle();
+                        bundle.putString("id", tmp.getId());
+                        bundle.putString("name", tmp.getName());
+                        volEventListener.onVolEvent(VolEventListener.EventType.Position, bundle);
+                    }
                     lastPosition = tmp;
                 }
                 ft.complete(lastPosition);

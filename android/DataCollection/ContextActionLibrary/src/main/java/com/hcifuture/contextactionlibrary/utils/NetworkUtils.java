@@ -5,7 +5,7 @@ import android.net.Uri;
 import android.util.Log;
 import android.webkit.MimeTypeMap;
 
-import com.hcifuture.contextactionlibrary.BuildConfig;
+//import com.hcifuture.contextactionlibrary.BuildConfig;
 import com.google.gson.Gson;
 import com.hcifuture.contextactionlibrary.sensor.uploader.UploadTask;
 
