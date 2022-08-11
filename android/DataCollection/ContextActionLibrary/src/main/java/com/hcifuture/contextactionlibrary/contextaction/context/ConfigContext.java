@@ -29,6 +29,7 @@ import com.hcifuture.contextactionlibrary.sensor.data.SingleIMUData;
 import com.hcifuture.contextactionlibrary.sensor.data.SingleWifiData;
 import com.hcifuture.contextactionlibrary.utils.JSONUtils;
 import com.hcifuture.contextactionlibrary.volume.AppList;
+import com.hcifuture.contextactionlibrary.volume.AppManager;
 import com.hcifuture.contextactionlibrary.volume.Location;
 import com.hcifuture.contextactionlibrary.volume.VolEventListener;
 import com.hcifuture.contextactionlibrary.volume.VolumeContext;
@@ -87,6 +88,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
     private boolean isVolumeOn = false;
     private NoiseManager noiseManager;
+    private AppManager appManager;
 
     public ConfigContext(Context context, ContextConfig config, RequestListener requestListener, List<ContextListener> contextListener, LogCollector logCollector, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, CollectorManager collectorManager) {
         super(context, config, requestListener, contextListener, scheduledExecutorService, futureList);
@@ -95,6 +97,8 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         volumeRuleManager = new VolumeRuleManager();
         noiseManager = new NoiseManager(scheduledExecutorService, futureList, (AudioCollector) collectorManager.getCollector(CollectorManager.CollectorType.Audio), this);
         noiseManager.start();
+
+        appManager = new AppManager(this);
 
         // initialize
         appName = "";
@@ -225,85 +229,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
-        if (event.getPackageName() != null && event.getPackageName().toString().equals("com.hcifuture.scanner"))
-            return;
-        if (event.getText() != null && event.getText().size() > 0) {
-            String tmp_name = event.getText().get(0).toString();
-            if (isValidApp(tmp_name) || isNeedNotOverlayApp(tmp_name)) {
-                appName = tmp_name;
-                if (!(appName.equals(last_appName))) {
-                    if (isValidApp(appName) && !(event.getClassName() != null && AppList.video_widgets.contains(event.getClassName().toString()))) {
-                        long now = System.currentTimeMillis();
-                        int logID = incLogID();
-//                        notifyContext(NEED_AUDIO, now, logID, "app changed from " + appName + " to " + last_appName);
-                        notifyContext(NEED_SCAN, now, logID, "app changed from " + appName + " to " + last_appName);
-                        notifyContext(NEED_POSITION, now, logID, "app changed from " + appName + " to " + last_appName);
-
-                        toTapTapHelper(1);
-                        overlay_has_showed_for_other_reason = true;
-                    }
-                    last_appName = appName;
-                }
-            }
-        }
-        if (event.getClassName() != null) {
-            Log.e("AccessibilityEventType", event.getClassName().toString() + "--------------------------");
-            Log.e("Event", event.toString());
-            if (event.getText() != null && event.getText().size() > 0)
-                Log.e("EventText", event.getText().get(0).toString());
-            if (AppList.video_widgets.contains(event.getClassName().toString())) {
-                long now = System.currentTimeMillis();
-                if (overlay_has_showed_for_other_reason || !last_valid_widget.equals(event.getClassName().toString())) {
-                    overlay_has_showed_for_other_reason = false;
-                    last_valid_widget = event.getClassName().toString();
-                    int logID = incLogID();
-//                    notifyContext(NEED_AUDIO, now, logID, "widget changed: " + event.getClassName().toString());
-                    notifyContext(NEED_SCAN, now, logID, "widget changed: " + event.getClassName().toString());
-                    notifyContext(NEED_POSITION, now, logID, "widget changed: " + event.getClassName().toString());
-
-                    toTapTapHelper(1);
-                } // 通过这种方式
-            }
-            if (AppList.blank_widgets.contains(event.getClassName().toString())) {
-                overlay_has_showed_for_other_reason = true;
-            }
-        }
-    }
-
-    public boolean isValidApp(String _name) {
-        for (String name: AppList.video_appNames) {
-            if (name.equals(_name))
-                return true;
-        }
-        for (String name: AppList.information_appNames) {
-            if (name.equals(_name))
-                return true;
-        }
-        for (String name: AppList.meeting_appNames) {
-            if (name.equals(_name))
-                return true;
-        }
-        for (String name: AppList.social_appNames) {
-            if (name.equals(_name))
-                return true;
-        }
-        for (String name: AppList.music_appNames) {
-            if (name.equals(_name))
-                return true;
-        }
-        for (String name: AppList.others_appNames) {
-            if (name.equals(_name))
-                return true;
-        }
-        return false;
-    }
-
-    public boolean isNeedNotOverlayApp(String _name) {
-        for (String name: AppList.neednot_overlay_appNames) {
-            if (name.equals(_name))
-                return true;
-        }
-        return false;
+        appManager.onAccessibilityEvent(event);
     }
 
     public VolumeContext getPresentContext() {
@@ -337,7 +263,6 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         Log.e(TAG, "getPresentContext: noise = " + noise);
         String app = appName;
         String device = latest_deviceType;
-        Log.e("version", "1952");
         Log.e("noise", "" + noise);
         Log.e("device", device);
         Log.e("latitude", "" + latitude);
