@@ -544,13 +544,23 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         switch (eventType) {
             case Noise:
                 double noise = bundle.getDouble("noise");
+                Log.e(TAG, "onVolEvent: " + eventType + " " + noise);
                 // TODO: map noise to volume and adjust
                 break;
+            // TODO: adjust mapping function
             case Device:
                 String deviceID = bundle.getString("deviceID");
-                // TODO: adjust mapping function
+                Log.e(TAG, "onVolEvent: " + eventType + " " + deviceID);
+                break;
             case App:
+                String appID = bundle.getString("app");
+                Log.e(TAG, "onVolEvent: " + eventType + " " + appID);
+                break;
             case Position:
+                String positionID = bundle.getString("id");
+                String positionName = bundle.getString("name");
+                Log.e(TAG, "onVolEvent: " + eventType + " " + positionID + " " + positionName);
+                break;
         }
     }
 }

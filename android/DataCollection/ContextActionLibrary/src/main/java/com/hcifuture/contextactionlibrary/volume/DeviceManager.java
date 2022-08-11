@@ -17,6 +17,7 @@ import android.util.Log;
 import com.hcifuture.contextactionlibrary.contextaction.ContextActionContainer;
 import com.hcifuture.contextactionlibrary.contextaction.event.BroadcastEvent;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledExecutorService;
@@ -43,6 +44,7 @@ public class DeviceManager {
 //    AudioDeviceCallback audioDeviceCallback;
     MediaRouter.Callback routerCallback;
     private String currentDeviceID;
+    private List<String> deviceIDs = new ArrayList<>();
 
     @RequiresApi(api = Build.VERSION_CODES.N)
     public DeviceManager(Context context, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, VolEventListener volEventListener) {
@@ -120,6 +122,7 @@ public class DeviceManager {
             @Override
             public void onReceive(Context context, Intent intent) {
                 String action = intent.getAction();
+                Log.e(TAG, "onReceive " + action);
                 switch (action) {
                     case Intent.ACTION_HEADSET_PLUG:
                     case BluetoothDevice.ACTION_ACL_DISCONNECTED:
@@ -140,14 +143,23 @@ public class DeviceManager {
     public void start() {
 //        audioManager.registerAudioDeviceCallback(audioDeviceCallback, handler);
         mediaRouter.addCallback(MediaRouter.ROUTE_TYPE_LIVE_AUDIO, routerCallback, MediaRouter.CALLBACK_FLAG_UNFILTERED_EVENTS);
-        futureList.add(scheduledDeviceDetection = scheduledExecutorService.scheduleAtFixedRate(this::checkDevice, 3000, 60000, TimeUnit.MILLISECONDS));
         context.registerReceiver(broadcastReceiver, intentFilter, null, ContextActionContainer.handler);
+        futureList.add(scheduledDeviceDetection = scheduledExecutorService.scheduleAtFixedRate(this::checkDevice, 3000, 60000, TimeUnit.MILLISECONDS));
     }
 
     public void stop() {
 //        audioManager.unregisterAudioDeviceCallback(audioDeviceCallback);
-        mediaRouter.removeCallback(routerCallback);
         scheduledDeviceDetection.cancel(true);
+        try {
+            context.unregisterReceiver(broadcastReceiver);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        try {
+            mediaRouter.removeCallback(routerCallback);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     public MediaRouter.RouteInfo getCurrentRouteInfo() {
@@ -187,6 +199,10 @@ public class DeviceManager {
         if (!currentDeviceID.equals(deviceID)) {
             Bundle bundle = new Bundle();
             bundle.putString("deviceID", deviceID);
+            if (!deviceIDs.contains(deviceID)) {
+                deviceIDs.add(deviceID);
+                // TODO
+            }
             volEventListener.onVolEvent(VolEventListener.EventType.Device, bundle);
             currentDeviceID = deviceID;
         }
