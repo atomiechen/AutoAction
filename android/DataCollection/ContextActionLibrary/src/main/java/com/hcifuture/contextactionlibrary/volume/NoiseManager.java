@@ -15,7 +15,7 @@ import androidx.annotation.RequiresApi;
 
 public class NoiseManager {
 
-    private static final String TAG = "VolumeController";
+    private static final String TAG = "NoiseManager";
     ScheduledExecutorService scheduledExecutorService;
     List<ScheduledFuture<?>> futureList;
     private AudioCollector audioCollector;
