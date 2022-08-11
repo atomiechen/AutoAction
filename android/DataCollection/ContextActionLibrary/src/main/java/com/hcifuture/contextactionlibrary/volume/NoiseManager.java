@@ -22,6 +22,8 @@ public class NoiseManager {
     private VolEventListener volEventListener;
 
     private ScheduledFuture<?> scheduledNoiseDetection;
+    private long initialDelay = 5000;
+    private long period = 30000;  // detect noise every 30s
     public double lastNoise = 0;
     private final double threshold = 20;
 
@@ -34,7 +36,7 @@ public class NoiseManager {
 
     @RequiresApi(api = Build.VERSION_CODES.N)
     public void start() {
-        long period = 30000;  // detect noise every 30s
+        // detect noise periodically
         Log.e(TAG, "schedule periodic noise detection");
         scheduledNoiseDetection = scheduledExecutorService.scheduleAtFixedRate(() -> {
             try {
@@ -46,11 +48,12 @@ public class NoiseManager {
                     Bundle bundle = new Bundle();
                     bundle.putDouble("noise", noise);
                     volEventListener.onVolEvent(VolEventListener.EventType.Noise, bundle);
+                    lastNoise = noise;
                 }
             } catch (Exception e) {
                 Log.e(TAG, "error during noise detection: " + e);
             }
-        }, 5000, period, TimeUnit.MILLISECONDS);
+        }, initialDelay, period, TimeUnit.MILLISECONDS);
         futureList.add(scheduledNoiseDetection);
     }
 
