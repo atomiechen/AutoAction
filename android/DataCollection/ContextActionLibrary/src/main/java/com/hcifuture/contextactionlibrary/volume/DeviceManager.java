@@ -5,24 +5,26 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.media.AudioDeviceCallback;
 import android.media.AudioDeviceInfo;
-import android.media.AudioManager;
 import android.media.MediaRouter;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Handler;
 import android.util.Log;
 
+import com.google.gson.reflect.TypeToken;
 import com.hcifuture.contextactionlibrary.contextaction.ContextActionContainer;
-import com.hcifuture.contextactionlibrary.contextaction.event.BroadcastEvent;
+import com.hcifuture.contextactionlibrary.contextaction.context.ConfigContext;
+import com.hcifuture.contextactionlibrary.sensor.collector.Collector;
+import com.hcifuture.contextactionlibrary.utils.FileUtils;
 
+import java.io.File;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import androidx.annotation.RequiresApi;
 
@@ -43,8 +45,11 @@ public class DeviceManager {
     private IntentFilter intentFilter;
 //    AudioDeviceCallback audioDeviceCallback;
     MediaRouter.Callback routerCallback;
-    private String currentDeviceID;
-    private List<String> deviceIDs = new ArrayList<>();
+    private Device currentDevice;
+    private List<Device> devices;
+
+    private final String FILE_DEVICE_LIST = "device.json";
+    private final String FILE_DEVICE_HISTORY = "device_history.json";
 
     @RequiresApi(api = Build.VERSION_CODES.N)
     public DeviceManager(Context context, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, VolEventListener volEventListener) {
@@ -54,7 +59,8 @@ public class DeviceManager {
 //        this.audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
         this.mediaRouter = (MediaRouter) context.getSystemService(Context.MEDIA_ROUTER_SERVICE);
         this.volEventListener = volEventListener;
-        currentDeviceID = genDeviceID(getCurrentRouteInfo());
+        currentDevice = genDevice(getCurrentRouteInfo());
+        readDevices();
 
 //        audioDeviceCallback = new AudioDeviceCallback() {
 //            @Override
@@ -179,33 +185,50 @@ public class DeviceManager {
 
     @RequiresApi(api = Build.VERSION_CODES.N)
     public void logRouteInfo(MediaRouter.RouteInfo info, String prefix) {
-        Log.e(TAG, String.format(prefix + " deviceID: %s", genDeviceID(info)));
+        Log.e(TAG, String.format(prefix + " deviceID: %s", genDevice(info)));
     }
 
-    public String genDeviceID(MediaRouter.RouteInfo info) {
+    public Device genDevice(MediaRouter.RouteInfo info) {
         int deviceType = info.getDeviceType();
-        String name = info.getName() == null? "NoName" : info.getName().toString();
-        String description = info.getDescription() == null? "NoDescription" : info.getDescription().toString();
-        return "$" + deviceType + "$" + name + "$" + description;
+        String name = info.getName() == null? "NULL" : info.getName().toString();
+        String description = info.getDescription() == null? "NULL" : info.getDescription().toString();
+        String deviceID = "$" + deviceType + "$" + name + "$" + description;
+        return new Device(deviceID, name, description, deviceType);
     }
 
     public void checkRouteInfo(MediaRouter.RouteInfo info, String prefix) {
-        logRouteInfo(info, prefix);
-        checkRouteInfo(info);
-    }
-
-    public void checkRouteInfo(MediaRouter.RouteInfo info) {
-        String deviceID = genDeviceID(info);
-        if (!currentDeviceID.equals(deviceID)) {
+        Device device = genDevice(info);
+        Log.e(TAG, String.format(prefix + " deviceID: %s", device.deviceID));
+        if (!currentDevice.equals(device)) {
             Bundle bundle = new Bundle();
-            bundle.putString("deviceID", deviceID);
-            if (!deviceIDs.contains(deviceID)) {
-                deviceIDs.add(deviceID);
-                // TODO
+            bundle.putString("deviceID", device.deviceID);
+            if (!devices.contains(device)) {
+                devices.add(device);
+                writeDevices();
             }
             volEventListener.onVolEvent(VolEventListener.EventType.Device, bundle);
-            currentDeviceID = deviceID;
+            currentDevice = device;
         }
+    }
+
+    public void writeDevices() {
+        String result = Collector.gson.toJson(devices);
+        FileUtils.writeStringToFile(result, new File(ConfigContext.VOLUME_SAVE_FOLDER + FILE_DEVICE_LIST));
+    }
+
+    public void readDevices() {
+        Type type = new TypeToken<List<Device>>(){}.getType();
+        devices = Collector.gson.fromJson(
+                FileUtils.getFileContent(ConfigContext.VOLUME_SAVE_FOLDER + FILE_DEVICE_LIST),
+                type
+        );
+        if (devices == null) {
+            devices = new ArrayList<>();
+        }
+    }
+
+    public List<String> getDeviceIDs() {
+        return devices.stream().map(device -> device.deviceID).collect(Collectors.toList());
     }
 
 }
