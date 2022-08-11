@@ -41,15 +41,16 @@ public class NoiseManager {
         scheduledNoiseDetection = scheduledExecutorService.scheduleAtFixedRate(() -> {
             try {
                 Log.e(TAG, "start to detect noise level");
-                double noise = audioCollector.getNoiseLevel(5000, 10).get(5050, TimeUnit.MILLISECONDS);
-                Log.e(TAG, "noise level detected: " + noise);
-                if (Math.abs(noise - lastNoise) > threshold) {
-                    // signal to adjust volume according to noise
-                    Bundle bundle = new Bundle();
-                    bundle.putDouble("noise", noise);
-                    volEventListener.onVolEvent(VolEventListener.EventType.Noise, bundle);
-                    lastNoise = noise;
-                }
+                audioCollector.getNoiseLevel(5000, 10).thenAccept(noise -> {
+                    Log.e(TAG, "noise level detected: " + noise);
+                    if (Math.abs(noise - lastNoise) > threshold) {
+                        // signal to adjust volume according to noise
+                        Bundle bundle = new Bundle();
+                        bundle.putDouble("noise", noise);
+                        volEventListener.onVolEvent(VolEventListener.EventType.Noise, bundle);
+                        lastNoise = noise;
+                    }
+                });
             } catch (Exception e) {
                 Log.e(TAG, "error during noise detection: " + e);
             }
