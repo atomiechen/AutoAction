@@ -1,7 +1,6 @@
 package com.hcifuture.contextactionlibrary.contextaction.context;
 
 import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.BluetoothDevice;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
@@ -30,6 +29,7 @@ import com.hcifuture.contextactionlibrary.sensor.data.SingleWifiData;
 import com.hcifuture.contextactionlibrary.utils.JSONUtils;
 import com.hcifuture.contextactionlibrary.volume.AppList;
 import com.hcifuture.contextactionlibrary.volume.AppManager;
+import com.hcifuture.contextactionlibrary.volume.DeviceManager;
 import com.hcifuture.contextactionlibrary.volume.Location;
 import com.hcifuture.contextactionlibrary.volume.PositionManager;
 import com.hcifuture.contextactionlibrary.volume.VolEventListener;
@@ -57,7 +57,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import androidx.annotation.RequiresApi;
@@ -92,6 +91,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     private NoiseManager noiseManager;
     private AppManager appManager;
     private PositionManager positionManager;
+    private DeviceManager deviceManager;
 
     public ConfigContext(Context context, ContextConfig config, RequestListener requestListener, List<ContextListener> contextListener, LogCollector logCollector, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, CollectorManager collectorManager) {
         super(context, config, requestListener, contextListener, scheduledExecutorService, futureList);
@@ -103,6 +103,8 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         noiseManager = new NoiseManager(scheduledExecutorService, futureList,
                 (AudioCollector) collectorManager.getCollector(CollectorManager.CollectorType.Audio), this);
         noiseManager.start();
+        deviceManager = new DeviceManager(mContext, scheduledExecutorService, futureList, this);
+        deviceManager.start();
 
         appManager = new AppManager(this);
 
@@ -149,6 +151,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     public void stop() {
         // do not perform record_all() in stop(),
         // it may cause crashes when frequently called
+        deviceManager.stop();
     }
 
     @Override
@@ -335,17 +338,6 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                             }
                             JSONUtils.jsonPut(json, "displays", states);
                         }
-                        break;
-                    case Intent.ACTION_HEADSET_PLUG:
-                    case BluetoothDevice.ACTION_ACL_DISCONNECTED:
-                    case BluetoothDevice.ACTION_ACL_CONNECTED:
-                        futureList.add(scheduledExecutorService.schedule(() -> {
-                            try {
-                                setDeviceType();
-                            } catch (Exception e) {
-                                e.printStackTrace();
-                            }
-                        }, 3000, TimeUnit.MILLISECONDS));
                         break;
                 }
                 if (Intent.ACTION_SCREEN_ON.equals(action)) {
@@ -560,8 +552,9 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                 double noise = bundle.getDouble("noise");
                 // TODO: map noise to volume and adjust
                 break;
-            // TODO
             case Device:
+                String deviceID = bundle.getString("deviceID");
+                // TODO: adjust mapping function
             case App:
             case Position:
         }
