@@ -35,6 +35,7 @@ import com.hcifuture.contextactionlibrary.volume.PositionManager;
 import com.hcifuture.contextactionlibrary.volume.VolEventListener;
 import com.hcifuture.contextactionlibrary.volume.VolumeContext;
 import com.hcifuture.contextactionlibrary.volume.NoiseManager;
+import com.hcifuture.contextactionlibrary.volume.VolumeManager;
 import com.hcifuture.contextactionlibrary.volume.VolumeRuleManager;
 import com.hcifuture.shared.communicate.config.ContextConfig;
 import com.hcifuture.contextactionlibrary.contextaction.event.BroadcastEvent;
@@ -81,6 +82,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
     private long last_record_all;
     private VolumeRuleManager volumeRuleManager;
+    private VolumeManager volumeManager;
 
     private final AtomicInteger mLogID = new AtomicInteger(0);
 
@@ -97,6 +99,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         VOLUME_SAVE_FOLDER = context.getExternalMediaDirs()[0].getAbsolutePath() + "/Data/Volume/";
 
         volumeRuleManager = new VolumeRuleManager();
+        volumeManager = new VolumeManager();
         noiseManager = new NoiseManager(scheduledExecutorService, futureList,
                 (AudioCollector) collectorManager.getCollector(CollectorManager.CollectorType.Audio), this);
         noiseManager.start();
