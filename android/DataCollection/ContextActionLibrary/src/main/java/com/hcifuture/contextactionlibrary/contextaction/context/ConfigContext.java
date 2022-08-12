@@ -26,6 +26,7 @@ import com.hcifuture.contextactionlibrary.sensor.collector.sync.LogCollector;
 import com.hcifuture.contextactionlibrary.sensor.data.NonIMUData;
 import com.hcifuture.contextactionlibrary.sensor.data.SingleIMUData;
 import com.hcifuture.contextactionlibrary.sensor.data.SingleWifiData;
+import com.hcifuture.contextactionlibrary.utils.FileUtils;
 import com.hcifuture.contextactionlibrary.utils.JSONUtils;
 import com.hcifuture.contextactionlibrary.volume.AppManager;
 import com.hcifuture.contextactionlibrary.volume.DeviceManager;
@@ -44,6 +45,7 @@ import com.hcifuture.shared.communicate.result.ContextResult;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.File;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -53,6 +55,8 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -65,6 +69,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     private static final String TAG = "ConfigContext";
 
     public static String VOLUME_SAVE_FOLDER;
+    public static String FILE_TMP_DATA = "tmp_data.csv";
     
     public static String NEED_AUDIO = "context.config.need_audio";
     public static String NEED_NONIMU = "context.config.need_nonimu";
@@ -93,6 +98,8 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     private AppManager appManager;
     private PositionManager positionManager;
     private DeviceManager deviceManager;
+
+    private CompletableFuture<Double> detectedNoiseFt;
 
     public ConfigContext(Context context, ContextConfig config, RequestListener requestListener, List<ContextListener> contextListener, LogCollector logCollector, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, CollectorManager collectorManager) {
         super(context, config, requestListener, contextListener, scheduledExecutorService, futureList);
@@ -209,7 +216,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
             }
         }
         
-        double noise = noiseManager.lastNoise;
+        double noise = noiseManager.getPresentNoise();
 //        try {
 //            // length: 300 is ok, 200 is not
 //            noise = audioCollector.getNoiseLevel(300, 10).get(500, TimeUnit.MILLISECONDS);
@@ -291,7 +298,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                         } else {
                             JSONUtils.jsonPut(json, "mode", "unknown");
                         }
-                        notifyContext(NEED_NONIMU, timestamp, logID, "screen brightness change");
+//                        notifyContext(NEED_NONIMU, timestamp, logID, "screen brightness change");
                     } else if (database_key.startsWith("volume_")) {
                         if (!volume.containsKey(database_key)) {
                             // record new volume value
@@ -301,7 +308,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                         int diff = value - volume.put(database_key, value);
                         JSONUtils.jsonPut(json, "diff", diff);
 //                        notifyContext(NEED_AUDIO, timestamp, logID, "volume change: " + database_key);
-                        notifyContext(NEED_SCAN, timestamp, logID, "volume change: " + database_key);
+//                        notifyContext(NEED_SCAN, timestamp, logID, "volume change: " + database_key);
 //                        String[] tmp = database_key.split("_");
 //                        String deviceType = "";
 //                        for (int index = 2; index < tmp.length; index++) {
@@ -340,11 +347,11 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                         break;
                 }
                 if (Intent.ACTION_SCREEN_ON.equals(action)) {
-                    notifyContext(NEED_SCAN, timestamp, logID, "screen on");
+//                    notifyContext(NEED_SCAN, timestamp, logID, "screen on");
                 } else if (WifiManager.WIFI_STATE_CHANGED_ACTION.equals(action) && extras.getInt(WifiManager.EXTRA_WIFI_STATE) == WifiManager.WIFI_STATE_ENABLED) {
-                    notifyContext(NEED_SCAN, timestamp, logID, "Wifi on via broadcast");
+//                    notifyContext(NEED_SCAN, timestamp, logID, "Wifi on via broadcast");
                 } else if (BluetoothAdapter.ACTION_STATE_CHANGED.equals(action) && extras.getInt(BluetoothAdapter.EXTRA_STATE) == BluetoothAdapter.STATE_ON) {
-                    notifyContext(NEED_SCAN, timestamp, logID, "Bluetooth on via broadcast");
+//                    notifyContext(NEED_SCAN, timestamp, logID, "Bluetooth on via broadcast");
                 }
             } else if ("KeyEvent".equals(type)) {
                 record = true;
@@ -373,9 +380,11 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                     case KeyEvent.KEYCODE_VOLUME_MUTE:
                     case KeyEvent.KEYCODE_VOLUME_UP:
 //                        notifyContext(NEED_AUDIO, timestamp, logID, "key event: " + KeyEvent.keyCodeToString(keycode));
-                        notifyContext(NEED_SCAN, timestamp, logID, "key event: " + KeyEvent.keyCodeToString(keycode));
-                        notifyContext(NEED_POSITION, timestamp, logID, "key event: " + KeyEvent.keyCodeToString(keycode));
+//                        notifyContext(NEED_SCAN, timestamp, logID, "key event: " + KeyEvent.keyCodeToString(keycode));
+//                        notifyContext(NEED_POSITION, timestamp, logID, "key event: " + KeyEvent.keyCodeToString(keycode));
 
+                        // detect current noise
+                        detectedNoiseFt = noiseManager.detectNoise(5000, 10);
                         toFrontend(TYPE_MANUAL, 0);
                 }
             }
@@ -436,6 +445,27 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                 double finalVolume = bundle.getDouble("finalVolume");
                 Log.e(TAG, "from PAIPAI_HELPER from:" + from + ", behavior:" + behavior + ", finalVolume:" + finalVolume);
                 isVolumeOn = false;
+                if (detectedNoiseFt != null) {
+                    Log.e(TAG, "onExternalEvent: check manual noise detection");
+                    detectedNoiseFt.whenComplete((v, e) -> {
+                        // 当用户调整结束且噪音检测结束时，记录用户调整音量及噪音值
+                        Log.e(TAG, "onExternalEvent: get result");
+                        try {
+                            appendLine(String.format("%d,%f,%f,%s,%s,%s",
+                                    System.currentTimeMillis(),
+                                    noiseManager.getPresentNoise(),
+                                    finalVolume,
+                                    deviceManager.getPresentDeviceID(),
+                                    appManager.getPresentApp(),
+                                    positionManager.getPresentPosition()
+                            ), FILE_TMP_DATA);
+                            Log.e(TAG, "onExternalEvent: recorded to file");
+                        } catch (Exception e1) {
+                            e1.printStackTrace();
+                        }
+                        // TODO
+                    });
+                }
             } else if (from == 2) {
                 int editedRank = bundle.getInt("editedRank");
                 boolean action = bundle.getBoolean("action");
@@ -444,6 +474,10 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                 isVolumeOn = false;
             }
         }
+    }
+
+    private void appendLine(String line, String filename) {
+        FileUtils.writeStringToFile(line, new File(VOLUME_SAVE_FOLDER + filename), true);
     }
 
     private int incLogID() {
@@ -534,7 +568,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
     @Override
     public void onVolEvent(EventType eventType, Bundle bundle) {
-        double noise = noiseManager.lastNoise;
+        double noise = noiseManager.getPresentNoise();
         switch (eventType) {
             case Noise:
                 noise = bundle.getDouble("noise");

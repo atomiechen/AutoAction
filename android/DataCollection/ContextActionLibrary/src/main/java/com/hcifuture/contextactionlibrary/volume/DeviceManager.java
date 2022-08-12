@@ -47,6 +47,7 @@ public class DeviceManager {
     MediaRouter.Callback routerCallback;
     private Device currentDevice;
     private List<Device> devices;
+    private long lastTimestamp = 0;
 
     private final String FILE_DEVICE_LIST = "device.json";
     private final String FILE_DEVICE_HISTORY = "device_history.json";
@@ -59,7 +60,7 @@ public class DeviceManager {
 //        this.audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
         this.mediaRouter = (MediaRouter) context.getSystemService(Context.MEDIA_ROUTER_SERVICE);
         this.volEventListener = volEventListener;
-        currentDevice = genDevice(getCurrentRouteInfo());
+        setPresentDevice(genDevice(getCurrentRouteInfo()));
         readDevices();
 
 //        audioDeviceCallback = new AudioDeviceCallback() {
@@ -207,7 +208,7 @@ public class DeviceManager {
                 writeDevices();
             }
             volEventListener.onVolEvent(VolEventListener.EventType.Device, bundle);
-            currentDevice = device;
+            setPresentDevice(device);
         }
     }
 
@@ -229,6 +230,15 @@ public class DeviceManager {
 
     public List<String> getDeviceIDs() {
         return devices.stream().map(device -> device.deviceID).collect(Collectors.toList());
+    }
+
+    public String getPresentDeviceID() {
+        return currentDevice.deviceID;
+    }
+
+    private void setPresentDevice(Device device) {
+        currentDevice = device;
+        lastTimestamp = System.currentTimeMillis();
     }
 
 }

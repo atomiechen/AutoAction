@@ -7,12 +7,14 @@ import android.util.Log;
 import com.hcifuture.contextactionlibrary.sensor.collector.async.AudioCollector;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 import androidx.annotation.RequiresApi;
 
+@RequiresApi(api = Build.VERSION_CODES.N)
 public class NoiseManager {
 
     private static final String TAG = "NoiseManager";
@@ -24,7 +26,8 @@ public class NoiseManager {
     private ScheduledFuture<?> scheduledNoiseDetection;
     private long initialDelay = 5000;
     private long period = 30000;  // detect noise every 30s
-    public double lastNoise = 0;
+    private double lastNoise = 0;
+    private long lastTimestamp = 0;
     private final double threshold = 20;
 
     public NoiseManager(ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, AudioCollector audioCollector, VolEventListener volEventListener) {
@@ -34,7 +37,6 @@ public class NoiseManager {
         this.volEventListener = volEventListener;
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.N)
     public void start() {
         // detect noise periodically
         Log.e(TAG, "schedule periodic noise detection");
@@ -48,7 +50,7 @@ public class NoiseManager {
                         Bundle bundle = new Bundle();
                         bundle.putDouble("noise", noise);
                         volEventListener.onVolEvent(VolEventListener.EventType.Noise, bundle);
-                        lastNoise = noise;
+                        setPresentNoise(noise);
                     }
                 });
             } catch (Exception e) {
@@ -56,6 +58,22 @@ public class NoiseManager {
             }
         }, initialDelay, period, TimeUnit.MILLISECONDS);
         futureList.add(scheduledNoiseDetection);
+    }
+
+    public CompletableFuture<Double> detectNoise(long length, long period) {
+        return audioCollector.getNoiseLevel(length, period).thenApply(noise -> {
+            setPresentNoise(noise);
+            return noise;
+        });
+    }
+
+    public double getPresentNoise() {
+        return lastNoise;
+    }
+
+    private void setPresentNoise(double noise) {
+        lastNoise = noise;
+        lastTimestamp = System.currentTimeMillis();
     }
 
 }

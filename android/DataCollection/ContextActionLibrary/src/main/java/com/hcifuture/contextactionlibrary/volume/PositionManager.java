@@ -121,7 +121,11 @@ public class PositionManager {
     }
 
     public String getPresentPosition() {
-        return lastPosition.getId();
+        if (lastPosition == null) {
+            return "NULL";
+        } else {
+            return lastPosition.getId();
+        }
     }
 
     public List<HistoryItem> getHistory() {
