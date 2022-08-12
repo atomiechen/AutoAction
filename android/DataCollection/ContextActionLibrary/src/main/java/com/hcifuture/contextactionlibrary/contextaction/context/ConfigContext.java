@@ -27,10 +27,8 @@ import com.hcifuture.contextactionlibrary.sensor.data.NonIMUData;
 import com.hcifuture.contextactionlibrary.sensor.data.SingleIMUData;
 import com.hcifuture.contextactionlibrary.sensor.data.SingleWifiData;
 import com.hcifuture.contextactionlibrary.utils.JSONUtils;
-import com.hcifuture.contextactionlibrary.volume.AppList;
 import com.hcifuture.contextactionlibrary.volume.AppManager;
 import com.hcifuture.contextactionlibrary.volume.DeviceManager;
-import com.hcifuture.contextactionlibrary.volume.Location;
 import com.hcifuture.contextactionlibrary.volume.PositionManager;
 import com.hcifuture.contextactionlibrary.volume.VolEventListener;
 import com.hcifuture.contextactionlibrary.volume.VolumeContext;
@@ -51,7 +49,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
@@ -74,6 +71,10 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     public static String NEED_SCAN = "context.config.need_scan";
     public static String NEED_POSITION = "context.config.need_position";
 
+    public static int TYPE_MANUAL = 0;
+    public static int TYPE_AUTO_DIRECT = 1;
+    public static int TYPE_AUTO_COUNTDOWN = 2;
+
     private String appName;
     private String latest_deviceType;
     private Bundle rules;
@@ -83,6 +84,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     private long last_record_all;
     private VolumeRuleManager volumeRuleManager;
     private VolumeManager volumeManager;
+    private String defaultFid;
 
     private final AtomicInteger mLogID = new AtomicInteger(0);
 
@@ -100,6 +102,8 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
         volumeRuleManager = new VolumeRuleManager();
         volumeManager = new VolumeManager();
+        defaultFid = volumeManager.newFunction();
+
         noiseManager = new NoiseManager(scheduledExecutorService, futureList,
                 (AudioCollector) collectorManager.getCollector(CollectorManager.CollectorType.Audio), this);
         noiseManager.start();
@@ -171,12 +175,10 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     }
 
     void onRequest(Bundle rules) {
-        Log.e("To TapTapHelper", "------------------------");
         if (contextListener != null) {
             for (ContextListener listener: contextListener) {
                 ContextResult contextResult = new ContextResult("data from context-package", "");
-                Date date = new Date();
-                contextResult.setTimestamp(date.getTime());
+                contextResult.setTimestamp(System.currentTimeMillis());
                 contextResult.setExtras(rules);
                 listener.onContext(contextResult);
             }
@@ -374,7 +376,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                         notifyContext(NEED_SCAN, timestamp, logID, "key event: " + KeyEvent.keyCodeToString(keycode));
                         notifyContext(NEED_POSITION, timestamp, logID, "key event: " + KeyEvent.keyCodeToString(keycode));
 
-                        toTapTapHelper(0);
+                        toFrontend(TYPE_MANUAL, 0);
                 }
             }
 
@@ -407,18 +409,6 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         }
         if (!headset_connected)
             latest_deviceType = "speaker";
-    }
-
-    public void toTapTapHelper(int type) {
-        if (!isVolumeOn) {
-            VolumeContext volumeContext = getPresentContext();
-            rules = getRules(volumeContext, type);
-            onRequest(rules);
-            isVolumeOn = true;
-            Log.e(TAG, "toTapTapHelper: Volume UI pops up, type: " + type);
-        } else {
-            Log.e(TAG, "toTapTapHelper: not pop up because already on");
-        }
     }
 
     @Override
@@ -544,9 +534,10 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
     @Override
     public void onVolEvent(EventType eventType, Bundle bundle) {
+        double noise = noiseManager.lastNoise;
         switch (eventType) {
             case Noise:
-                double noise = bundle.getDouble("noise");
+                noise = bundle.getDouble("noise");
                 Log.e(TAG, "onVolEvent: " + eventType + " " + noise);
                 // TODO: map noise to volume and adjust
                 break;
@@ -564,6 +555,37 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                 String positionName = bundle.getString("name");
                 Log.e(TAG, "onVolEvent: " + eventType + " " + positionID + " " + positionName);
                 break;
+        }
+        double adjustedVolume = fakeMapping(noise);
+//        double adjustedVolume = volumeManager.predict(defaultFid, noise);
+        Log.e(TAG, "onVolEvent: noise = " + noise +  " adjust volume = " + adjustedVolume);
+        toFrontend(TYPE_AUTO_DIRECT, adjustedVolume);
+    }
+
+    public double fakeMapping(double noise) {
+        double result = noise / 150 * 100;
+        if (result > 100) {
+            result = 100;
+        }
+        if (result < 0 ) {
+            result = 0;
+        }
+        return result;
+    }
+
+    public void toFrontend(int type, double adjustedVolume) {
+        if (!isVolumeOn) {
+            VolumeContext volumeContext = getPresentContext();
+            rules = getRules(volumeContext, type);
+            if (type != TYPE_MANUAL) {
+                List<Bundle> rulesList = rules.getParcelableArrayList("rules");
+                rulesList.get(0).putDouble("volume", adjustedVolume);
+            }
+            onRequest(rules);
+            isVolumeOn = true;
+            Log.e(TAG, "toFrontend: Volume UI pops up, type: " + type);
+        } else {
+            Log.e(TAG, "toFrontend: not pop up because already on");
         }
     }
 }
