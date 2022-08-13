@@ -157,6 +157,8 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
     @Override
     public void stop() {
+        Log.e(TAG, "stop");
+        isVolumeOn = false;
         // do not perform record_all() in stop(),
         // it may cause crashes when frequently called
         deviceManager.stop();
