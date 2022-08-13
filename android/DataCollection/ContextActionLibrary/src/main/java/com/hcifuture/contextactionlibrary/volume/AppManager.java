@@ -8,16 +8,15 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class AppManager {
+public class AppManager extends TriggerManager {
     private static final String TAG = "AppManager";
-    private VolEventListener volEventListener;
     private String appName;
     private String last_appName;
     private boolean overlay_has_showed_for_other_reason;
     private String last_valid_widget;
 
     public AppManager(VolEventListener volEventListener) {
-        this.volEventListener = volEventListener;
+        super(volEventListener);
         appName = "";
         last_appName = "";
         last_valid_widget = "";

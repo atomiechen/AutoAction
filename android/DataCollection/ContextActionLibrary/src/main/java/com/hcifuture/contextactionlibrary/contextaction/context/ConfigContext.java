@@ -88,8 +88,6 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
     private long last_record_all;
     private VolumeRuleManager volumeRuleManager;
-    private VolumeManager volumeManager;
-    private String defaultFid;
 
     private final AtomicInteger mLogID = new AtomicInteger(0);
 
@@ -98,29 +96,31 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     private AppManager appManager;
     private PositionManager positionManager;
     private DeviceManager deviceManager;
+    private VolumeManager volumeManager;
+    private String defaultFid;
 
     private CompletableFuture<Double> detectedNoiseFt;
 
-    public ConfigContext(Context context, ContextConfig config, RequestListener requestListener, List<ContextListener> contextListener, LogCollector logCollector, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, CollectorManager collectorManager) {
+    public ConfigContext(Context context, ContextConfig config, RequestListener requestListener, List<ContextListener> contextListener, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, CollectorManager collectorManager) {
         super(context, config, requestListener, contextListener, scheduledExecutorService, futureList);
-        this.logCollector = logCollector;
 
         VOLUME_SAVE_FOLDER = context.getExternalMediaDirs()[0].getAbsolutePath() + "/Data/Volume/";
 
         volumeRuleManager = new VolumeRuleManager();
+
         volumeManager = new VolumeManager();
         defaultFid = volumeManager.newFunction();
 
-        noiseManager = new NoiseManager(scheduledExecutorService, futureList,
-                (AudioCollector) collectorManager.getCollector(CollectorManager.CollectorType.Audio), this);
-        noiseManager.start();
-        deviceManager = new DeviceManager(mContext, scheduledExecutorService, futureList, this);
-        deviceManager.start();
+        noiseManager = new NoiseManager(this, scheduledExecutorService, futureList,
+                (AudioCollector) collectorManager.getCollector(CollectorManager.CollectorType.Audio));
+
+        deviceManager = new DeviceManager(this, mContext, scheduledExecutorService, futureList);
 
         appManager = new AppManager(this);
 
-        positionManager = new PositionManager(scheduledExecutorService, futureList, (GPSCollector) collectorManager.getCollector(CollectorManager.CollectorType.GPS), (WifiCollector) collectorManager.getCollector(CollectorManager.CollectorType.Wifi), this);
-        positionManager.start();
+        positionManager = new PositionManager(this, scheduledExecutorService, futureList,
+                (GPSCollector) collectorManager.getCollector(CollectorManager.CollectorType.GPS),
+                (WifiCollector) collectorManager.getCollector(CollectorManager.CollectorType.Wifi));
 
         // initialize
         appName = "";
@@ -153,15 +153,24 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     @Override
     public void start() {
         record_all("start");
+        appManager.start();
+        noiseManager.start();
+        deviceManager.start();
+        positionManager.start();
     }
 
     @Override
     public void stop() {
         Log.e(TAG, "stop");
-        isVolumeOn = false;
         // do not perform record_all() in stop(),
         // it may cause crashes when frequently called
+
+        isVolumeOn = false;
+
+        positionManager.stop();
         deviceManager.stop();
+        noiseManager.stop();
+        appManager.stop();
     }
 
     @Override

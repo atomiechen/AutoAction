@@ -470,6 +470,9 @@ public class ContextActionContainer implements ActionListener, ContextListener {
                             InPocketContext inPocketContext = new InPocketContext(mContext, contextConfig, requestListener, Arrays.asList(this, contextListener), (NonIMUCollector) collectorManager.getCollector(CollectorManager.CollectorType.NonIMU), scheduledExecutorService, futureList);
                             contexts.add(inPocketContext);
                             break;
+                        case "Config":
+                            contexts.add(new ConfigContext(mContext, contextConfig, requestListener, Arrays.asList(this, contextListener), scheduledExecutorService, futureList, collectorManager));
+                            break;
                         default:
                             break;
                     }
@@ -649,8 +652,7 @@ public class ContextActionContainer implements ActionListener, ContextListener {
                                 break;
                             case "Config":
                                 LogCollector configLogCollector = collectorManager.newLogCollector("Config", 8192);
-                                contexts.add(new ConfigContext(mContext, contextConfig, requestListener, Arrays.asList(this, contextListener), configLogCollector, scheduledExecutorService, futureList, collectorManager));
-                                //                            setLogCollector(ConfigContext.class, configLogCollector);
+                                setLogCollector(ConfigContext.class, configLogCollector);
                                 timedCollector.scheduleTimedLogUpload(
                                         configLogCollector,
                                         (period == null) ? 30 * 60000 : period.longValue(),

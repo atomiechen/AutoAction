@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
 import androidx.annotation.RequiresApi;
 
 @RequiresApi(api = Build.VERSION_CODES.N)
-public class DeviceManager {
+public class DeviceManager extends TriggerManager {
 
     private static final String TAG = "DeviceManager";
 
@@ -38,7 +38,6 @@ public class DeviceManager {
     List<ScheduledFuture<?>> futureList;
 //    private AudioManager audioManager;
     private MediaRouter mediaRouter;
-    private VolEventListener volEventListener;
 
     private ScheduledFuture<?> scheduledDeviceDetection;
     private BroadcastReceiver broadcastReceiver;
@@ -53,13 +52,13 @@ public class DeviceManager {
     private final String FILE_DEVICE_HISTORY = "device_history.json";
 
     @RequiresApi(api = Build.VERSION_CODES.N)
-    public DeviceManager(Context context, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, VolEventListener volEventListener) {
+    public DeviceManager(VolEventListener volEventListener, Context context, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList) {
+        super(volEventListener);
         this.context = context;
         this.scheduledExecutorService = scheduledExecutorService;
         this.futureList = futureList;
 //        this.audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
         this.mediaRouter = (MediaRouter) context.getSystemService(Context.MEDIA_ROUTER_SERVICE);
-        this.volEventListener = volEventListener;
         setPresentDevice(genDevice(getCurrentRouteInfo()));
         readDevices();
 
@@ -147,6 +146,7 @@ public class DeviceManager {
         intentFilter.addAction(BluetoothDevice.ACTION_ACL_CONNECTED);
     }
 
+    @Override
     public void start() {
 //        audioManager.registerAudioDeviceCallback(audioDeviceCallback, handler);
         mediaRouter.addCallback(MediaRouter.ROUTE_TYPE_LIVE_AUDIO, routerCallback, MediaRouter.CALLBACK_FLAG_UNFILTERED_EVENTS);
@@ -154,6 +154,7 @@ public class DeviceManager {
         futureList.add(scheduledDeviceDetection = scheduledExecutorService.scheduleAtFixedRate(this::checkDevice, 3000, 60000, TimeUnit.MILLISECONDS));
     }
 
+    @Override
     public void stop() {
 //        audioManager.unregisterAudioDeviceCallback(audioDeviceCallback);
         scheduledDeviceDetection.cancel(true);

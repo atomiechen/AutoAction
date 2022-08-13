@@ -31,13 +31,12 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-public class PositionManager {
+public class PositionManager extends TriggerManager {
     private static final String TAG = "PositionManager";
     ScheduledExecutorService scheduledExecutorService;
     List<ScheduledFuture<?>> futureList;
     private GPSCollector gpsCollector;
     private WifiCollector wifiCollector;
-    private VolEventListener volEventListener;
 
     private ScheduledFuture<?> scheduledPositionDetection;
     private long initialDelay = 0;
@@ -47,8 +46,8 @@ public class PositionManager {
     private Position lastPosition;
 
     @RequiresApi(api = Build.VERSION_CODES.N)
-    public PositionManager(ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, GPSCollector gpsCollector, WifiCollector wifiCollector, VolEventListener volEventListener) {
-        this.volEventListener = volEventListener;
+    public PositionManager(VolEventListener volEventListener, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, GPSCollector gpsCollector, WifiCollector wifiCollector) {
+        super(volEventListener);
         this.scheduledExecutorService = scheduledExecutorService;
         this.futureList = futureList;
         this.gpsCollector = gpsCollector;
@@ -143,6 +142,7 @@ public class PositionManager {
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
+    @Override
     public void start() {
         // detect position periodically
         Log.e(TAG, "schedule periodic position detection");
@@ -150,6 +150,13 @@ public class PositionManager {
             scanAndUpdate();
         }, initialDelay, period, TimeUnit.MILLISECONDS);
         futureList.add(scheduledPositionDetection);
+    }
+
+    @Override
+    public void stop() {
+        if (scheduledPositionDetection != null) {
+            scheduledPositionDetection.cancel(true);
+        }
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)

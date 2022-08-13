@@ -15,13 +15,12 @@ import java.util.concurrent.TimeUnit;
 import androidx.annotation.RequiresApi;
 
 @RequiresApi(api = Build.VERSION_CODES.N)
-public class NoiseManager {
+public class NoiseManager extends TriggerManager {
 
     private static final String TAG = "NoiseManager";
     ScheduledExecutorService scheduledExecutorService;
     List<ScheduledFuture<?>> futureList;
     private AudioCollector audioCollector;
-    private VolEventListener volEventListener;
 
     private ScheduledFuture<?> scheduledNoiseDetection;
     private long initialDelay = 5000;
@@ -30,13 +29,14 @@ public class NoiseManager {
     private long lastTimestamp = 0;
     private final double threshold = 20;
 
-    public NoiseManager(ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, AudioCollector audioCollector, VolEventListener volEventListener) {
+    public NoiseManager(VolEventListener volEventListener, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, AudioCollector audioCollector) {
+        super(volEventListener);
         this.scheduledExecutorService = scheduledExecutorService;
         this.futureList = futureList;
         this.audioCollector = audioCollector;
-        this.volEventListener = volEventListener;
     }
 
+    @Override
     public void start() {
         // detect noise periodically
         Log.e(TAG, "schedule periodic noise detection");
@@ -58,6 +58,13 @@ public class NoiseManager {
             }
         }, initialDelay, period, TimeUnit.MILLISECONDS);
         futureList.add(scheduledNoiseDetection);
+    }
+
+    @Override
+    public void stop() {
+        if (scheduledNoiseDetection != null) {
+            scheduledNoiseDetection.cancel(true);
+        }
     }
 
     public CompletableFuture<Double> detectNoise(long length, long period) {
