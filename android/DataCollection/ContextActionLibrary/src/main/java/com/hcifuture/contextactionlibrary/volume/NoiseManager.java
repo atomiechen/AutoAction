@@ -26,6 +26,8 @@ public class NoiseManager extends TriggerManager {
     private long initialDelay = 5000;
     private long period = 30000;  // detect noise every 30s
     private double lastNoise = 0;
+    private double lastTriggerNoise = 0;
+    private boolean hasFirstDetection = false;
     private long lastTimestamp = 0;
     private final double threshold = 20;
 
@@ -43,16 +45,7 @@ public class NoiseManager extends TriggerManager {
         scheduledNoiseDetection = scheduledExecutorService.scheduleAtFixedRate(() -> {
             try {
                 Log.e(TAG, "start to detect noise level");
-                audioCollector.getNoiseLevel(5000, 10).thenAccept(noise -> {
-                    Log.e(TAG, "noise level detected: " + noise);
-                    if (Math.abs(noise - lastNoise) > threshold) {
-                        // signal to adjust volume according to noise
-                        Bundle bundle = new Bundle();
-                        bundle.putDouble("noise", noise);
-                        volEventListener.onVolEvent(VolEventListener.EventType.Noise, bundle);
-                        setPresentNoise(noise);
-                    }
-                });
+                detectNoise(5000, 10, true);
             } catch (Exception e) {
                 Log.e(TAG, "error during noise detection: " + e);
             }
@@ -68,10 +61,33 @@ public class NoiseManager extends TriggerManager {
     }
 
     public CompletableFuture<Double> detectNoise(long length, long period) {
+        return detectNoise(length, period, false);
+    }
+
+    private CompletableFuture<Double> detectNoise(long length, long period, boolean checkEvent) {
         return audioCollector.getNoiseLevel(length, period).thenApply(noise -> {
+            Log.e(TAG, "noise level detected: " + noise);
+            if (checkEvent && hasFirstDetection) {
+                checkEvent(noise);
+            }
+            if (!hasFirstDetection) {
+                lastTriggerNoise = noise;
+                hasFirstDetection = true;
+            }
             setPresentNoise(noise);
             return noise;
         });
+    }
+
+    public void checkEvent(double noise) {
+        if (Math.abs(noise - lastTriggerNoise) >= threshold) {
+            // signal to adjust volume according to noise
+            Bundle bundle = new Bundle();
+            bundle.putDouble("noise", noise);
+            volEventListener.onVolEvent(VolEventListener.EventType.Noise, bundle);
+            lastTriggerNoise = noise;
+//            setPresentNoise(noise);
+        }
     }
 
     public double getPresentNoise() {

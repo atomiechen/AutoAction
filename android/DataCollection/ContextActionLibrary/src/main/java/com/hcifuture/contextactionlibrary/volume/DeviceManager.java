@@ -148,6 +148,8 @@ public class DeviceManager extends TriggerManager {
 
     @Override
     public void start() {
+        setPresentDevice(genDevice(getCurrentRouteInfo()));
+
 //        audioManager.registerAudioDeviceCallback(audioDeviceCallback, handler);
         mediaRouter.addCallback(MediaRouter.ROUTE_TYPE_LIVE_AUDIO, routerCallback, MediaRouter.CALLBACK_FLAG_UNFILTERED_EVENTS);
         context.registerReceiver(broadcastReceiver, intentFilter, null, ContextActionContainer.handler);
