@@ -396,6 +396,13 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
                         // detect current noise
                         detectedNoiseFt = noiseManager.detectNoise(5000, 10);
+                        Log.e(TAG, "Local Context Data: " + String.format("%d,%f,%s,%s,%s",
+                                System.currentTimeMillis(),
+                                noiseManager.getPresentNoise(),
+                                deviceManager.getPresentDeviceID(),
+                                appManager.getPresentApp(),
+                                positionManager.getPresentPosition()
+                        ));
                         toFrontend(TYPE_MANUAL, 0);
                 }
             }

@@ -40,7 +40,7 @@ public class PositionManager extends TriggerManager {
 
     private ScheduledFuture<?> scheduledPositionDetection;
     private long initialDelay = 0;
-    private long period = 60000 * 15;  // detect noise every 30s
+    private long period = 1000 * 15;  // detect position every 15s
     private List<Position> positions;
     private List<HistoryItem> history;
     private Position lastPosition;
@@ -54,7 +54,7 @@ public class PositionManager extends TriggerManager {
         this.wifiCollector = wifiCollector;
         positions = getPositionsFromFile();
         history = getPositionHistoryFromFile();
-        lastPosition = null;
+        lastPosition = findById(history.get(history.size() - 1).getId());
     }
 
     public static class HistoryItem {
@@ -79,6 +79,15 @@ public class PositionManager extends TriggerManager {
         public void setOutTime(long outTime) { this.outTime = outTime; }
     }
 
+    public Position findById(String id) {
+        if (positions == null) return null;
+        for (Position position: positions) {
+            if (position.getId().equals(id))
+                return position;
+        }
+        return null;
+    }
+
     @RequiresApi(api = Build.VERSION_CODES.N)
     public List<Position> getPositionsFromFile() {
         Type type = new TypeToken<List<Position>>(){}.getType();
@@ -86,12 +95,15 @@ public class PositionManager extends TriggerManager {
                 FileUtils.getFileContent(ConfigContext.VOLUME_SAVE_FOLDER + "position.json"),
                 type
         );
+        if (result == null)
+            result = new ArrayList<>();
         return result;
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
     public void writePositionsToFile() {
         String result = Collector.gson.toJson(positions);
+        Log.e(TAG, "Position List: " + result);
         FileUtils.writeStringToFile(result, new File(ConfigContext.VOLUME_SAVE_FOLDER + "position.json"));
     }
 
@@ -102,12 +114,15 @@ public class PositionManager extends TriggerManager {
                 FileUtils.getFileContent(ConfigContext.VOLUME_SAVE_FOLDER + "position_history.json"),
                 type
         );
+        if (result == null)
+            result = new ArrayList<>();
         return result;
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
     public void writeHistoryToFile() {
         String result = Collector.gson.toJson(history);
+        Log.e(TAG, "History List: " + result);
         FileUtils.writeStringToFile(result, new File(ConfigContext.VOLUME_SAVE_FOLDER + "position_history.json"));
     }
 
@@ -187,13 +202,18 @@ public class PositionManager extends TriggerManager {
                     longitude = gpsData.getLongitude();
                 }
                 Position position = new Position("" + System.currentTimeMillis(), "unknown", latitude, longitude, wifiIds);
+                if (lastPosition != null && lastPosition.sameAs(position))
+                    Log.e(TAG, "Old Position: " + position.getId());
                 if (lastPosition == null || !lastPosition.sameAs(position)) {
                     // 查找是否是新地点
                     Position tmp = findInList(position);
                     if (tmp == null) {
                         positions.add(position);
+                        Log.e(TAG, "New Position: " + position.getId());
                         writePositionsToFile();
                         tmp = position;
+                    } else {
+                        Log.e(TAG, "Old Position: " + tmp.getId());
                     }
                     // 更新地点历史
                     if (history.size() > 0) {
@@ -208,6 +228,7 @@ public class PositionManager extends TriggerManager {
                         Bundle bundle = new Bundle();
                         bundle.putString("id", tmp.getId());
                         bundle.putString("name", tmp.getName());
+                        Log.e(TAG, "Position Changed from " + lastPosition.getId() + " to " + tmp.getId() + ", timestamp: " + System.currentTimeMillis());
                         volEventListener.onVolEvent(VolEventListener.EventType.Position, bundle);
                     }
                     lastPosition = tmp;
