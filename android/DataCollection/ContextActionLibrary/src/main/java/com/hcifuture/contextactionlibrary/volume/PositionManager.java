@@ -54,7 +54,7 @@ public class PositionManager extends TriggerManager {
         this.wifiCollector = wifiCollector;
         positions = getPositionsFromFile();
         history = getPositionHistoryFromFile();
-        lastPosition = findById(history.get(history.size() - 1).getId());
+        lastPosition = history.size() > 0? findById(history.get(history.size() - 1).getId()) : null;
     }
 
     public static class HistoryItem {
