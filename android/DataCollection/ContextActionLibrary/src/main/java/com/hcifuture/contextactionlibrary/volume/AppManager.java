@@ -149,9 +149,10 @@ public class AppManager extends TriggerManager {
             if (isNeedOverlayApp(tmp_name, packageName) || isNotNeedOverlayApp(tmp_name, packageName)) {
                 appName = tmp_name;
                 if (!(appName.equals(last_appName))) {
-                    if (isNeedOverlayApp(appName, packageName) && !(event.getClassName() != null && AppList.video_widgets.contains(event.getClassName().toString()))) {
+                    if (isNeedOverlayApp(appName, packageName) && !(event.getClassName() != null && video_widgets.contains(event.getClassName().toString()))) {
                         Bundle bundle = new Bundle();
                         bundle.putString("app", appName);
+                        Log.e(TAG, "App Changed from " + last_appName + " to " + appName + ", timestamp: " + System.currentTimeMillis());
                         volEventListener.onVolEvent(VolEventListener.EventType.App, bundle);
                         overlay_has_showed_for_other_reason = true;
                     }
@@ -164,16 +165,17 @@ public class AppManager extends TriggerManager {
             Log.e("Event", event.toString());
             if (event.getText() != null && event.getText().size() > 0)
                 Log.e("EventText", event.getText().get(0).toString());
-            if (AppList.video_widgets.contains(event.getClassName().toString())) {
+            if (video_widgets.contains(event.getClassName().toString())) {
                 if (overlay_has_showed_for_other_reason || !last_valid_widget.equals(event.getClassName().toString())) {
                     Bundle bundle = new Bundle();
                     bundle.putString("app", appName);
+                    Log.e(TAG, "App Changed from " + last_appName + " to " + event.getClassName().toString() + ", timestamp: " + System.currentTimeMillis());
                     volEventListener.onVolEvent(VolEventListener.EventType.App, bundle);
                     overlay_has_showed_for_other_reason = false;
                     last_valid_widget = event.getClassName().toString();
                 }
             }
-            if (AppList.blank_widgets.contains(event.getClassName().toString())) {
+            if (blank_widgets.contains(event.getClassName().toString())) {
                 overlay_has_showed_for_other_reason = true;
             }
         }
