@@ -99,7 +99,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     private VolumeManager volumeManager;
     private String defaultFid;
 
-    private CompletableFuture<Double> detectedNoiseFt;
+    private CompletableFuture<Double> detectedNoiseFt = null;
 
     public ConfigContext(Context context, ContextConfig config, RequestListener requestListener, List<ContextListener> contextListener, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, CollectorManager collectorManager) {
         super(context, config, requestListener, contextListener, scheduledExecutorService, futureList);
@@ -395,7 +395,9 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 //                        notifyContext(NEED_POSITION, timestamp, logID, "key event: " + KeyEvent.keyCodeToString(keycode));
 
                         // detect current noise
-                        detectedNoiseFt = noiseManager.detectNoise(5000, 10);
+                        if (detectedNoiseFt == null) {
+                            detectedNoiseFt = noiseManager.detectNoise(5000, 10);
+                        }
                         Log.e(TAG, "Local Context Data: " + String.format("%d,%f,%s,%s,%s",
                                 System.currentTimeMillis(),
                                 noiseManager.getPresentNoise(),
@@ -467,7 +469,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                     Log.e(TAG, "onExternalEvent: check manual noise detection");
                     detectedNoiseFt.whenComplete((v, e) -> {
                         // 当用户调整结束且噪音检测结束时，记录用户调整音量及噪音值
-                        Log.e(TAG, "onExternalEvent: get result");
+                        Log.e(TAG, "onExternalEvent: get result " + v + " " + e);
                         try {
                             appendLine(String.format("%d,%f,%f,%s,%s,%s",
                                     System.currentTimeMillis(),
@@ -481,6 +483,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                         } catch (Exception e1) {
                             e1.printStackTrace();
                         }
+                        detectedNoiseFt = null;
                         // TODO
                     });
                 }
@@ -590,8 +593,8 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         switch (eventType) {
             case Noise:
                 noise = bundle.getDouble("noise");
-                Log.e(TAG, "onVolEvent: " + eventType + " " + noise);
-                // TODO: map noise to volume and adjust
+                double lastTriggerNoise = bundle.getDouble("lastTriggerNoise");
+                Log.e(TAG, "onVolEvent: " + eventType + " " + noise + " " + lastTriggerNoise);
                 break;
             // TODO: adjust mapping function
             case Device:
@@ -608,6 +611,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                 Log.e(TAG, "onVolEvent: " + eventType + " " + positionID + " " + positionName);
                 break;
         }
+        // TODO: map noise to volume and adjust
         double adjustedVolume = fakeMapping(noise);
 //        double adjustedVolume = volumeManager.predict(defaultFid, noise);
         Log.e(TAG, "onVolEvent: noise = " + noise +  " adjust volume = " + adjustedVolume);

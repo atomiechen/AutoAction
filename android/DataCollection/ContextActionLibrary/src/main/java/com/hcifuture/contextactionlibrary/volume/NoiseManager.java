@@ -84,6 +84,7 @@ public class NoiseManager extends TriggerManager {
             // signal to adjust volume according to noise
             Bundle bundle = new Bundle();
             bundle.putDouble("noise", noise);
+            bundle.putDouble("lastTriggerNoise", lastTriggerNoise);
             volEventListener.onVolEvent(VolEventListener.EventType.Noise, bundle);
             lastTriggerNoise = noise;
 //            setPresentNoise(noise);
