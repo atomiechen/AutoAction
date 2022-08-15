@@ -35,6 +35,7 @@ public class AudioCollector extends AsynchronousCollector {
     public double lastest_noise;
 
     private ScheduledFuture<?> repeatedSampleFt;
+    private final File dummyOutputFile;
 
     /*
       Error code:
@@ -53,6 +54,9 @@ public class AudioCollector extends AsynchronousCollector {
         audioManager = (AudioManager) mContext.getSystemService(Context.AUDIO_SERVICE);
         noiseCheckpoints = new ArrayList<>();
         lastest_noise = 0.0;
+
+        dummyOutputFile = new File(context.getExternalMediaDirs()[0].getAbsolutePath() + "/tmp/null");
+        FileUtils.makeDir(dummyOutputFile.getParent());
     }
 
     @Override
@@ -63,6 +67,7 @@ public class AudioCollector extends AsynchronousCollector {
     @Override
     public void close() {
         stopRecording();
+        clearDummyOutputFile();
     }
 
     @RequiresApi(api = Build.VERSION_CODES.O)
@@ -183,6 +188,7 @@ public class AudioCollector extends AsynchronousCollector {
     @Override
     public void pause() {
         stopRecording();
+        clearDummyOutputFile();
     }
 
     @Override
@@ -198,6 +204,19 @@ public class AudioCollector extends AsynchronousCollector {
     @Override
     public String getExt() {
         return ".mp3";
+    }
+
+    public String getDummyOutputFilePath() {
+        // from Android 11 (SDK 30) on, cannot use "/dev/null"
+        return dummyOutputFile.getAbsolutePath();
+    }
+
+    public void clearDummyOutputFile() {
+        try {
+            FileUtils.deleteFile(dummyOutputFile, "");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
@@ -227,7 +246,7 @@ public class AudioCollector extends AsynchronousCollector {
                         mMediaRecorder.setAudioEncodingBitRate(16 * 44100);
                         mMediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
                         mMediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
-                        mMediaRecorder.setOutputFile("/dev/null");
+                        mMediaRecorder.setOutputFile(getDummyOutputFilePath());
                         mMediaRecorder.prepare();
                         mMediaRecorder.start();
                         Log.e(TAG, String.format("getMaxAmplitudeSequence: MediaRecorder started, length: %dms period: %dms", length, period));
