@@ -112,7 +112,7 @@ public class Position {
                     count += 1;
                 }
             }
-            wifi_score = 50 * (count / wifiIds.size());
+            wifi_score = 50 * Math.sqrt(count / wifiIds.size());
         }
         double score = 0;
         if(!wifi_valid && !gps_valid) score = -1;

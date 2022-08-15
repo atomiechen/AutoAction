@@ -203,7 +203,7 @@ public class PositionManager extends TriggerManager {
                 }
                 Position position = new Position("" + System.currentTimeMillis(), "unknown", latitude, longitude, wifiIds);
                 if (lastPosition != null && lastPosition.sameAs(position))
-                    Log.e(TAG, "Old Position: " + position.getId());
+                    Log.e(TAG, "Old Position: " + lastPosition.getId());
                 if (lastPosition == null || !lastPosition.sameAs(position)) {
                     // 查找是否是新地点
                     Position tmp = findInList(position);
