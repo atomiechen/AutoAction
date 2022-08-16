@@ -169,8 +169,6 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         // do not perform record_all() in stop(),
         // it may cause crashes when frequently called
 
-        isVolumeOn = false;
-
         positionManager.stop();
         deviceManager.stop();
         noiseManager.stop();
@@ -402,14 +400,15 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                         if (detectedNoiseFt == null) {
                             detectedNoiseFt = noiseManager.detectNoise(5000, 10);
                         }
-                        Log.e(TAG, "Local Context Data: " + String.format("%d,%f,%s,%s,%s",
+                        Log.e(TAG, "Local Context Data: " + String.format("%d,%f,%s,%s,%s,%b,%d",
                                 System.currentTimeMillis(),
                                 noiseManager.getPresentNoise(),
                                 deviceManager.getPresentDeviceID(),
                                 appManager.getPresentApp(),
-                                positionManager.getPresentPosition()
+                                positionManager.getPresentPosition(),
+                                soundManager.isAudioOn(),
+                                soundManager.getAudioMode()
                         ));
-                        Log.e(TAG, "" + soundManager.isAudioOn() + " " + soundManager.getAudioMode());
                         toFrontend(TYPE_MANUAL, 0);
                 }
             }
@@ -474,23 +473,33 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                     Log.e(TAG, "onExternalEvent: check manual noise detection");
                     detectedNoiseFt.whenComplete((v, e) -> {
                         // 当用户调整结束且噪音检测结束时，记录用户调整音量及噪音值
-                        Log.e(TAG, "onExternalEvent: get result " + v + " " + e);
-                        try {
-                            appendLine(String.format("%d,%f,%f,%s,%s,%s",
-                                    System.currentTimeMillis(),
-                                    noiseManager.getPresentNoise(),
-                                    finalVolume,
-                                    deviceManager.getPresentDeviceID(),
-                                    appManager.getPresentApp(),
-                                    positionManager.getPresentPosition()
-                            ), FILE_TMP_DATA);
-                            Log.e(TAG, "onExternalEvent: recorded to file");
-                        } catch (Exception e1) {
-                            e1.printStackTrace();
-                        }
+                        Log.e(TAG, "onExternalEvent: get detectedNoiseFt " + v + " " + e);
+                        appendLine(String.format("%d,%f,%f,%s,%s,%s,%b,%d,updated_noise",
+                                System.currentTimeMillis(),
+                                noiseManager.getPresentNoise(),
+                                finalVolume,
+                                deviceManager.getPresentDeviceID(),
+                                appManager.getPresentApp(),
+                                positionManager.getPresentPosition(),
+                                soundManager.isAudioOn(),
+                                soundManager.getAudioMode()
+                        ), FILE_TMP_DATA);
+                        Log.e(TAG, "onExternalEvent: recorded to file");
                         detectedNoiseFt = null;
-                        // TODO
                     });
+                } else {
+                    Log.e(TAG, "onExternalEvent: null detectedNoiseFt (already stopped) ");
+                    appendLine(String.format("%d,%f,%f,%s,%s,%s,%b,%d,last_noise",
+                            System.currentTimeMillis(),
+                            noiseManager.getPresentNoise(),
+                            finalVolume,
+                            deviceManager.getPresentDeviceID(),
+                            appManager.getPresentApp(),
+                            positionManager.getPresentPosition(),
+                            soundManager.isAudioOn(),
+                            soundManager.getAudioMode()
+                    ), FILE_TMP_DATA);
+                    Log.e(TAG, "onExternalEvent: recorded to file");
                 }
             } else if (from == 2) {
                 int editedRank = bundle.getInt("editedRank");
@@ -517,7 +526,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
         String line = timestamp + "\t" + logID + "\t" + type + "\t" + action + "\t" + tag + "\t" + other;
         logCollector.addLog(line);
-        Log.e("ConfigContext", "in record");
+        Log.e("ConfigContext", "record: " + line);
     }
 
     private synchronized void record_all(String action) {
