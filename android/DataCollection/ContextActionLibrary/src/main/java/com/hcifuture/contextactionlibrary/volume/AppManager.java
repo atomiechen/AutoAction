@@ -14,12 +14,14 @@ public class AppManager extends TriggerManager {
     private String last_appName;
     private boolean overlay_has_showed_for_other_reason;
     private String last_valid_widget;
+    private boolean wechat_chatting_video_on;
 
     public AppManager(VolEventListener volEventListener) {
         super(volEventListener);
         appName = "";
         last_appName = "";
         last_valid_widget = "";
+        wechat_chatting_video_on = false;
         overlay_has_showed_for_other_reason = true;
     }
 
@@ -113,7 +115,8 @@ public class AppManager extends TriggerManager {
             "com.tencent.mm.plugin.finder.ui.FinderHomeAffinityUI",
             "com.tencent.mm.plugin.finder.ui.FinderShareFeedRelUI",
             "com.tencent.mm.plugin.sns.ui.SnsOnlineVideoActivity",
-            "com.tencent.mm.plugin.finder.feed.ui.FinderLiveVisitorWithoutAffinityUI"
+            "com.tencent.mm.plugin.finder.feed.ui.FinderLiveVisitorWithoutAffinityUI",
+            "com.tencent.mm.ui.chatting.gallery.ImageGalleryUI"
     );
 
     private final List<String> blank_widgets = Arrays.asList(
@@ -149,7 +152,7 @@ public class AppManager extends TriggerManager {
             if (isNeedOverlayApp(tmp_name, packageName) || isNotNeedOverlayApp(tmp_name, packageName)) {
                 appName = tmp_name;
                 if (!(appName.equals(last_appName))) {
-                    if (isNeedOverlayApp(appName, packageName) && !(event.getClassName() != null && video_widgets.contains(event.getClassName().toString()))) {
+                    if (isNeedOverlayApp(appName, packageName) && !(event.getClassName() != null && isVideoWidget(event.getClassName().toString()))) {
                         Bundle bundle = new Bundle();
                         bundle.putString("app", appName);
                         Log.e(TAG, "App Changed from " + last_appName + " to " + appName + ", timestamp: " + System.currentTimeMillis());
@@ -161,11 +164,7 @@ public class AppManager extends TriggerManager {
             }
         }
         if (event.getClassName() != null) {
-            Log.e("AccessibilityEventType", event.getClassName().toString() + "--------------------------");
-            Log.e("Event", event.toString());
-            if (event.getText() != null && event.getText().size() > 0)
-                Log.e("EventText", event.getText().get(0).toString());
-            if (video_widgets.contains(event.getClassName().toString())) {
+            if (isVideoWidget(event.getClassName().toString())) {
                 if (overlay_has_showed_for_other_reason || !last_valid_widget.equals(event.getClassName().toString())) {
                     Bundle bundle = new Bundle();
                     bundle.putString("app", appName);
@@ -178,7 +177,37 @@ public class AppManager extends TriggerManager {
             if (blank_widgets.contains(event.getClassName().toString())) {
                 overlay_has_showed_for_other_reason = true;
             }
+            Log.e("AccessibilityEventType", event.getClassName().toString());
+            Log.e("Event", event.toString());
+            if (event.getText() != null && event.getText().size() > 0) {
+                Log.e("EventText", event.getText().get(0).toString());
+                wechat_chatting_video_on = getWechatChattingVideoOn(event);
+            }
         }
+    }
+
+    public boolean getWechatChattingVideoOn(AccessibilityEvent event) {
+        if (event == null)
+            return false;
+        if (event.getEventType() != AccessibilityEvent.TYPE_VIEW_CLICKED)
+            return false;
+        if (event.getClassName() == null || !event.getClassName().toString().equals("android.widget.FrameLayout"))
+            return false;
+        if (event.getPackageName() == null || !event.getPackageName().toString().equals("com.tencent.mm"))
+            return false;
+        String tmp = event.getText().get(0).toString();
+        if (tmp.length() < 4) return false;
+        return tmp.charAt(tmp.length() - 3) == ':';
+    }
+
+    public boolean isVideoWidget(String name) {
+        if (video_widgets.contains(name)) {
+            if (name.equals("com.tencent.mm.ui.chatting.gallery.ImageGalleryUI")) {
+                return wechat_chatting_video_on;
+            }
+            return true;
+        }
+        return false;
     }
 
     public boolean isNeedOverlayApp(String name, String packageName) {
