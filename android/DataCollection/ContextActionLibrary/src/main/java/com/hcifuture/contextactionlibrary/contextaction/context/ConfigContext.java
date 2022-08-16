@@ -30,7 +30,6 @@ import com.hcifuture.contextactionlibrary.sensor.data.SingleWifiData;
 import com.hcifuture.contextactionlibrary.utils.FileUtils;
 import com.hcifuture.contextactionlibrary.utils.JSONUtils;
 import com.hcifuture.contextactionlibrary.volume.AppManager;
-import com.hcifuture.contextactionlibrary.volume.Device;
 import com.hcifuture.contextactionlibrary.volume.DeviceManager;
 import com.hcifuture.contextactionlibrary.volume.PositionManager;
 import com.hcifuture.contextactionlibrary.volume.SoundManager;
@@ -80,6 +79,8 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     public static String NEED_SCAN = "context.config.need_scan";
     public static String NEED_POSITION = "context.config.need_position";
 
+    // front end states
+    public static int TYPE_OFF = -1;
     public static int TYPE_MANUAL = 0;
     public static int TYPE_AUTO_DIRECT = 1;
     public static int TYPE_AUTO_COUNTDOWN = 2;
@@ -95,7 +96,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
     private final AtomicInteger mLogID = new AtomicInteger(0);
 
-    private boolean isVolumeOn = false;
+    private int frontEndState = TYPE_OFF;
     private NoiseManager noiseManager;
     private AppManager appManager;
     private PositionManager positionManager;
@@ -477,13 +478,32 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                 int behavior = bundle.getInt("behavior");
                 double finalVolume = bundle.getDouble("finalVolume");
                 Log.e(TAG, "from PAIPAI_HELPER from:" + from + ", behavior:" + behavior + ", finalVolume:" + finalVolume);
-                isVolumeOn = false;
-                if (detectedNoiseFt != null) {
-                    Log.e(TAG, "onExternalEvent: check manual noise detection");
-                    detectedNoiseFt.whenComplete((v, e) -> {
-                        // 当用户调整结束且噪音检测结束时，记录用户调整音量及噪音值
-                        Log.e(TAG, "onExternalEvent: get detectedNoiseFt " + v + " " + e);
-                        appendLine(String.format("%d,%f,%f,%s,%s,%s,%b,%d,updated_noise",
+                if (frontEndState == TYPE_MANUAL) {
+                    if (detectedNoiseFt != null) {
+                        Log.e(TAG, "onExternalEvent: check manual noise detection");
+                        detectedNoiseFt.whenComplete((v, e) -> {
+                            // 当用户调整结束且噪音检测结束时，记录用户调整音量及噪音值
+                            Log.e(TAG, "onExternalEvent: get detectedNoiseFt " + v + " " + e);
+                            appendLine(String.format("%d,%f,%f,%s,%s,%s,%b,%d,updated_noise",
+                                    System.currentTimeMillis(),
+                                    noiseManager.getPresentNoise(),
+                                    finalVolume,
+                                    deviceManager.getPresentDeviceID(),
+                                    appManager.getPresentApp(),
+                                    positionManager.getPresentPosition(),
+                                    soundManager.isAudioOn(),
+                                    soundManager.getAudioMode()
+                            ), FILE_TMP_DATA);
+                            Log.e(TAG, "onExternalEvent: recorded to file");
+                            detectedNoiseFt = null;
+                            if (soundManager.isAudioOn()) {
+                                // only record when audio is on
+                                volumeManager.addRecord(getCurrentFID(), noiseManager.getPresentNoise(), finalVolume);
+                            }
+                        });
+                    } else {
+                        Log.e(TAG, "onExternalEvent: null detectedNoiseFt (already stopped) ");
+                        appendLine(String.format("%d,%f,%f,%s,%s,%s,%b,%d,last_noise",
                                 System.currentTimeMillis(),
                                 noiseManager.getPresentNoise(),
                                 finalVolume,
@@ -494,36 +514,19 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                                 soundManager.getAudioMode()
                         ), FILE_TMP_DATA);
                         Log.e(TAG, "onExternalEvent: recorded to file");
-                        detectedNoiseFt = null;
                         if (soundManager.isAudioOn()) {
                             // only record when audio is on
                             volumeManager.addRecord(getCurrentFID(), noiseManager.getPresentNoise(), finalVolume);
                         }
-                    });
-                } else {
-                    Log.e(TAG, "onExternalEvent: null detectedNoiseFt (already stopped) ");
-                    appendLine(String.format("%d,%f,%f,%s,%s,%s,%b,%d,last_noise",
-                            System.currentTimeMillis(),
-                            noiseManager.getPresentNoise(),
-                            finalVolume,
-                            deviceManager.getPresentDeviceID(),
-                            appManager.getPresentApp(),
-                            positionManager.getPresentPosition(),
-                            soundManager.isAudioOn(),
-                            soundManager.getAudioMode()
-                    ), FILE_TMP_DATA);
-                    Log.e(TAG, "onExternalEvent: recorded to file");
-                    if (soundManager.isAudioOn()) {
-                        // only record when audio is on
-                        volumeManager.addRecord(getCurrentFID(), noiseManager.getPresentNoise(), finalVolume);
                     }
                 }
+                frontEndState = TYPE_OFF;
             } else if (from == 2) {
                 int editedRank = bundle.getInt("editedRank");
                 boolean action = bundle.getBoolean("action");
                 double finalVolume = bundle.getDouble("finalVolume");
                 Log.e(TAG, "from PAIPAI_HELPER from:" + from + ", editedRank:" + editedRank + ", action:" + action + ", finalVolume:" + finalVolume);
-                isVolumeOn = false;
+                frontEndState = TYPE_OFF;
             }
         }
     }
@@ -697,7 +700,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     }
 
     public void toFrontend(int type, double adjustedVolume) {
-        if (!isVolumeOn) {
+        if (frontEndState == TYPE_OFF) {
             VolumeContext volumeContext = getPresentContext();
             rules = getRules(volumeContext, type);
             if (type != TYPE_MANUAL) {
@@ -705,7 +708,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                 rulesList.get(0).putDouble("volume", adjustedVolume);
             }
             onRequest(rules);
-            isVolumeOn = true;
+            frontEndState = type;
             Log.e(TAG, "toFrontend: Volume UI pops up, type: " + type);
         } else {
             Log.e(TAG, "toFrontend: not pop up because already on");
