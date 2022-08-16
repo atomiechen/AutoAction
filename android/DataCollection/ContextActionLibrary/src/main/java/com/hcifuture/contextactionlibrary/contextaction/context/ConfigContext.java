@@ -31,6 +31,7 @@ import com.hcifuture.contextactionlibrary.utils.JSONUtils;
 import com.hcifuture.contextactionlibrary.volume.AppManager;
 import com.hcifuture.contextactionlibrary.volume.DeviceManager;
 import com.hcifuture.contextactionlibrary.volume.PositionManager;
+import com.hcifuture.contextactionlibrary.volume.SoundManager;
 import com.hcifuture.contextactionlibrary.volume.VolEventListener;
 import com.hcifuture.contextactionlibrary.volume.VolumeContext;
 import com.hcifuture.contextactionlibrary.volume.NoiseManager;
@@ -96,6 +97,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     private AppManager appManager;
     private PositionManager positionManager;
     private DeviceManager deviceManager;
+    private SoundManager soundManager;
     private VolumeManager volumeManager;
     private String defaultFid;
 
@@ -115,6 +117,8 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                 (AudioCollector) collectorManager.getCollector(CollectorManager.CollectorType.Audio));
 
         deviceManager = new DeviceManager(this, mContext, scheduledExecutorService, futureList);
+
+        soundManager = new SoundManager(context);
 
         appManager = new AppManager(this);
 
@@ -405,6 +409,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                                 appManager.getPresentApp(),
                                 positionManager.getPresentPosition()
                         ));
+                        Log.e(TAG, "" + soundManager.isAudioOn() + " " + soundManager.getAudioMode());
                         toFrontend(TYPE_MANUAL, 0);
                 }
             }
