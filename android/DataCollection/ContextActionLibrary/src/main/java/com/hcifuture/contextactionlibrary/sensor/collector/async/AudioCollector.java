@@ -46,6 +46,8 @@ public class AudioCollector extends AsynchronousCollector {
         4: Unknown audio recording exception
         5: Unknown exception when stopping recording
         6: Mic not available
+        7: Exception during getMaxAmplitudeSequence (noise detection)
+        8: No valid result of getMaxAmplitudeSequence (noise value)
      */
 
     public AudioCollector(Context context, CollectorManager.CollectorType type, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList) {
@@ -325,7 +327,7 @@ public class AudioCollector extends AsynchronousCollector {
             }
             if (idx >= seq.size()) {
                 // 没有非零值
-                return 0.0;
+                throw new CollectorException(8, "No MaxAmplitude > 0");
             }
             db = 20 * Math.log10(maxAmplitude / BASE);
             next_idx = idx + 1;
