@@ -18,17 +18,19 @@ import android.view.Display;
 import android.view.KeyEvent;
 import android.view.accessibility.AccessibilityEvent;
 
+import com.google.gson.reflect.TypeToken;
+import com.hcifuture.contextactionlibrary.sensor.collector.Collector;
 import com.hcifuture.contextactionlibrary.sensor.collector.CollectorManager;
 import com.hcifuture.contextactionlibrary.sensor.collector.async.AudioCollector;
 import com.hcifuture.contextactionlibrary.sensor.collector.async.GPSCollector;
 import com.hcifuture.contextactionlibrary.sensor.collector.async.WifiCollector;
-import com.hcifuture.contextactionlibrary.sensor.collector.sync.LogCollector;
 import com.hcifuture.contextactionlibrary.sensor.data.NonIMUData;
 import com.hcifuture.contextactionlibrary.sensor.data.SingleIMUData;
 import com.hcifuture.contextactionlibrary.sensor.data.SingleWifiData;
 import com.hcifuture.contextactionlibrary.utils.FileUtils;
 import com.hcifuture.contextactionlibrary.utils.JSONUtils;
 import com.hcifuture.contextactionlibrary.volume.AppManager;
+import com.hcifuture.contextactionlibrary.volume.Device;
 import com.hcifuture.contextactionlibrary.volume.DeviceManager;
 import com.hcifuture.contextactionlibrary.volume.PositionManager;
 import com.hcifuture.contextactionlibrary.volume.SoundManager;
@@ -51,12 +53,12 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -71,6 +73,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
     public static String VOLUME_SAVE_FOLDER;
     public static String FILE_TMP_DATA = "tmp_data.csv";
+    public static String FILE_CONTEXT_MAP = "context2fid.json";
     
     public static String NEED_AUDIO = "context.config.need_audio";
     public static String NEED_NONIMU = "context.config.need_nonimu";
@@ -101,6 +104,8 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     private VolumeManager volumeManager;
     private String defaultFid;
 
+    private Map<String, String> context2FID;
+
     private CompletableFuture<Double> detectedNoiseFt = null;
 
     public ConfigContext(Context context, ContextConfig config, RequestListener requestListener, List<ContextListener> contextListener, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, CollectorManager collectorManager) {
@@ -126,6 +131,8 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                 (GPSCollector) collectorManager.getCollector(CollectorManager.CollectorType.GPS),
                 (WifiCollector) collectorManager.getCollector(CollectorManager.CollectorType.Wifi));
 
+        readContextMap();
+
         // initialize
         appName = "";
         setDeviceType();
@@ -149,6 +156,8 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         volume.put("volume_music_bt_a2dp", 0);
         volume.put("volume_voice_bt_a2dp", 0);
         volume.put("volume_tts_bt_a2dp", 0);
+        // earpiece
+        volume.put("volume_music_earpiece", 0);
 
         last_record_all = 0;
 
@@ -486,6 +495,10 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                         ), FILE_TMP_DATA);
                         Log.e(TAG, "onExternalEvent: recorded to file");
                         detectedNoiseFt = null;
+                        if (soundManager.isAudioOn()) {
+                            // only record when audio is on
+                            volumeManager.addRecord(getCurrentFID(), noiseManager.getPresentNoise(), finalVolume);
+                        }
                     });
                 } else {
                     Log.e(TAG, "onExternalEvent: null detectedNoiseFt (already stopped) ");
@@ -500,6 +513,10 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                             soundManager.getAudioMode()
                     ), FILE_TMP_DATA);
                     Log.e(TAG, "onExternalEvent: recorded to file");
+                    if (soundManager.isAudioOn()) {
+                        // only record when audio is on
+                        volumeManager.addRecord(getCurrentFID(), noiseManager.getPresentNoise(), finalVolume);
+                    }
                 }
             } else if (from == 2) {
                 int editedRank = bundle.getInt("editedRank");
@@ -509,6 +526,38 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                 isVolumeOn = false;
             }
         }
+    }
+
+    public void writeContextMap() {
+        String result = Collector.gson.toJson(context2FID);
+        FileUtils.writeStringToFile(result, new File(ConfigContext.VOLUME_SAVE_FOLDER + FILE_CONTEXT_MAP));
+    }
+
+    public void readContextMap() {
+        Type type = new TypeToken<Map<String, String>>(){}.getType();
+        context2FID = Collector.gson.fromJson(
+                FileUtils.getFileContent(ConfigContext.VOLUME_SAVE_FOLDER + FILE_CONTEXT_MAP),
+                type
+        );
+        if (context2FID == null) {
+            context2FID = new HashMap<>();
+        }
+    }
+
+    private String getCurrentFID() {
+        String currentContextID = getCurrentContextID();
+        if (context2FID.containsKey(currentContextID)) {
+            return context2FID.get(currentContextID);
+        } else {
+            String newFID = volumeManager.newFunction();
+            context2FID.put(currentContextID, newFID);
+            writeContextMap();
+            return newFID;
+        }
+    }
+
+    private String getCurrentContextID() {
+        return "@" + deviceManager.getPresentDeviceID() + "@" + appManager.getPresentApp() + "@" + positionManager.getPresentPosition();
     }
 
     private void appendLine(String line, String filename) {
@@ -625,11 +674,15 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                 Log.e(TAG, "onVolEvent: " + eventType + " " + positionID + " " + positionName);
                 break;
         }
-        // TODO: map noise to volume and adjust
-        double adjustedVolume = fakeMapping(noise);
-//        double adjustedVolume = volumeManager.predict(defaultFid, noise);
-        Log.e(TAG, "onVolEvent: noise = " + noise +  " adjust volume = " + adjustedVolume);
-        toFrontend(TYPE_AUTO_DIRECT, adjustedVolume);
+        if (!soundManager.isAudioOn()) {
+            // map noise to volume and adjust
+//            double adjustedVolume = fakeMapping(noise);
+            double adjustedVolume = volumeManager.predict(getCurrentFID(), noise);
+            Log.e(TAG, "onVolEvent: noise = " + noise +  " adjust volume = " + adjustedVolume);
+            toFrontend(TYPE_AUTO_DIRECT, adjustedVolume);
+        } else {
+            Log.e(TAG, "onVolEvent: do not adjust because audio is on");
+        }
     }
 
     public double fakeMapping(double noise) {
