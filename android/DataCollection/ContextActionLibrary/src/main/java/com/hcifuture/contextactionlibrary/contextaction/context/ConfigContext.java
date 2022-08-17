@@ -475,47 +475,50 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
     @Override
     public void onExternalEvent(Bundle bundle) {
-        if (bundle.containsKey("from")) {
-            int from = bundle.getInt("from");
-            if (from == 1) {
-                int behavior = bundle.getInt("behavior");
-                double finalVolume = bundle.getDouble("finalVolume");
-                Log.e(TAG, "from PAIPAI_HELPER from:" + from + ", behavior:" + behavior + ", finalVolume:" + finalVolume);
-                if (frontEndState == TYPE_MANUAL) {
-                    if (detectedNoiseFt != null) {
-                        Log.e(TAG, "onExternalEvent: check manual noise detection");
-                        detectedNoiseFt.whenComplete((v, e) -> {
-                            // 当用户调整结束且噪音检测结束时，记录用户调整音量及噪音值
-                            Log.e(TAG, "onExternalEvent: manual detectedNoiseFt " + v + " " + e);
-                            addData(finalVolume, TYPE_MANUAL, behavior, "updated_noise");
+        if (bundle.containsKey("exit")) {
+            boolean exit = bundle.getBoolean("exit");
+            if (exit) {
+                int from = bundle.getInt("from");
+                if (from == 1) {
+                    int behavior = bundle.getInt("behavior");
+                    double finalVolume = bundle.getDouble("finalVolume");
+                    Log.e(TAG, "from PAIPAI_HELPER from:" + from + ", behavior:" + behavior + ", finalVolume:" + finalVolume);
+                    if (frontEndState == TYPE_MANUAL) {
+                        if (detectedNoiseFt != null) {
+                            Log.e(TAG, "onExternalEvent: check manual noise detection");
+                            detectedNoiseFt.whenComplete((v, e) -> {
+                                // 当用户调整结束且噪音检测结束时，记录用户调整音量及噪音值
+                                Log.e(TAG, "onExternalEvent: manual detectedNoiseFt " + v + " " + e);
+                                addData(finalVolume, TYPE_MANUAL, behavior, "updated_noise");
+                                Log.e(TAG, "onExternalEvent: recorded to file");
+                                detectedNoiseFt = null;
+                            });
+                        } else {
+                            Log.e(TAG, "onExternalEvent: manual null detectedNoiseFt (already stopped) ");
+                            addData(finalVolume, frontEndState, behavior, "last_noise");
                             Log.e(TAG, "onExternalEvent: recorded to file");
-                            detectedNoiseFt = null;
-                        });
-                    } else {
-                        Log.e(TAG, "onExternalEvent: manual null detectedNoiseFt (already stopped) ");
-                        addData(finalVolume, frontEndState, behavior, "last_noise");
-                        Log.e(TAG, "onExternalEvent: recorded to file");
+                        }
+                    } else if (frontEndState == TYPE_AUTO_DIRECT || frontEndState == TYPE_AUTO_COUNTDOWN) {
+                        if (behavior != 0) {
+                            Log.e(TAG, "onExternalEvent: auto modified by hand");
+                            addData(finalVolume, frontEndState, behavior, "last_noise");
+                            Log.e(TAG, "onExternalEvent: recorded to file");
+                        }
                     }
-                } else if (frontEndState == TYPE_AUTO_DIRECT || frontEndState == TYPE_AUTO_COUNTDOWN) {
-                    if (behavior != 0) {
-                        Log.e(TAG, "onExternalEvent: auto modified by hand");
-                        addData(finalVolume, frontEndState, behavior, "last_noise");
-                        Log.e(TAG, "onExternalEvent: recorded to file");
-                    }
+                    frontEndState = TYPE_OFF;
+                } else if (from == 2) {
+                    int editedRank = bundle.getInt("editedRank");
+                    boolean action = bundle.getBoolean("action");
+                    double finalVolume = bundle.getDouble("finalVolume");
+                    Log.e(TAG, "from PAIPAI_HELPER from:" + from + ", editedRank:" + editedRank + ", action:" + action + ", finalVolume:" + finalVolume);
+                    frontEndState = TYPE_OFF;
                 }
-                frontEndState = TYPE_OFF;
-            } else if (from == 2) {
-                int editedRank = bundle.getInt("editedRank");
-                boolean action = bundle.getBoolean("action");
-                double finalVolume = bundle.getDouble("finalVolume");
-                Log.e(TAG, "from PAIPAI_HELPER from:" + from + ", editedRank:" + editedRank + ", action:" + action + ", finalVolume:" + finalVolume);
-                frontEndState = TYPE_OFF;
-            }
-        } else if (bundle.containsKey("quietMode")) {
-            currentMode = bundle.getBoolean("quietMode")? MODE_QUIET : MODE_NORMAL;
-            if (currentMode == MODE_QUIET) {
-                // switch to quiet mode
-                changeToQuietMode(20);
+            } else if (bundle.containsKey("quietMode")) {
+                currentMode = bundle.getBoolean("quietMode")? MODE_QUIET : MODE_NORMAL;
+                if (currentMode == MODE_QUIET) {
+                    // user switches to quiet mode, then auto adjust volume
+                    changeToQuietMode(20);
+                }
             }
         }
     }
@@ -727,6 +730,9 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     }
 
     private void changeToQuietMode(double volume) {
+        // pop up the panel
+        toFrontend(TYPE_MANUAL, 0);
+        // then adjust volume
         Bundle bundle = new Bundle();
         bundle.putDouble("vol", volume);
         notifyFrontend("on quiet-mode changed volume adjust", bundle);
