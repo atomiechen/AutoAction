@@ -513,7 +513,10 @@ public class ConfigContext extends BaseContext implements VolEventListener {
             }
         } else if (bundle.containsKey("quietMode")) {
             currentMode = bundle.getBoolean("quietMode")? MODE_QUIET : MODE_NORMAL;
-            changeToQuietMode(20);
+            if (currentMode == MODE_QUIET) {
+                // switch to quiet mode
+                changeToQuietMode(20);
+            }
         }
     }
 
