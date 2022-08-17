@@ -1,9 +1,12 @@
 package com.hcifuture.contextactionlibrary.contextaction.context;
 
 import android.bluetooth.BluetoothAdapter;
+import android.content.ComponentName;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.content.res.Configuration;
 import android.hardware.display.DisplayManager;
 import android.media.AudioDeviceInfo;
@@ -132,7 +135,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
         soundManager = new SoundManager(context);
 
-        appManager = new AppManager(this);
+        appManager = new AppManager(this, mContext);
 
         positionManager = new PositionManager(this, scheduledExecutorService, futureList,
                 (GPSCollector) collectorManager.getCollector(CollectorManager.CollectorType.GPS),
