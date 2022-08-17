@@ -456,22 +456,6 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
     @Override
     public void onExternalEvent(Bundle bundle) {
-        //TODO
-//        if (bundle.containsKey("selectedRule") && bundle.containsKey("finalVolume")) {
-//            long timestamp = System.currentTimeMillis();
-//            int logID = incLogID();
-//            String type = "volume overlay return";
-//            String action = "";
-//            String tag = "";
-//            JSONObject json = new JSONObject();
-//            int selected_rule = bundle.getInt("selectedRule");
-//            JSONUtils.jsonPut(json, "finalVolume", bundle.getInt("finalVolume"));
-////            JSONUtils.jsonPut(json, "selectedRule", rules.get(selected_rule));
-//
-//            VolumeContext volumeContext = getPresentContext();
-//            volumeRuleManager.addRecord(volumeContext, bundle.getInt("finalVolume"));
-//            record(timestamp, logID, type, action, tag, json.toString());
-//        }
         if (bundle.containsKey("from")) {
             int from = bundle.getInt("from");
             if (from == 1) {
@@ -483,41 +467,21 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                         Log.e(TAG, "onExternalEvent: check manual noise detection");
                         detectedNoiseFt.whenComplete((v, e) -> {
                             // 当用户调整结束且噪音检测结束时，记录用户调整音量及噪音值
-                            Log.e(TAG, "onExternalEvent: get detectedNoiseFt " + v + " " + e);
-                            appendLine(String.format("%d,%f,%f,%s,%s,%s,%b,%d,updated_noise",
-                                    System.currentTimeMillis(),
-                                    noiseManager.getPresentNoise(),
-                                    finalVolume,
-                                    deviceManager.getPresentDeviceID(),
-                                    appManager.getPresentApp(),
-                                    positionManager.getPresentPosition(),
-                                    soundManager.isAudioOn(),
-                                    soundManager.getAudioMode()
-                            ), FILE_TMP_DATA);
+                            Log.e(TAG, "onExternalEvent: manual detectedNoiseFt " + v + " " + e);
+                            addData(finalVolume, TYPE_MANUAL, behavior, "updated_noise");
                             Log.e(TAG, "onExternalEvent: recorded to file");
                             detectedNoiseFt = null;
-                            if (soundManager.isAudioOn()) {
-                                // only record when audio is on
-                                volumeManager.addRecord(getCurrentFID(), noiseManager.getPresentNoise(), finalVolume);
-                            }
                         });
                     } else {
-                        Log.e(TAG, "onExternalEvent: null detectedNoiseFt (already stopped) ");
-                        appendLine(String.format("%d,%f,%f,%s,%s,%s,%b,%d,last_noise",
-                                System.currentTimeMillis(),
-                                noiseManager.getPresentNoise(),
-                                finalVolume,
-                                deviceManager.getPresentDeviceID(),
-                                appManager.getPresentApp(),
-                                positionManager.getPresentPosition(),
-                                soundManager.isAudioOn(),
-                                soundManager.getAudioMode()
-                        ), FILE_TMP_DATA);
+                        Log.e(TAG, "onExternalEvent: manual null detectedNoiseFt (already stopped) ");
+                        addData(finalVolume, frontEndState, behavior, "last_noise");
                         Log.e(TAG, "onExternalEvent: recorded to file");
-                        if (soundManager.isAudioOn()) {
-                            // only record when audio is on
-                            volumeManager.addRecord(getCurrentFID(), noiseManager.getPresentNoise(), finalVolume);
-                        }
+                    }
+                } else if (frontEndState == TYPE_AUTO_DIRECT || frontEndState == TYPE_AUTO_COUNTDOWN) {
+                    if (behavior != 0) {
+                        Log.e(TAG, "onExternalEvent: auto modified by hand");
+                        addData(finalVolume, frontEndState, behavior, "last_noise");
+                        Log.e(TAG, "onExternalEvent: recorded to file");
                     }
                 }
                 frontEndState = TYPE_OFF;
@@ -561,6 +525,26 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
     private String getCurrentContextID() {
         return "@" + deviceManager.getPresentDeviceID() + "@" + appManager.getPresentApp() + "@" + positionManager.getPresentPosition();
+    }
+
+    private void addData(double volume, int frontEndState, int behavior, String tag) {
+        appendLine(String.format("%d,%f,%f,%s,%s,%s,%b,%d,%d,%d,%s",
+                System.currentTimeMillis(),
+                noiseManager.getPresentNoise(),
+                volume,
+                deviceManager.getPresentDeviceID(),
+                appManager.getPresentApp(),
+                positionManager.getPresentPosition(),
+                soundManager.isAudioOn(),
+                soundManager.getAudioMode(),
+                frontEndState,
+                behavior,
+                tag
+        ), FILE_TMP_DATA);
+        if (soundManager.isAudioOn()) {
+            // only record when audio is on
+            volumeManager.addRecord(getCurrentFID(), noiseManager.getPresentNoise(), volume);
+        }
     }
 
     private void appendLine(String line, String filename) {
