@@ -116,7 +116,8 @@ public class AppManager extends TriggerManager {
             "com.tencent.mm.plugin.finder.ui.FinderShareFeedRelUI",
             "com.tencent.mm.plugin.sns.ui.SnsOnlineVideoActivity",
             "com.tencent.mm.plugin.finder.feed.ui.FinderLiveVisitorWithoutAffinityUI",
-            "com.tencent.mm.ui.chatting.gallery.ImageGalleryUI"
+            "com.tencent.mm.ui.chatting.gallery.ImageGalleryUI",
+            "com.tencent.mm.plugin.finder.feed.ui.FinderProfileTimeLineUI"
     );
 
     private final List<String> blank_widgets = Arrays.asList(
