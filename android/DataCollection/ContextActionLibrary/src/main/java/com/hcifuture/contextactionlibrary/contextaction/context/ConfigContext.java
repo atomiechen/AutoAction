@@ -6,8 +6,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.hardware.display.DisplayManager;
-import android.media.AudioDeviceInfo;
-import android.media.AudioManager;
 import android.net.Uri;
 import android.net.wifi.WifiManager;
 import android.os.Build;
@@ -94,7 +92,6 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     private long lastKeyDownTime = 0;
 
     private String appName;
-    private String latest_deviceType;
     private Bundle rules;
     private int brightness;
     private final HashMap<String, Integer> volume;
@@ -146,7 +143,6 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
         // initialize
         appName = "";
-        setDeviceType();
         brightness = 0;
         volume = new HashMap<>();
         // speaker
@@ -249,7 +245,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 //        }
         Log.e(TAG, "getPresentContext: noise = " + noise);
         String app = appName;
-        String device = latest_deviceType;
+        String device = deviceManager.getPresentDeviceID();
         Log.e("noise", "" + noise);
         Log.e("device", device);
         Log.e("latitude", "" + latitude);
@@ -381,65 +377,34 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                 int keyAction = extras.getInt("action");
                 JSONUtils.jsonPut(json, "keycodeString", KeyEvent.keyCodeToString(keycode));
 
-                switch (keycode) {
-                    case KeyEvent.KEYCODE_MEDIA_AUDIO_TRACK:
-                    case KeyEvent.KEYCODE_MEDIA_CLOSE:
-                    case KeyEvent.KEYCODE_MEDIA_EJECT:
-                    case KeyEvent.KEYCODE_MEDIA_FAST_FORWARD:
-                    case KeyEvent.KEYCODE_MEDIA_NEXT:
-                    case KeyEvent.KEYCODE_MEDIA_PAUSE:
-                    case KeyEvent.KEYCODE_MEDIA_PLAY:
-                    case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
-                    case KeyEvent.KEYCODE_MEDIA_PREVIOUS:
-                    case KeyEvent.KEYCODE_MEDIA_RECORD:
-                    case KeyEvent.KEYCODE_MEDIA_REWIND:
-                    case KeyEvent.KEYCODE_MEDIA_SKIP_BACKWARD:
-                    case KeyEvent.KEYCODE_MEDIA_SKIP_FORWARD:
-                    case KeyEvent.KEYCODE_MEDIA_STEP_BACKWARD:
-                    case KeyEvent.KEYCODE_MEDIA_STEP_FORWARD:
-                    case KeyEvent.KEYCODE_MEDIA_STOP:
-                    case KeyEvent.KEYCODE_MEDIA_TOP_MENU:
-                    case KeyEvent.KEYCODE_VOLUME_DOWN:
-                    case KeyEvent.KEYCODE_VOLUME_MUTE:
-                    case KeyEvent.KEYCODE_VOLUME_UP:
+                detectKeyGesture(keycode, keyAction);
+                detectKeyVolume(keycode);
+
+//                switch (keycode) {
+//                    case KeyEvent.KEYCODE_MEDIA_AUDIO_TRACK:
+//                    case KeyEvent.KEYCODE_MEDIA_CLOSE:
+//                    case KeyEvent.KEYCODE_MEDIA_EJECT:
+//                    case KeyEvent.KEYCODE_MEDIA_FAST_FORWARD:
+//                    case KeyEvent.KEYCODE_MEDIA_NEXT:
+//                    case KeyEvent.KEYCODE_MEDIA_PAUSE:
+//                    case KeyEvent.KEYCODE_MEDIA_PLAY:
+//                    case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
+//                    case KeyEvent.KEYCODE_MEDIA_PREVIOUS:
+//                    case KeyEvent.KEYCODE_MEDIA_RECORD:
+//                    case KeyEvent.KEYCODE_MEDIA_REWIND:
+//                    case KeyEvent.KEYCODE_MEDIA_SKIP_BACKWARD:
+//                    case KeyEvent.KEYCODE_MEDIA_SKIP_FORWARD:
+//                    case KeyEvent.KEYCODE_MEDIA_STEP_BACKWARD:
+//                    case KeyEvent.KEYCODE_MEDIA_STEP_FORWARD:
+//                    case KeyEvent.KEYCODE_MEDIA_STOP:
+//                    case KeyEvent.KEYCODE_MEDIA_TOP_MENU:
+//                    case KeyEvent.KEYCODE_VOLUME_DOWN:
+//                    case KeyEvent.KEYCODE_VOLUME_MUTE:
+//                    case KeyEvent.KEYCODE_VOLUME_UP:
 //                        notifyContext(NEED_AUDIO, timestamp, logID, "key event: " + KeyEvent.keyCodeToString(keycode));
 //                        notifyContext(NEED_SCAN, timestamp, logID, "key event: " + KeyEvent.keyCodeToString(keycode));
 //                        notifyContext(NEED_POSITION, timestamp, logID, "key event: " + KeyEvent.keyCodeToString(keycode));
-
-                        // detect current noise
-                        if (detectedNoiseFt == null) {
-                            detectedNoiseFt = noiseManager.detectNoise(5000, 10);
-                        }
-                        Log.e(TAG, "Local Context Data: " + String.format("%d,%f,%s,%s,%s,%b,%d",
-                                System.currentTimeMillis(),
-                                noiseManager.getPresentNoise(),
-                                deviceManager.getPresentDeviceID(),
-                                appManager.getPresentApp(),
-                                positionManager.getPresentPosition(),
-                                soundManager.isAudioOn(),
-                                soundManager.getAudioMode()
-                        ));
-                        if (keycode == KeyEvent.KEYCODE_VOLUME_DOWN && keyAction == KeyEvent.ACTION_DOWN && soundManager.getVolume() == 0) {
-                            if (currentMode != MODE_QUIET) {
-                                long curKeyDownTime = System.currentTimeMillis();
-                                if (keyDownCount == 0) {
-                                    keyDownCount = 1;
-                                    lastKeyDownTime = curKeyDownTime;
-                                } else if (keyDownCount == 1) {
-                                    if (curKeyDownTime - lastKeyDownTime <= 500) {
-                                        // trigger quiet mode
-                                        keyDownCount = 0;
-                                        currentMode = MODE_QUIET;
-                                        changeToQuietMode(20);
-                                    } else {
-                                        // duration too long
-                                        lastKeyDownTime = curKeyDownTime;
-                                    }
-                                }
-                            }
-                        }
-                        toFrontend(TYPE_MANUAL, 0);
-                }
+//                }
             }
 
             if (record) {
@@ -454,23 +419,6 @@ public class ConfigContext extends BaseContext implements VolEventListener {
             JSONUtils.jsonPut(json, "exception", e.toString());
             record(timestamp, logID, type, action, tag, json.toString());
         }
-    }
-
-    public void setDeviceType() {
-        AudioManager audioManager = (AudioManager) mContext.getSystemService(Context.AUDIO_SERVICE);
-        AudioDeviceInfo[] audioDeviceInfos = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS);
-        boolean headset_connected = false;
-        for (AudioDeviceInfo audioDeviceInfo: audioDeviceInfos) {
-            if (audioDeviceInfo.getType() == AudioDeviceInfo.TYPE_BLE_HEADSET || audioDeviceInfo.getType() == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP || audioDeviceInfo.getType() == AudioDeviceInfo.TYPE_BLUETOOTH_SCO || audioDeviceInfo.getType() == AudioDeviceInfo.TYPE_USB_HEADSET
-                    || audioDeviceInfo.getType() == AudioDeviceInfo.TYPE_WIRED_HEADPHONES || audioDeviceInfo.getType() == AudioDeviceInfo.TYPE_WIRED_HEADSET) {
-                headset_connected = true;
-                Log.e("HeadSetType", "" + audioDeviceInfo.getType());
-                latest_deviceType = "headset";
-                break;
-            }
-        }
-        if (!headset_connected)
-            latest_deviceType = "speaker";
     }
 
     @Override
@@ -666,6 +614,50 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         }
     }
 
+    private void detectKeyVolume(int keycode) {
+        switch (keycode) {
+            case KeyEvent.KEYCODE_VOLUME_DOWN:
+            case KeyEvent.KEYCODE_VOLUME_MUTE:
+            case KeyEvent.KEYCODE_VOLUME_UP:
+                // detect current noise
+                if (detectedNoiseFt == null) {
+                    detectedNoiseFt = noiseManager.detectNoise(5000, 10);
+                }
+                Log.e(TAG, "Local Context Data: " + String.format("%d,%f,%s,%s,%s,%b,%d",
+                        System.currentTimeMillis(),
+                        noiseManager.getPresentNoise(),
+                        deviceManager.getPresentDeviceID(),
+                        appManager.getPresentApp(),
+                        positionManager.getPresentPosition(),
+                        soundManager.isAudioOn(),
+                        soundManager.getAudioMode()
+                ));
+                tryPopUpFrontend(TYPE_MANUAL, 0);
+        }
+    }
+
+    private void detectKeyGesture(int keycode, int keyAction) {
+        if (keycode == KeyEvent.KEYCODE_VOLUME_DOWN && keyAction == KeyEvent.ACTION_DOWN && soundManager.getVolume() == 0) {
+            if (currentMode != MODE_QUIET) {
+                long curKeyDownTime = System.currentTimeMillis();
+                if (keyDownCount == 0) {
+                    keyDownCount = 1;
+                    lastKeyDownTime = curKeyDownTime;
+                } else if (keyDownCount == 1) {
+                    if (curKeyDownTime - lastKeyDownTime <= 500) {  // 500ms
+                        // trigger quiet mode
+                        keyDownCount = 0;
+                        currentMode = MODE_QUIET;
+                        changeToQuietMode(20);
+                    } else {
+                        // duration too long
+                        lastKeyDownTime = curKeyDownTime;
+                    }
+                }
+            }
+        }
+    }
+
     @Override
     public void onVolEvent(EventType eventType, Bundle bundle) {
         double noise = noiseManager.getPresentNoise();
@@ -695,7 +687,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 //            double adjustedVolume = fakeMapping(noise);
             double adjustedVolume = volumeManager.predict(getCurrentFID(), noise);
             Log.e(TAG, "onVolEvent: noise = " + noise +  " adjust volume = " + adjustedVolume);
-            toFrontend(TYPE_AUTO_DIRECT, adjustedVolume);
+            tryPopUpFrontend(TYPE_AUTO_DIRECT, adjustedVolume);
         } else {
             Log.e(TAG, "onVolEvent: do not adjust because audio is on or quiet mode");
         }
@@ -712,7 +704,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         return result;
     }
 
-    public void toFrontend(int type, double adjustedVolume) {
+    public void tryPopUpFrontend(int type, double adjustedVolume) {
         if (frontEndState == TYPE_OFF) {
             VolumeContext volumeContext = getPresentContext();
             rules = getRules(volumeContext, type);
@@ -731,7 +723,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
     private void changeToQuietMode(double volume) {
         // pop up the panel
-        toFrontend(TYPE_MANUAL, 0);
+        tryPopUpFrontend(TYPE_MANUAL, 0);
         // then adjust volume
         Bundle bundle = new Bundle();
         bundle.putDouble("vol", volume);
