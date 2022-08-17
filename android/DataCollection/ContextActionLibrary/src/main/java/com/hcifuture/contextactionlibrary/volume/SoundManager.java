@@ -4,12 +4,17 @@ import android.content.Context;
 import android.media.AudioManager;
 
 public class SoundManager {
+
+    private double NORMALIZED_MAX_VOLUME = 100.0;
+
     private AudioManager audioManager;
     private Context mContext;
+    private int VOLUME_MAX;
 
     public SoundManager(Context context) {
         mContext = context;
-        audioManager = (AudioManager) mContext.getSystemService(Context.AUDIO_SERVICE);;
+        audioManager = (AudioManager) mContext.getSystemService(Context.AUDIO_SERVICE);
+        VOLUME_MAX = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
     }
 
     public boolean isAudioOn() {
@@ -20,5 +25,13 @@ public class SoundManager {
         // Value is MODE_NORMAL, MODE_RINGTONE, MODE_IN_CALL, MODE_IN_COMMUNICATION, MODE_CALL_SCREENING,
         // MODE_CALL_REDIRECT, or MODE_COMMUNICATION_REDIRECT
         return audioManager.getMode();
+    }
+
+    public int getVolume() {
+        return audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
+    }
+
+    public double getNormalizedVolume() {
+        return getVolume() * NORMALIZED_MAX_VOLUME / VOLUME_MAX;
     }
 }

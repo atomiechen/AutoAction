@@ -89,6 +89,10 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     public static int MODE_NORMAL = 0;
     public static int MODE_QUIET = 1;
 
+    // key gesture
+    private int keyDownCount = 0;
+    private long lastKeyDownTime = 0;
+
     private String appName;
     private String latest_deviceType;
     private Bundle rules;
@@ -207,17 +211,6 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         // periodically record_all() every 30 min
         if (current_call - last_record_all >= 30 * 60000) {
             record_all("period_30m");
-        }
-    }
-
-    void onRequest(Bundle rules) {
-        if (contextListener != null) {
-            for (ContextListener listener: contextListener) {
-                ContextResult contextResult = new ContextResult("data from context-package", "");
-                contextResult.setTimestamp(System.currentTimeMillis());
-                contextResult.setExtras(rules);
-                listener.onContext(contextResult);
-            }
         }
     }
 
@@ -385,6 +378,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
             } else if ("KeyEvent".equals(type)) {
                 record = true;
                 int keycode = extras.getInt("code");
+                int keyAction = extras.getInt("action");
                 JSONUtils.jsonPut(json, "keycodeString", KeyEvent.keyCodeToString(keycode));
 
                 switch (keycode) {
@@ -425,6 +419,25 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                                 soundManager.isAudioOn(),
                                 soundManager.getAudioMode()
                         ));
+                        if (keycode == KeyEvent.KEYCODE_VOLUME_DOWN && keyAction == KeyEvent.ACTION_DOWN && soundManager.getVolume() == 0) {
+                            if (currentMode != MODE_QUIET) {
+                                long curKeyDownTime = System.currentTimeMillis();
+                                if (keyDownCount == 0) {
+                                    keyDownCount = 1;
+                                    lastKeyDownTime = curKeyDownTime;
+                                } else if (keyDownCount == 1) {
+                                    if (curKeyDownTime - lastKeyDownTime <= 500) {
+                                        // trigger quiet mode
+                                        keyDownCount = 0;
+                                        currentMode = MODE_QUIET;
+                                        changeToQuietMode(20);
+                                    } else {
+                                        // duration too long
+                                        lastKeyDownTime = curKeyDownTime;
+                                    }
+                                }
+                            }
+                        }
                         toFrontend(TYPE_MANUAL, 0);
                 }
             }
@@ -500,9 +513,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
             }
         } else if (bundle.containsKey("quietMode")) {
             currentMode = bundle.getBoolean("quietMode")? MODE_QUIET : MODE_NORMAL;
-            if (bundle.getBoolean("exit")) {
-                // TODO: check if this branch exists
-            }
+            changeToQuietMode(20);
         }
     }
 
@@ -704,11 +715,28 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                 rulesList.get(0).putDouble("volume", adjustedVolume);
             }
             rules.putBoolean("quietMode", currentMode == MODE_QUIET);
-            onRequest(rules);
+            notifyFrontend("data from context-package", rules);
             frontEndState = type;
             Log.e(TAG, "toFrontend: Volume UI pops up, type: " + type);
         } else {
             Log.e(TAG, "toFrontend: not pop up because already on");
+        }
+    }
+
+    private void changeToQuietMode(double volume) {
+        Bundle bundle = new Bundle();
+        bundle.putDouble("vol", volume);
+        notifyFrontend("on quiet-mode changed volume adjust", bundle);
+    }
+
+    private void notifyFrontend(String context, Bundle bundle) {
+        if (contextListener != null) {
+            for (ContextListener listener: contextListener) {
+                ContextResult contextResult = new ContextResult(context, "");
+                contextResult.setTimestamp(System.currentTimeMillis());
+                contextResult.setExtras(bundle);
+                listener.onContext(contextResult);
+            }
         }
     }
 }
