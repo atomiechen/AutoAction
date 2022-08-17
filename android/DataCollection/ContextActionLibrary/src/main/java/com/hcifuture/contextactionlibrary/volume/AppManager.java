@@ -1,5 +1,9 @@
 package com.hcifuture.contextactionlibrary.volume;
 
+import android.content.Context;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.accessibility.AccessibilityEvent;
@@ -15,19 +19,30 @@ public class AppManager extends TriggerManager {
     private boolean overlay_has_showed_for_other_reason;
     private String last_valid_widget;
     private boolean wechat_chatting_video_on;
+    private Context mContext;
 
-    public AppManager(VolEventListener volEventListener) {
+    public AppManager(VolEventListener volEventListener, Context context) {
         super(volEventListener);
         appName = "";
         last_appName = "";
         last_valid_widget = "";
         wechat_chatting_video_on = false;
         overlay_has_showed_for_other_reason = true;
+        mContext = context;
+
+        PackageManager packageManager = mContext.getPackageManager();
+        Intent intent = new Intent(Intent.ACTION_MAIN);
+        intent.addCategory(Intent.CATEGORY_HOME);
+        List<ResolveInfo> resolveInfo = packageManager.queryIntentActivities(intent,
+                PackageManager.MATCH_DEFAULT_ONLY);
+        for (ResolveInfo ri : resolveInfo) {
+            not_need_overlay_apps.add(new AppItem("系统桌面", ri.activityInfo.packageName));
+        }
     }
 
     public static class AppItem {
-        private String appName;
-        private String packageName;
+        private final String appName;
+        private final String packageName;
 
         public AppItem(String appName, String packageName) {
             this.appName = appName;
@@ -43,7 +58,7 @@ public class AppManager extends TriggerManager {
         }
     }
 
-    private final List<AppItem> need_overlay_apps = Arrays.asList(
+    private final List<AppItem> need_overlay_apps = new ArrayList<>(Arrays.asList(
             new AppItem("抖音", "com.ss.android.ugc.aweme"),
             new AppItem("抖音极速版", "com.ss.android.ugc.aweme.lite"),
             new AppItem("抖音火山版", "com.ss.android.ugc.live"),
@@ -76,9 +91,9 @@ public class AppManager extends TriggerManager {
             new AppItem("虾米音乐", "fm.xiami.main"),
             new AppItem("唱吧", "com.changba"),
             new AppItem("喜马拉雅", "com.ximalaya.ting.android")
-    );
+    ));
 
-    private final List<AppItem> not_need_overlay_apps = Arrays.asList(
+    private final List<AppItem> not_need_overlay_apps = new ArrayList<>(Arrays.asList(
             new AppItem("微信", "com.tencent.mm"),
             new AppItem("知乎", "com.zhihu.android"),
             new AppItem("QQ", "com.tencent.mobileqq"),
@@ -109,20 +124,20 @@ public class AppManager extends TriggerManager {
             new AppItem("唯品会", "com.achievo.vipshop"),
             new AppItem("当当", "com.dangdang.buy2"),
             new AppItem("得物", "com.shizhuang.duapp")
-    );
+    ));
 
-    private final List<String> video_widgets = Arrays.asList(
+    private final List<String> video_widgets = new ArrayList<>(Arrays.asList(
             "com.tencent.mm.plugin.finder.ui.FinderHomeAffinityUI",
             "com.tencent.mm.plugin.finder.ui.FinderShareFeedRelUI",
             "com.tencent.mm.plugin.sns.ui.SnsOnlineVideoActivity",
             "com.tencent.mm.plugin.finder.feed.ui.FinderLiveVisitorWithoutAffinityUI",
             "com.tencent.mm.ui.chatting.gallery.ImageGalleryUI",
             "com.tencent.mm.plugin.finder.feed.ui.FinderProfileTimeLineUI"
-    );
+    ));
 
-    private final List<String> blank_widgets = Arrays.asList(
+    private final List<String> blank_widgets = new ArrayList<>(Arrays.asList(
             "com.tencent.mm.ui.LauncherUI"
-    );
+    ));
 
     public AppItem findByAppName(List<AppItem> list, String name) {
         for (AppItem appItem: list) {
