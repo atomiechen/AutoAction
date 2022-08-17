@@ -85,6 +85,10 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     public static int TYPE_AUTO_DIRECT = 1;
     public static int TYPE_AUTO_COUNTDOWN = 2;
 
+    // modes
+    public static int MODE_NORMAL = 0;
+    public static int MODE_QUIET = 1;
+
     private String appName;
     private String latest_deviceType;
     private Bundle rules;
@@ -97,6 +101,8 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     private final AtomicInteger mLogID = new AtomicInteger(0);
 
     private int frontEndState = TYPE_OFF;
+    private int currentMode = MODE_NORMAL;
+
     private NoiseManager noiseManager;
     private AppManager appManager;
     private PositionManager positionManager;
@@ -492,6 +498,11 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                 Log.e(TAG, "from PAIPAI_HELPER from:" + from + ", editedRank:" + editedRank + ", action:" + action + ", finalVolume:" + finalVolume);
                 frontEndState = TYPE_OFF;
             }
+        } else if (bundle.containsKey("quietMode")) {
+            currentMode = bundle.getBoolean("quietMode")? MODE_QUIET : MODE_NORMAL;
+            if (bundle.getBoolean("exit")) {
+                // TODO: check if this branch exists
+            }
         }
     }
 
@@ -528,7 +539,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     }
 
     private void addData(double volume, int frontEndState, int behavior, String tag) {
-        appendLine(String.format("%d,%f,%f,%s,%s,%s,%b,%d,%d,%d,%s",
+        appendLine(String.format("%d,%f,%f,%s,%s,%s,%b,%d,%d,%d,%s,%d",
                 System.currentTimeMillis(),
                 noiseManager.getPresentNoise(),
                 volume,
@@ -539,7 +550,8 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                 soundManager.getAudioMode(),
                 frontEndState,
                 behavior,
-                tag
+                tag,
+                currentMode
         ), FILE_TMP_DATA);
         if (soundManager.isAudioOn()) {
             // only record when audio is on
@@ -661,14 +673,14 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                 Log.e(TAG, "onVolEvent: " + eventType + " " + positionID + " " + positionName);
                 break;
         }
-        if (!soundManager.isAudioOn()) {
+        if (currentMode != MODE_QUIET && !soundManager.isAudioOn()) {
             // map noise to volume and adjust
 //            double adjustedVolume = fakeMapping(noise);
             double adjustedVolume = volumeManager.predict(getCurrentFID(), noise);
             Log.e(TAG, "onVolEvent: noise = " + noise +  " adjust volume = " + adjustedVolume);
             toFrontend(TYPE_AUTO_DIRECT, adjustedVolume);
         } else {
-            Log.e(TAG, "onVolEvent: do not adjust because audio is on");
+            Log.e(TAG, "onVolEvent: do not adjust because audio is on or quiet mode");
         }
     }
 
@@ -691,6 +703,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                 List<Bundle> rulesList = rules.getParcelableArrayList("rules");
                 rulesList.get(0).putDouble("volume", adjustedVolume);
             }
+            rules.putBoolean("quietMode", currentMode == MODE_QUIET);
             onRequest(rules);
             frontEndState = type;
             Log.e(TAG, "toFrontend: Volume UI pops up, type: " + type);
