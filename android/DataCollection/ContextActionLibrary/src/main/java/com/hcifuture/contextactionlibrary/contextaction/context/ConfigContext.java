@@ -730,7 +730,9 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         // then adjust volume
         Bundle bundle = new Bundle();
         bundle.putDouble("vol", volume);
+        bundle.putBoolean("quietMode", currentMode == MODE_QUIET);
         notifyFrontend("on quiet-mode changed volume adjust", bundle);
+        Log.e(TAG, "changeToQuietMode signaled");
     }
 
     private void notifyFrontend(String context, Bundle bundle) {
