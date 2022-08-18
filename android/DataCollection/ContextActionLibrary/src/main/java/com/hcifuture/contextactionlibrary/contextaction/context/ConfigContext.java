@@ -380,7 +380,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                 int keyAction = extras.getInt("action");
                 JSONUtils.jsonPut(json, "keycodeString", KeyEvent.keyCodeToString(keycode));
 
-                detectKeyGesture(keycode, keyAction);
+//                detectKeyGesture(keycode, keyAction);
                 detectKeyVolume(keycode);
 
 //                switch (keycode) {
@@ -466,10 +466,10 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                 }
             } else if (bundle.containsKey("quietMode")) {
                 currentMode = bundle.getBoolean("quietMode")? MODE_QUIET : MODE_NORMAL;
-                if (currentMode == MODE_QUIET) {
-                    // user switches to quiet mode, then auto adjust volume
-                    changeToQuietMode(20);
-                }
+//                if (currentMode == MODE_QUIET) {
+//                    // user switches to quiet mode, then auto adjust volume
+//                    changeToQuietMode(20);
+//                }
             }
         }
     }
