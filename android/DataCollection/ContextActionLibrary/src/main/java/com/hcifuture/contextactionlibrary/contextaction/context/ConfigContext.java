@@ -521,9 +521,12 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                 tag,
                 currentMode
         ), FILE_TMP_DATA);
+        Log.e(TAG, "isAudioOn: " + soundManager.isAudioOn() + "currentMode: " + currentMode);
         if (soundManager.isAudioOn() && currentMode == MODE_NORMAL) {
             // only record when audio is on and in normal mode
-            volumeManager.addRecord(getCurrentFID(), noiseManager.getPresentNoise(), volume);
+            double presentNoise = noiseManager.getPresentNoise();
+            Log.e(TAG, "Add record: [FID]" + getCurrentFID() + " [Noise]" + presentNoise + " [Volume]" + volume);
+            volumeManager.addRecord(getCurrentFID(), presentNoise, volume);
         }
     }
 

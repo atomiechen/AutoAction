@@ -50,7 +50,10 @@ public class VolumeManager {
     private int fid_count = 0;
     public String newFunction() {
         String fid = String.format("%d_%08d", new Date().getTime(), fid_count++);
-        Log.e("NewFid", fid);
+        return newFunction(fid);
+    }
+    public String newFunction(String fid) {
+        Log.e("new FID", fid);
         functions.put(fid, new VolumeFunction(fid));  // TODO 完善初始化
         writeFunctions();
         return fid;
@@ -60,7 +63,7 @@ public class VolumeManager {
     }
 
     public boolean addRecord(String fid, double noise, double volume, boolean retrain) {
-        if (!functions.containsKey(fid)) return false;
+        checkAndCreateFunction(fid);
 
         functions.get(fid).historyRecords.add(new Pair<>(noise, volume));
         Log.e("historyRecords", functions.get(fid).historyRecords.toString());
@@ -70,14 +73,20 @@ public class VolumeManager {
     }
 
     public boolean train(String fid) {
-        if (!functions.containsKey(fid)) return false;
+        checkAndCreateFunction(fid);
         functions.get(fid).train();
         writeFunctions();
         return true;
     }
 
     public double predict(String fid, double noise) {
-        return functions.containsKey(fid) ? functions.get(fid).predict(noise) : -1;
+        checkAndCreateFunction(fid);
+        return functions.get(fid).predict(noise);
+    }
+
+    private void checkAndCreateFunction(String fid) {
+        if (!functions.containsKey(fid))
+            newFunction(fid);
     }
 
     static public double correlation(double[] x, double[] y) {  // 计算相关系数，备用
@@ -142,6 +151,7 @@ public class VolumeManager {
         }
 
         double predict(double noise) {
+            Log.e("Function params", "a:" + paramA + " b:" + paramB);
             double y = paramB * noise + paramA;
             return Math.max(Math.min(y, 100), 0); // [0, 100]
         }
