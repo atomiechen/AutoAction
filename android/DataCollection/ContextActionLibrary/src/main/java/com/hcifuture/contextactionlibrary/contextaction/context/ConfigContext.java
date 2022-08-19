@@ -440,19 +440,19 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                             detectedNoiseFt.whenComplete((v, e) -> {
                                 // 当用户调整结束且噪音检测结束时，记录用户调整音量及噪音值
                                 Log.e(TAG, "onExternalEvent: manual detectedNoiseFt " + v + " " + e);
-                                addData(finalVolume, TYPE_MANUAL, behavior, "updated_noise");
+                                addData(finalVolume, TYPE_MANUAL, behavior, "updated_noise", false);
                                 Log.e(TAG, "onExternalEvent: recorded to file");
                                 detectedNoiseFt = null;
                             });
                         } else {
                             Log.e(TAG, "onExternalEvent: manual null detectedNoiseFt (already stopped) ");
-                            addData(finalVolume, frontEndState, behavior, "last_noise");
+                            addData(finalVolume, frontEndState, behavior, "last_noise", false);
                             Log.e(TAG, "onExternalEvent: recorded to file");
                         }
                     } else if (frontEndState == TYPE_AUTO_DIRECT || frontEndState == TYPE_AUTO_COUNTDOWN) {
                         if (behavior != 0) {
                             Log.e(TAG, "onExternalEvent: auto modified by hand");
-                            addData(finalVolume, frontEndState, behavior, "last_noise");
+                            addData(finalVolume, frontEndState, behavior, "last_noise", true);
                             Log.e(TAG, "onExternalEvent: recorded to file");
                         }
                     }
@@ -506,7 +506,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         return "@" + deviceManager.getPresentDeviceID() + "@" + appManager.getPresentApp() + "@" + positionManager.getPresentPosition();
     }
 
-    private void addData(double volume, int frontEndState, int behavior, String tag) {
+    private void addData(double volume, int frontEndState, int behavior, String tag, boolean force) {
         appendLine(String.format("%d,%f,%f,%s,%s,%s,%b,%d,%d,%d,%s,%d",
                 System.currentTimeMillis(),
                 noiseManager.getPresentNoise(),
@@ -521,8 +521,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                 tag,
                 currentMode
         ), FILE_TMP_DATA);
-        Log.e(TAG, "isAudioOn: " + soundManager.isAudioOn() + "currentMode: " + currentMode);
-        if (soundManager.isAudioOn() && currentMode == MODE_NORMAL) {
+        if (force || soundManager.isAudioOn() && currentMode == MODE_NORMAL) {
             // only record when audio is on and in normal mode
             double presentNoise = noiseManager.getPresentNoise();
             Log.e(TAG, "Add record: [FID]" + getCurrentFID() + " [Noise]" + presentNoise + " [Volume]" + volume);
