@@ -141,12 +141,12 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
         appManager = new AppManager(this, mContext);
 
+        crowdManager = new CrowdManager(this, scheduledExecutorService, futureList,
+                (BluetoothCollector) collectorManager.getCollector(CollectorManager.CollectorType.Bluetooth));
+
         positionManager = new PositionManager(this, scheduledExecutorService, futureList,
                 (GPSCollector) collectorManager.getCollector(CollectorManager.CollectorType.GPS),
                 (WifiCollector) collectorManager.getCollector(CollectorManager.CollectorType.Wifi));
-
-        crowdManager = new CrowdManager(this, scheduledExecutorService, futureList,
-                (BluetoothCollector) collectorManager.getCollector(CollectorManager.CollectorType.Bluetooth));
 
         readContextMap();
 
