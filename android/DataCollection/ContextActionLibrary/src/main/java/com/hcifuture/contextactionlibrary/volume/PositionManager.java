@@ -1,5 +1,8 @@
 package com.hcifuture.contextactionlibrary.volume;
 
+import android.annotation.SuppressLint;
+import android.bluetooth.BluetoothClass;
+import android.bluetooth.BluetoothDevice;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
@@ -11,9 +14,12 @@ import com.google.gson.reflect.TypeToken;
 import com.hcifuture.contextactionlibrary.contextaction.context.ConfigContext;
 import com.hcifuture.contextactionlibrary.sensor.collector.Collector;
 import com.hcifuture.contextactionlibrary.sensor.collector.CollectorResult;
+import com.hcifuture.contextactionlibrary.sensor.collector.async.BluetoothCollector;
 import com.hcifuture.contextactionlibrary.sensor.collector.async.GPSCollector;
 import com.hcifuture.contextactionlibrary.sensor.collector.async.WifiCollector;
+import com.hcifuture.contextactionlibrary.sensor.data.BluetoothData;
 import com.hcifuture.contextactionlibrary.sensor.data.GPSData;
+import com.hcifuture.contextactionlibrary.sensor.data.SingleBluetoothData;
 import com.hcifuture.contextactionlibrary.sensor.data.SingleWifiData;
 import com.hcifuture.contextactionlibrary.sensor.data.WifiData;
 import com.hcifuture.contextactionlibrary.sensor.trigger.TriggerConfig;
@@ -146,7 +152,7 @@ public class PositionManager extends TriggerManager {
         return history;
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.N)
+    @RequiresApi(api = Build.VERSION_CODES.O)
     public String scanAndGetId() {
         try {
             return scanAndUpdate().get().getId();
@@ -156,7 +162,7 @@ public class PositionManager extends TriggerManager {
         return "ERROR";
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.N)
+    @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     public void start() {
         // detect position periodically
@@ -174,7 +180,7 @@ public class PositionManager extends TriggerManager {
         }
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.N)
+    @RequiresApi(api = Build.VERSION_CODES.O)
     public CompletableFuture<Position> scanAndUpdate() {
         CompletableFuture<Position> ft = new CompletableFuture<>();
 
@@ -187,6 +193,7 @@ public class PositionManager extends TriggerManager {
             try {
                 GPSData gpsData = (GPSData) fts.get(0).get().getData();
                 WifiData wifiData = (WifiData) fts.get(1).get().getData();
+
                 List<String> wifiIds = new ArrayList<>();
                 if (wifiData != null) {
                     List<SingleWifiData> singleWifiDataList = wifiData.getAps();

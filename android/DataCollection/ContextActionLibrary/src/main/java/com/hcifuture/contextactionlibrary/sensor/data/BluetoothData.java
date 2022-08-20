@@ -30,6 +30,8 @@ public class BluetoothData extends Data {
         devices = Collections.synchronizedList(new ArrayList<>());
     }
 
+    public List<SingleBluetoothData> getDevices() { return devices; }
+
     public String getAddress() {
         return address;
     }

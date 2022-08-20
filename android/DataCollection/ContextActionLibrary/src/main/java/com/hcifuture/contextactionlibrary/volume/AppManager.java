@@ -193,10 +193,10 @@ public class AppManager extends TriggerManager {
             if (blank_widgets.contains(event.getClassName().toString())) {
                 overlay_has_showed_for_other_reason = true;
             }
-            Log.e("AccessibilityEventType", event.getClassName().toString());
-            Log.e("Event", event.toString());
+//            Log.e("AccessibilityEventType", event.getClassName().toString());
+//            Log.e("Event", event.toString());
             if (event.getText() != null && event.getText().size() > 0) {
-                Log.e("EventText", event.getText().get(0).toString());
+//                Log.e("EventText", event.getText().get(0).toString());
                 wechat_chatting_video_on = getWechatChattingVideoOn(event);
             }
         }
