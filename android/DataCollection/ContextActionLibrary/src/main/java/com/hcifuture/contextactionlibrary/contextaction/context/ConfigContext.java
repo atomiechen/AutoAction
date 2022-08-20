@@ -23,6 +23,7 @@ import com.google.gson.reflect.TypeToken;
 import com.hcifuture.contextactionlibrary.sensor.collector.Collector;
 import com.hcifuture.contextactionlibrary.sensor.collector.CollectorManager;
 import com.hcifuture.contextactionlibrary.sensor.collector.async.AudioCollector;
+import com.hcifuture.contextactionlibrary.sensor.collector.async.BluetoothCollector;
 import com.hcifuture.contextactionlibrary.sensor.collector.async.GPSCollector;
 import com.hcifuture.contextactionlibrary.sensor.collector.async.WifiCollector;
 import com.hcifuture.contextactionlibrary.sensor.data.NonIMUData;
@@ -31,6 +32,7 @@ import com.hcifuture.contextactionlibrary.sensor.data.SingleWifiData;
 import com.hcifuture.contextactionlibrary.utils.FileUtils;
 import com.hcifuture.contextactionlibrary.utils.JSONUtils;
 import com.hcifuture.contextactionlibrary.volume.AppManager;
+import com.hcifuture.contextactionlibrary.volume.CrowdManager;
 import com.hcifuture.contextactionlibrary.volume.DeviceManager;
 import com.hcifuture.contextactionlibrary.volume.MotionManager;
 import com.hcifuture.contextactionlibrary.volume.PositionManager;
@@ -111,6 +113,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     private NoiseManager noiseManager;
     private AppManager appManager;
     private PositionManager positionManager;
+    private CrowdManager crowdManager;
     private DeviceManager deviceManager;
     private SoundManager soundManager;
     private VolumeManager volumeManager;
@@ -140,6 +143,9 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         soundManager = new SoundManager(this, mContext);
 
         appManager = new AppManager(this, mContext);
+
+        crowdManager = new CrowdManager(this, scheduledExecutorService, futureList,
+                (BluetoothCollector) collectorManager.getCollector(CollectorManager.CollectorType.Bluetooth));
 
         positionManager = new PositionManager(this, scheduledExecutorService, futureList,
                 (GPSCollector) collectorManager.getCollector(CollectorManager.CollectorType.GPS),
@@ -178,6 +184,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     public void start() {
         record_all("start");
@@ -185,6 +192,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         noiseManager.start();
         deviceManager.start();
         positionManager.start();
+        crowdManager.start();
     }
 
     @Override
@@ -197,6 +205,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         deviceManager.stop();
         noiseManager.stop();
         appManager.stop();
+        crowdManager.stop();
     }
 
     @Override
@@ -642,6 +651,11 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                         soundManager.isAudioOn(),
                         soundManager.getAudioMode()
                 ));
+                List<CrowdManager.BluetoothItem> bluetoothItemList = crowdManager.getPhoneList();
+                for (CrowdManager.BluetoothItem bluetoothItem: bluetoothItemList) {
+                    Log.e(TAG, bluetoothItem.toString());
+                }
+                Log.e(TAG, "KeyEvent End");
                 tryPopUpFrontend(TYPE_MANUAL, 0);
         }
     }
