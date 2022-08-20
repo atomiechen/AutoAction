@@ -7,7 +7,8 @@ public interface VolEventListener {
         Noise,
         Device,
         Position,
-        App
+        App,
+        Motion
     }
 
     void onVolEvent(EventType eventType, Bundle bundle);

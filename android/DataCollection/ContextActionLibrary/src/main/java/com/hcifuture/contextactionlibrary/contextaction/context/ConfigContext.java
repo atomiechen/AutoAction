@@ -32,6 +32,7 @@ import com.hcifuture.contextactionlibrary.utils.FileUtils;
 import com.hcifuture.contextactionlibrary.utils.JSONUtils;
 import com.hcifuture.contextactionlibrary.volume.AppManager;
 import com.hcifuture.contextactionlibrary.volume.DeviceManager;
+import com.hcifuture.contextactionlibrary.volume.MotionManager;
 import com.hcifuture.contextactionlibrary.volume.PositionManager;
 import com.hcifuture.contextactionlibrary.volume.SoundManager;
 import com.hcifuture.contextactionlibrary.volume.VolEventListener;
@@ -113,6 +114,8 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     private DeviceManager deviceManager;
     private SoundManager soundManager;
     private VolumeManager volumeManager;
+    private MotionManager motionManager;
+
     private String defaultFid;
 
     private Map<String, String> context2FID;
@@ -141,6 +144,8 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         positionManager = new PositionManager(this, scheduledExecutorService, futureList,
                 (GPSCollector) collectorManager.getCollector(CollectorManager.CollectorType.GPS),
                 (WifiCollector) collectorManager.getCollector(CollectorManager.CollectorType.Wifi));
+
+        motionManager = new MotionManager(this);
 
         readContextMap();
 
@@ -196,7 +201,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
     @Override
     public void onIMUSensorEvent(SingleIMUData data) {
-
+        motionManager.onIMUSensorEvent(data);
     }
 
     @Override
@@ -665,6 +670,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
     @Override
     public void onVolEvent(EventType eventType, Bundle bundle) {
+        boolean popup = true;
         double noise = noiseManager.getPresentNoise();
         switch (eventType) {
             case Noise:
@@ -686,15 +692,18 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                 String positionName = bundle.getString("name");
                 Log.e(TAG, "onVolEvent: " + eventType + " " + positionID + " " + positionName);
                 break;
+            case Motion:
+                String motion = bundle.getString("motion");
+                popup = false;
+                Log.e(TAG, "onVolEvent: " + motion);
+                break;
         }
-        if (currentMode != MODE_QUIET && !soundManager.isAudioOn()) {
+        if (popup && currentMode != MODE_QUIET && !soundManager.isAudioOn()) {
             // map noise to volume and adjust
 //            double adjustedVolume = fakeMapping(noise);
             double adjustedVolume = volumeManager.predict(getCurrentFID(), noise);
             Log.e(TAG, "onVolEvent: noise = " + noise +  " adjust volume = " + adjustedVolume);
             tryPopUpFrontend(TYPE_AUTO_DIRECT, adjustedVolume);
-        } else {
-            Log.e(TAG, "onVolEvent: do not adjust because audio is on or quiet mode");
         }
     }
 
