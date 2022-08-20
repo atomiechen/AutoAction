@@ -703,7 +703,10 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 //            double adjustedVolume = fakeMapping(noise);
             double adjustedVolume = volumeManager.predict(getCurrentFID(), noise);
             Log.e(TAG, "onVolEvent: noise = " + noise +  " adjust volume = " + adjustedVolume);
-            tryPopUpFrontend(TYPE_AUTO_DIRECT, adjustedVolume);
+            // if new context (no data yet), then adjustedVolume = -1, do not adjust
+            if (adjustedVolume >= 0) {
+                tryPopUpFrontend(TYPE_AUTO_DIRECT, adjustedVolume);
+            }
         }
     }
 

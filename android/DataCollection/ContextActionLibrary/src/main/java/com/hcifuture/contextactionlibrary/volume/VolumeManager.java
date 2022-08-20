@@ -81,7 +81,12 @@ public class VolumeManager {
 
     public double predict(String fid, double noise) {
         checkAndCreateFunction(fid);
-        return functions.get(fid).predict(noise);
+        VolumeFunction function = functions.get(fid);
+        if (function.historyRecords.size() == 0) {
+            return -1;
+        } else {
+            return function.predict(noise);
+        }
     }
 
     private void checkAndCreateFunction(String fid) {
