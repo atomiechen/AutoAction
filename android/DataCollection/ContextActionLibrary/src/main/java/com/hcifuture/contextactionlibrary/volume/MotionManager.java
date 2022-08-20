@@ -3,11 +3,8 @@ package com.hcifuture.contextactionlibrary.volume;
 import android.hardware.Sensor;
 import android.hardware.SensorManager;
 import android.os.Bundle;
-import android.util.Log;
 
 import com.hcifuture.contextactionlibrary.sensor.data.SingleIMUData;
-import com.hcifuture.shared.communicate.listener.ContextListener;
-import com.hcifuture.shared.communicate.result.ContextResult;
 
 public class MotionManager extends TriggerManager {
 
@@ -23,7 +20,7 @@ public class MotionManager extends TriggerManager {
     private int linearStaticCount = 0;
     private int gyroStaticCount = 0;
 
-    private boolean isOnTable = false;
+    private boolean isFaceDown = false;
 
     public MotionManager(VolEventListener volEventListener) {
         super(volEventListener);
@@ -73,12 +70,13 @@ public class MotionManager extends TriggerManager {
 
     private boolean checkIsHorizontal() {
         for (int i = 0; i < ORIENTATION_CHECK_NUMBER; i++)
-            if (Math.abs(orientationMark[i][1]) > 0.1 || Math.abs(orientationMark[i][2]) > 0.1)
+            if (Math.abs(orientationMark[i][1]) > 0.1 || Math.abs(orientationMark[i][2]) < 3.0)
                 return false;
         return true;
     }
 
     private void updateOrientationAngles() {
+//        Log.e(TAG, "updateOrientationAngles: " + orientationAngles[0] + "," + orientationAngles[1] + "," + orientationAngles[2]);
         SensorManager.getRotationMatrix(rotationMatrix, null, accMark, magMark);
         SensorManager.getOrientation(rotationMatrix, orientationAngles);
         for (int i = 0; i < ORIENTATION_CHECK_NUMBER - 1; i++)
@@ -91,21 +89,21 @@ public class MotionManager extends TriggerManager {
 //                + " linearStaticCount=" + linearStaticCount
 //                + " gyroStaticCount=" + gyroStaticCount);
 
-        // Honor V40 has no linear acceleration
+        // Honor V40 Lite has no linear acceleration
         if (gyroStaticCount > 20 && checkIsHorizontal()) {
 //        if (linearStaticCount > 10 && gyroStaticCount > 20 && checkIsHorizontal()) {
-            if (isOnTable)
+            if (isFaceDown)
                 return;
-            isOnTable = true;
+            isFaceDown = true;
             Bundle bundle = new Bundle();
-            bundle.putString("motion", "onTable");
+            bundle.putString("motion", "faceDown");
             volEventListener.onVolEvent(VolEventListener.EventType.Motion, bundle);
         } else {
-            if (!isOnTable)
+            if (!isFaceDown)
                 return;
-            isOnTable = false;
+            isFaceDown = false;
             Bundle bundle = new Bundle();
-            bundle.putString("motion", "notOnTable");
+            bundle.putString("motion", "notFaceDown");
             volEventListener.onVolEvent(VolEventListener.EventType.Motion, bundle);
         }
     }
