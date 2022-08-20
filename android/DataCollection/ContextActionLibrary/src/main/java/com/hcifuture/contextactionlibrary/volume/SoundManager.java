@@ -3,7 +3,7 @@ package com.hcifuture.contextactionlibrary.volume;
 import android.content.Context;
 import android.media.AudioManager;
 
-public class SoundManager {
+public class SoundManager extends TriggerManager {
 
     private double NORMALIZED_MAX_VOLUME = 100.0;
 
@@ -11,7 +11,8 @@ public class SoundManager {
     private Context mContext;
     private int VOLUME_MAX;
 
-    public SoundManager(Context context) {
+    public SoundManager(VolEventListener volEventListener, Context context) {
+        super(volEventListener);
         mContext = context;
         audioManager = (AudioManager) mContext.getSystemService(Context.AUDIO_SERVICE);
         VOLUME_MAX = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);

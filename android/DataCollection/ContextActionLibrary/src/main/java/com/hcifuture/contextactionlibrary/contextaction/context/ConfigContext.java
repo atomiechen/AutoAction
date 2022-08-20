@@ -137,7 +137,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
         deviceManager = new DeviceManager(this, mContext, scheduledExecutorService, futureList);
 
-        soundManager = new SoundManager(context);
+        soundManager = new SoundManager(this, mContext);
 
         appManager = new AppManager(this, mContext);
 
