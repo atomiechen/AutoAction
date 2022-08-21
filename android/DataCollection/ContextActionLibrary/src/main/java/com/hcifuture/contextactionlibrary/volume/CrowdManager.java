@@ -19,6 +19,7 @@ import com.hcifuture.contextactionlibrary.sensor.data.SingleWifiData;
 import com.hcifuture.contextactionlibrary.sensor.data.WifiData;
 import com.hcifuture.contextactionlibrary.sensor.trigger.TriggerConfig;
 
+import java.security.spec.ECField;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -76,7 +77,7 @@ public class CrowdManager extends TriggerManager {
     @RequiresApi(api = Build.VERSION_CODES.O)
     public List<BluetoothItem> scanAndGetPhones() {
         try {
-            return toScan().get();
+            return scanAndUpdate().get();
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -89,7 +90,7 @@ public class CrowdManager extends TriggerManager {
         // detect phones periodically
         Log.e(TAG, "schedule periodic phones detection");
         scheduledPhoneDetection = scheduledExecutorService.scheduleAtFixedRate(() -> {
-            toScan();
+            scanAndUpdate();
         }, initialDelay, period, TimeUnit.MILLISECONDS);
         futureList.add(scheduledPhoneDetection);
     }
@@ -101,10 +102,10 @@ public class CrowdManager extends TriggerManager {
         }
     }
 
-//    @RequiresApi(api = Build.VERSION_CODES.O)
-//    public CompletableFuture<List<BluetoothItem>> scanAndUpdate() {
-//        CompletableFuture<List<BluetoothItem>> ft = new CompletableFuture<>();
-//        List<List<BluetoothItem>> listOfList = new ArrayList<>();
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    public CompletableFuture<List<BluetoothItem>> scanAndUpdate() {
+        CompletableFuture<List<BluetoothItem>> ft = new CompletableFuture<>();
+        List<List<BluetoothItem>> listOfList = new ArrayList<>();
 //        repeatScan = scheduledExecutorService.scheduleWithFixedDelay(() -> {
 //            try {
 //                listOfList.add(toScan().get());
@@ -117,8 +118,18 @@ public class CrowdManager extends TriggerManager {
 //            }
 //        }, 0, 0, TimeUnit.MILLISECONDS);
 //        futureList.add(repeatScan);
-//        return ft;
-//    }
+        try {
+            listOfList.add(toScan().get());
+            listOfList.add(toScan().get());
+            listOfList.add(toScan().get());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        phoneList = setBluetoothDeviceList(listOfList.get(0), listOfList.get(1), listOfList.get(2));
+        ft.complete(phoneList);
+
+        return ft;
+    }
 
     @RequiresApi(api = Build.VERSION_CODES.O)
     public CompletableFuture<List<BluetoothItem>> toScan() {
