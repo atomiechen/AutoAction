@@ -1,6 +1,7 @@
 package com.hcifuture.contextactionlibrary.volume;
 
 import android.annotation.SuppressLint;
+import android.bluetooth.BluetoothClass;
 import android.bluetooth.BluetoothDevice;
 import android.os.Build;
 import android.util.Log;
@@ -163,8 +164,8 @@ public class CrowdManager extends TriggerManager {
     public CompletableFuture<List<BluetoothItem>> toScan() {
         Log.e(TAG, "start to detect phones");
         return bluetoothCollector.getData(new TriggerConfig().setBluetoothScanTime(10000)).thenApply(v -> {
-            Log.e(TAG, "get crowd data");
             phoneList = device2BluetoothItem((BluetoothData) v.getData());
+            Log.e(TAG, "toScan: get phone list " + phoneList);
             return phoneList;
         });
     }
@@ -206,17 +207,18 @@ public class CrowdManager extends TriggerManager {
         List<BluetoothItem> result = new ArrayList<>();
         List<SingleBluetoothData> list = bluetoothData.getDevices();
         for (SingleBluetoothData singleBluetoothData: list) {
-            if (isPhone(singleBluetoothData.getDevice())) {
-                if (singleBluetoothData.getDevice().getUuids() != null) {
+            BluetoothDevice device = singleBluetoothData.getDevice();
+            if (isPhone(device) || isWearable(device)) {
+                if (device.getUuids() != null) {
                     if (singleBluetoothData.getLinked()) {
-                        String name = singleBluetoothData.getDevice().getName();
-                        String address = singleBluetoothData.getDevice().getAddress();
+                        String name = device.getName();
+                        String address = device.getAddress();
                         double distance = 0;
                         result.add(new BluetoothItem(name, address, distance));
                     }
                 } else {
-                    String name = singleBluetoothData.getDevice().getName();
-                    String address = singleBluetoothData.getDevice().getAddress();
+                    String name = device.getName();
+                    String address = device.getAddress();
                     double distance = -1;
                     if (singleBluetoothData.getScanResult() != null) {
                         distance = rssi2distance(singleBluetoothData.getScanResult().getRssi());
@@ -235,7 +237,12 @@ public class CrowdManager extends TriggerManager {
 
     @SuppressLint("MissingPermission")
     public boolean isPhone(BluetoothDevice bluetoothDevice) {
-        return bluetoothDevice.getBluetoothClass().getMajorDeviceClass() == 512;
+        return bluetoothDevice.getBluetoothClass().getMajorDeviceClass() == BluetoothClass.Device.Major.PHONE;
+    }
+
+    @SuppressLint("MissingPermission")
+    public boolean isWearable(BluetoothDevice bluetoothDevice) {
+        return bluetoothDevice.getBluetoothClass().getMajorDeviceClass() == BluetoothClass.Device.Major.WEARABLE;
     }
 
     public double rssi2distance(int rssi) {
