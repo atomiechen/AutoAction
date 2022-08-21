@@ -3,29 +3,22 @@ package com.hcifuture.contextactionlibrary.volume;
 import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothDevice;
 import android.os.Build;
-import android.os.Bundle;
 import android.util.Log;
 
 import androidx.annotation.RequiresApi;
 
-import com.hcifuture.contextactionlibrary.sensor.collector.CollectorResult;
 import com.hcifuture.contextactionlibrary.sensor.collector.async.BluetoothCollector;
-import com.hcifuture.contextactionlibrary.sensor.collector.async.GPSCollector;
-import com.hcifuture.contextactionlibrary.sensor.collector.async.WifiCollector;
 import com.hcifuture.contextactionlibrary.sensor.data.BluetoothData;
-import com.hcifuture.contextactionlibrary.sensor.data.GPSData;
 import com.hcifuture.contextactionlibrary.sensor.data.SingleBluetoothData;
-import com.hcifuture.contextactionlibrary.sensor.data.SingleWifiData;
-import com.hcifuture.contextactionlibrary.sensor.data.WifiData;
 import com.hcifuture.contextactionlibrary.sensor.trigger.TriggerConfig;
 
-import java.security.spec.ECField;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 
 public class CrowdManager extends TriggerManager {
     private static final String TAG = "CrowdManager";
@@ -90,7 +83,11 @@ public class CrowdManager extends TriggerManager {
         // detect phones periodically
         Log.e(TAG, "schedule periodic phones detection");
         scheduledPhoneDetection = scheduledExecutorService.scheduleAtFixedRate(() -> {
-            scanAndUpdate();
+            try {
+                scanAndUpdate().get();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }, initialDelay, period, TimeUnit.MILLISECONDS);
         futureList.add(scheduledPhoneDetection);
     }
@@ -104,49 +101,72 @@ public class CrowdManager extends TriggerManager {
 
     @RequiresApi(api = Build.VERSION_CODES.O)
     public CompletableFuture<List<BluetoothItem>> scanAndUpdate() {
-        CompletableFuture<List<BluetoothItem>> ft = new CompletableFuture<>();
-        List<List<BluetoothItem>> listOfList = new ArrayList<>();
-//        repeatScan = scheduledExecutorService.scheduleWithFixedDelay(() -> {
+//        // 原始写法的改进版
+//        CompletableFuture<List<BluetoothItem>> ft = new CompletableFuture<>();
+//        List<List<BluetoothItem>> listOfList = new ArrayList<>();
+//        futureList.add(scheduledExecutorService.schedule(() -> {
 //            try {
 //                listOfList.add(toScan().get());
-//                if (listOfList.size() >= 3) {
-//                    repeatScan.cancel(false);
-//                    ft.complete(setBluetoothDeviceList(listOfList.get(0), listOfList.get(1), listOfList.get(2)));
-//                }
+//                listOfList.add(toScan().get());
+//                listOfList.add(toScan().get());
+//                phoneList = setBluetoothDeviceList(listOfList.get(0), listOfList.get(1), listOfList.get(2));
+//                ft.complete(phoneList);
 //            } catch (Exception e) {
 //                e.printStackTrace();
+//                ft.completeExceptionally(e);
 //            }
-//        }, 0, 0, TimeUnit.MILLISECONDS);
-//        futureList.add(repeatScan);
-        try {
-            listOfList.add(toScan().get());
-            listOfList.add(toScan().get());
-            listOfList.add(toScan().get());
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        phoneList = setBluetoothDeviceList(listOfList.get(0), listOfList.get(1), listOfList.get(2));
-        ft.complete(phoneList);
+//        }, 0, TimeUnit.MILLISECONDS));
+//        return ft;
 
-        return ft;
+//        // 手写3次扫描的方法
+//        List<List<BluetoothItem>> listOfList = new ArrayList<>();
+//        return toScan().thenCompose(v1 -> {
+//            listOfList.add(v1);
+//            return toScan().thenCompose(v2 -> {
+//                listOfList.add(v2);
+//                return toScan().thenApply(v3 -> {
+//                    listOfList.add(v3);
+//                    phoneList = setBluetoothDeviceList(listOfList.get(0), listOfList.get(1), listOfList.get(2));
+//                    return phoneList;
+//                });
+//            });
+//        });
+
+        // 变次数扫描方法
+        Log.e(TAG, "scanAndUpdate: start 3 times");
+        return repeatScan(3).thenApply(listOfList -> {
+            phoneList = setBluetoothDeviceList(listOfList.get(0), listOfList.get(1), listOfList.get(2));
+            Log.e(TAG, "scanAndUpdate: get phone list " + phoneList);
+            return phoneList;
+        });
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    public CompletableFuture<List<List<BluetoothItem>>> repeatScan(int times) {
+        // 重复扫描times次，times >= 1
+        List<List<BluetoothItem>> listOfList = new ArrayList<>();
+        Function<List<BluetoothItem>, CompletableFuture<List<BluetoothItem>>> function = v -> {
+            listOfList.add(v);
+            return toScan();
+        };
+        CompletableFuture<List<BluetoothItem>> ft = toScan();
+        for (int i = 0; i < times - 1; i++) {
+            ft = ft.thenCompose(function);
+        }
+        return ft.thenApply(v -> {
+            listOfList.add(v);
+            return listOfList;
+        });
     }
 
     @RequiresApi(api = Build.VERSION_CODES.O)
     public CompletableFuture<List<BluetoothItem>> toScan() {
-        CompletableFuture<List<BluetoothItem>> ft = new CompletableFuture<>();
-
         Log.e(TAG, "start to detect phones");
-        bluetoothCollector.getData(new TriggerConfig()).thenAccept(v -> {
-            try {
-                Log.e(TAG, "get crowd data");
-                phoneList = device2BluetoothItem((BluetoothData) v.getData());
-                ft.complete(phoneList);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+        return bluetoothCollector.getData(new TriggerConfig().setBluetoothScanTime(10000)).thenApply(v -> {
+            Log.e(TAG, "get crowd data");
+            phoneList = device2BluetoothItem((BluetoothData) v.getData());
+            return phoneList;
         });
-
-        return ft;
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
