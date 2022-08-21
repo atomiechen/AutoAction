@@ -91,29 +91,28 @@ public class AudioCollector extends AsynchronousCollector {
 //                MODE_IN_COMMUNICATION -> The Mic is being used by another application
                 int micMode = audioManager.getMode();
                 if (micMode != AudioManager.MODE_NORMAL) {
-                    ft.completeExceptionally(new CollectorException(6, "Mic not available: " + micMode));
                     isCollecting.set(false);
+                    ft.completeExceptionally(new CollectorException(6, "Mic not available: " + micMode));
                 } else {
                     FileUtils.makeDir(saveFile.getParent());
                     startRecording(saveFile);
                     futureList.add(scheduledExecutorService.schedule(() -> {
                         try {
                             stopRecording();
+                            isCollecting.set(false);
                             ft.complete(result);
                         } catch (Exception e) {
                             e.printStackTrace();
-                            ft.completeExceptionally(new CollectorException(5, e));
-                        } finally {
-//                            ft.complete(result);
                             isCollecting.set(false);
+                            ft.completeExceptionally(new CollectorException(5, e));
                         }
                     }, config.getAudioLength(), TimeUnit.MILLISECONDS));
                 }
             } catch (Exception e) {
                 e.printStackTrace();
                 stopRecording();
-                ft.completeExceptionally(new CollectorException(4, e));
                 isCollecting.set(false);
+                ft.completeExceptionally(new CollectorException(4, e));
             }
         } else {
             ft.completeExceptionally(new CollectorException(3, "Concurrent task of audio recording"));
@@ -208,8 +207,8 @@ public class AudioCollector extends AsynchronousCollector {
 //                MODE_IN_COMMUNICATION -> The Mic is being used by another application
                 int micMode = audioManager.getMode();
                 if (micMode != AudioManager.MODE_NORMAL) {
-                    ft.completeExceptionally(new CollectorException(6, "Mic not available: " + micMode));
                     isCollecting.set(false);
+                    ft.completeExceptionally(new CollectorException(6, "Mic not available: " + micMode));
                 } else {
                     try {
                         long start_time = System.currentTimeMillis();
@@ -219,51 +218,52 @@ public class AudioCollector extends AsynchronousCollector {
 //                        // first call returns 0
 //                        mediaRecorder_comm.getMaxAmplitude();
 
-                        final MediaRecorder mediaRecorder_mic = startNewMediaRecorder(MediaRecorder.AudioSource.MIC, getDummyOutputFilePath()+"mic");
+                        mMediaRecorder = startNewMediaRecorder(MediaRecorder.AudioSource.MIC, getDummyOutputFilePath()+"mic");
                         Log.e(TAG, String.format("getMaxAmplitudeSequence: MediaRecorder mic started, length: %dms period: %dms", length, period));
                         // first call returns 0
-                        mediaRecorder_mic.getMaxAmplitude();
+                        mMediaRecorder.getMaxAmplitude();
 
                         List<Integer> sampledNoise_mic = new ArrayList<>();
 //                        List<Integer> sampledNoise_comm = new ArrayList<>();
                         repeatedSampleFt = scheduledExecutorService.scheduleAtFixedRate(() -> {
                             try {
                                 // Returns the maximum absolute amplitude that was sampled since the last call to this method
-                                int maxAmplitude = mediaRecorder_mic.getMaxAmplitude();
+                                int maxAmplitude = mMediaRecorder.getMaxAmplitude();
                                 sampledNoise_mic.add(maxAmplitude);
 //                                int maxAmplitude_comm = mediaRecorder_comm.getMaxAmplitude();
 //                                sampledNoise_comm.add(maxAmplitude_comm);
                                 if (System.currentTimeMillis() - start_time + period > length) {
-                                    stopMediaRecorder(mediaRecorder_mic);
+                                    stopMediaRecorder(mMediaRecorder);
 //                                    stopMediaRecorder(mediaRecorder_comm);
 
                                     Log.e(TAG, "getMaxAmplitudeSequence: mic  " + sampledNoise_mic);
 //                                    Log.e(TAG, "getMaxAmplitudeSequence: comm " + sampledNoise_comm);
 
 //                                    sampledNoise_mic.addAll(sampledNoise_comm);
-                                    ft.complete(sampledNoise_mic);
                                     repeatedSampleFt.cancel(false);
                                     isCollecting.set(false);
+                                    ft.complete(sampledNoise_mic);
                                 }
                             } catch (Exception e) {
                                 e.printStackTrace();
-                                ft.completeExceptionally(new CollectorException(5, e));
+                                stopMediaRecorder(mMediaRecorder);
                                 repeatedSampleFt.cancel(false);
                                 isCollecting.set(false);
+                                ft.completeExceptionally(new CollectorException(5, e));
                             }
                         }, period, period, TimeUnit.MILLISECONDS);
                         futureList.add(repeatedSampleFt);
 
                     } catch (Exception e) {
-                        ft.completeExceptionally(new CollectorException(7, e));
+                        stopMediaRecorder(mMediaRecorder);
                         isCollecting.set(false);
+                        ft.completeExceptionally(new CollectorException(7, e));
                     }
                 }
             } catch (Exception e) {
                 e.printStackTrace();
-                stopRecording();
-                ft.completeExceptionally(new CollectorException(4, e));
                 isCollecting.set(false);
+                ft.completeExceptionally(new CollectorException(4, e));
             }
         } else {
             ft.completeExceptionally(new CollectorException(3, "Concurrent task of audio recording"));
