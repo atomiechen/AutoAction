@@ -45,10 +45,14 @@ public class CrowdManager extends TriggerManager {
         private String name;
         private String address;
         private double distance;
+        private int majorDeviceClass;
+        private int deviceClass;
 
-        public BluetoothItem(String name, String address, double distance) {
+        public BluetoothItem(String name, String address, int majorDeviceClass, int deviceClass, double distance) {
             this.name = name;
             this.address = address;
+            this.majorDeviceClass = majorDeviceClass;
+            this.deviceClass = deviceClass;
             this.distance = distance;
         }
 
@@ -58,6 +62,22 @@ public class CrowdManager extends TriggerManager {
 
         public double getDistance() { return distance; }
 
+        public int getMajorDeviceClass() {
+            return majorDeviceClass;
+        }
+
+        public int getDeviceClass() {
+            return deviceClass;
+        }
+
+        public boolean isPhone() {
+            return majorDeviceClass == BluetoothClass.Device.Major.PHONE;
+        }
+
+        public boolean isWearable() {
+            return majorDeviceClass == BluetoothClass.Device.Major.WEARABLE;
+        }
+
         @Override
         public String toString() {
             return "BluetoothItem{" +
@@ -66,16 +86,6 @@ public class CrowdManager extends TriggerManager {
                     ", distance=" + distance +
                     '}';
         }
-    }
-
-    @RequiresApi(api = Build.VERSION_CODES.O)
-    public List<BluetoothItem> scanAndGetPhones() {
-        try {
-            return scanAndUpdate().get();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return null;
     }
 
     @RequiresApi(api = Build.VERSION_CODES.O)
@@ -102,23 +112,6 @@ public class CrowdManager extends TriggerManager {
 
     @RequiresApi(api = Build.VERSION_CODES.O)
     public CompletableFuture<List<BluetoothItem>> scanAndUpdate() {
-//        // 原始写法的改进版
-//        CompletableFuture<List<BluetoothItem>> ft = new CompletableFuture<>();
-//        List<List<BluetoothItem>> listOfList = new ArrayList<>();
-//        futureList.add(scheduledExecutorService.schedule(() -> {
-//            try {
-//                listOfList.add(toScan().get());
-//                listOfList.add(toScan().get());
-//                listOfList.add(toScan().get());
-//                phoneList = setBluetoothDeviceList(listOfList.get(0), listOfList.get(1), listOfList.get(2));
-//                ft.complete(phoneList);
-//            } catch (Exception e) {
-//                e.printStackTrace();
-//                ft.completeExceptionally(e);
-//            }
-//        }, 0, TimeUnit.MILLISECONDS));
-//        return ft;
-
 //        // 手写3次扫描的方法
 //        List<List<BluetoothItem>> listOfList = new ArrayList<>();
 //        return toScan().thenCompose(v1 -> {
@@ -177,7 +170,12 @@ public class CrowdManager extends TriggerManager {
         for (BluetoothItem item: list1) {
             if (containAddress(list2, item.getAddress()) && containAddress(list3, item.getAddress())) {
                 Log.e(TAG, "" + item.getDistance() + " " + findByAddress(list2, item.getAddress()).getDistance() + " " + findByAddress(list3, item.getAddress()).getDistance());
-                result.add(new BluetoothItem(item.getName(), item.getAddress(), (item.getDistance() + findByAddress(list2, item.getAddress()).getDistance() + findByAddress(list3, item.getAddress()).getDistance()) / 3));
+                result.add(new BluetoothItem(
+                        item.getName(),
+                        item.getAddress(),
+                        item.getMajorDeviceClass(),
+                        item.getDeviceClass(),
+                        (item.getDistance() + findByAddress(list2, item.getAddress()).getDistance() + findByAddress(list3, item.getAddress()).getDistance()) / 3));
             }
         }
         return result;
@@ -208,13 +206,16 @@ public class CrowdManager extends TriggerManager {
         List<SingleBluetoothData> list = bluetoothData.getDevices();
         for (SingleBluetoothData singleBluetoothData: list) {
             BluetoothDevice device = singleBluetoothData.getDevice();
-            if (isPhone(device) || isWearable(device)) {
+            if (isFilteredDevice(device)) {
                 if (device.getUuids() != null) {
                     if (singleBluetoothData.getLinked()) {
                         String name = device.getName();
                         String address = device.getAddress();
                         double distance = 0;
-                        result.add(new BluetoothItem(name, address, distance));
+                        result.add(new BluetoothItem(name, address,
+                                device.getBluetoothClass().getMajorDeviceClass(),
+                                device.getBluetoothClass().getDeviceClass(),
+                                distance));
                     }
                 } else {
                     String name = device.getName();
@@ -227,7 +228,10 @@ public class CrowdManager extends TriggerManager {
                         if (rssi < 0)
                             distance = rssi2distance(rssi);
                     }
-                    result.add(new BluetoothItem(name, address, distance));
+                    result.add(new BluetoothItem(name, address,
+                            device.getBluetoothClass().getMajorDeviceClass(),
+                            device.getBluetoothClass().getDeviceClass(),
+                            distance));
                 }
             }
         }
@@ -236,13 +240,9 @@ public class CrowdManager extends TriggerManager {
     }
 
     @SuppressLint("MissingPermission")
-    public boolean isPhone(BluetoothDevice bluetoothDevice) {
-        return bluetoothDevice.getBluetoothClass().getMajorDeviceClass() == BluetoothClass.Device.Major.PHONE;
-    }
-
-    @SuppressLint("MissingPermission")
-    public boolean isWearable(BluetoothDevice bluetoothDevice) {
-        return bluetoothDevice.getBluetoothClass().getMajorDeviceClass() == BluetoothClass.Device.Major.WEARABLE;
+    public boolean isFilteredDevice(BluetoothDevice bluetoothDevice) {
+        return bluetoothDevice.getBluetoothClass().getMajorDeviceClass() == BluetoothClass.Device.Major.PHONE
+                || bluetoothDevice.getBluetoothClass().getMajorDeviceClass() == BluetoothClass.Device.Major.WEARABLE;
     }
 
     public double rssi2distance(int rssi) {
