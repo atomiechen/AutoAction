@@ -35,6 +35,7 @@ import com.hcifuture.contextactionlibrary.volume.AppManager;
 import com.hcifuture.contextactionlibrary.volume.CrowdManager;
 import com.hcifuture.contextactionlibrary.volume.DeviceManager;
 import com.hcifuture.contextactionlibrary.volume.MotionManager;
+import com.hcifuture.contextactionlibrary.volume.Position;
 import com.hcifuture.contextactionlibrary.volume.PositionManager;
 import com.hcifuture.contextactionlibrary.volume.SoundManager;
 import com.hcifuture.contextactionlibrary.volume.VolEventListener;
@@ -237,18 +238,12 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         int time = c.get(Calendar.HOUR_OF_DAY) * 100 + c.get(Calendar.MINUTE);
         double latitude = -200;
         double longitude = -200;
-        if (GPSCollector.latest_data != null) {
-            latitude = GPSCollector.latest_data.getLatitude();
-            longitude = GPSCollector.latest_data.getLongitude();
-            Log.e("GPS", GPSCollector.latest_data_string);
-        }
         List<String> wifiIds = new ArrayList<>();
-        if (WifiCollector.latest_data != null) {
-            List<SingleWifiData> singleWifiDataList = WifiCollector.latest_data.getAps();
-            for (SingleWifiData wifiData: singleWifiDataList) {
-                String key = wifiData.getSsid() + wifiData.getBssid();
-                wifiIds.add(key);
-            }
+        Position curPos = positionManager.findById(positionManager.getPresentPosition());
+        if (curPos != null) {
+            latitude = curPos.getLatitude();
+            longitude = curPos.getLongitude();
+            wifiIds = curPos.getWifiIds();
         }
         
         double noise = noiseManager.getPresentNoise();
