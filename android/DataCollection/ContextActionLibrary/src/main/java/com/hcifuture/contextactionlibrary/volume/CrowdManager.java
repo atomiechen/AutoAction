@@ -269,7 +269,7 @@ public class CrowdManager extends TriggerManager {
                     if (singleBluetoothData.getScanResult() != null) {
                         distance = rssi2distance(singleBluetoothData.getScanResult().getRssi());
                     } else if (singleBluetoothData.getIntentExtra() != null) {
-                        int rssi = singleBluetoothData.getIntentExtra().getShort("android.bluetooth.device.extra.RSSI", (short) 0);
+                        int rssi = singleBluetoothData.getIntentExtra().getShort(BluetoothDevice.EXTRA_RSSI, (short) 0);
                         if (rssi < 0)
                             distance = rssi2distance(rssi);
                     }
