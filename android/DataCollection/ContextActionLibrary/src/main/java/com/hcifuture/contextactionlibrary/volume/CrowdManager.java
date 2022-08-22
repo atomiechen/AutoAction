@@ -15,6 +15,7 @@ import com.hcifuture.contextactionlibrary.sensor.trigger.TriggerConfig;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -78,6 +79,10 @@ public class CrowdManager extends TriggerManager {
             return majorDeviceClass == BluetoothClass.Device.Major.WEARABLE;
         }
 
+        public void setDistance(double distance) {
+            this.distance = distance;
+        }
+
         @Override
         public String toString() {
             return "BluetoothItem{" +
@@ -85,6 +90,19 @@ public class CrowdManager extends TriggerManager {
                     ", address='" + address + '\'' +
                     ", distance=" + distance +
                     '}';
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            BluetoothItem that = (BluetoothItem) o;
+            return address.equals(that.address);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(address);
         }
     }
 
@@ -129,7 +147,7 @@ public class CrowdManager extends TriggerManager {
         // 变次数扫描方法
         Log.e(TAG, "scanAndUpdate: start 3 times");
         return repeatScan(3).thenApply(listOfList -> {
-            phoneList = setBluetoothDeviceList(listOfList.get(0), listOfList.get(1), listOfList.get(2));
+            phoneList = setBluetoothDeviceList(listOfList);
             Log.e(TAG, "scanAndUpdate: get phone list " + phoneList);
             return phoneList;
         });
@@ -164,20 +182,47 @@ public class CrowdManager extends TriggerManager {
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
-    public List<BluetoothItem> setBluetoothDeviceList(List<BluetoothItem> list1, List<BluetoothItem> list2, List<BluetoothItem> list3) {
+    public List<BluetoothItem> setBluetoothDeviceList(List<List<BluetoothItem>> listOfList) {
         Log.e(TAG, "start setBluetoothDeviceList");
         List<BluetoothItem> result = new ArrayList<>();
-        for (BluetoothItem item: list1) {
-            if (containAddress(list2, item.getAddress()) && containAddress(list3, item.getAddress())) {
-                Log.e(TAG, "" + item.getDistance() + " " + findByAddress(list2, item.getAddress()).getDistance() + " " + findByAddress(list3, item.getAddress()).getDistance());
-                result.add(new BluetoothItem(
-                        item.getName(),
-                        item.getAddress(),
-                        item.getMajorDeviceClass(),
-                        item.getDeviceClass(),
-                        (item.getDistance() + findByAddress(list2, item.getAddress()).getDistance() + findByAddress(list3, item.getAddress()).getDistance()) / 3));
+        for (List<BluetoothItem> list : listOfList) {
+            for (BluetoothItem item : list) {
+                if (!result.contains(item)) {
+                    result.add(item);
+                }
             }
         }
+        for (BluetoothItem item: result) {
+//            if (list2.contains(item) && list3.contains(item)) {
+//                Log.e(TAG, "" + item.getDistance() + " " + findByAddress(list2, item.getAddress()).getDistance() + " " + findByAddress(list3, item.getAddress()).getDistance());
+//                result.add(new BluetoothItem(
+//                        item.getName(),
+//                        item.getAddress(),
+//                        item.getMajorDeviceClass(),
+//                        item.getDeviceClass(),
+//                        (item.getDistance() + findByAddress(list2, item.getAddress()).getDistance() + findByAddress(list3, item.getAddress()).getDistance()) / 3));
+//            }
+            double distance = 0;
+            int cnt = 0;
+            for (List<BluetoothItem> list : listOfList) {
+                int idx = list.indexOf(item);
+                if (idx >= 0) {
+                    distance += list.get(idx).getDistance();
+                    cnt += 1;
+                }
+            }
+            item.setDistance(distance / cnt);
+        }
+        result.sort((a, b) -> {
+            double diff = a.getDistance() - b.getDistance();
+            if (diff > 0) {
+                return 1;
+            } else if (diff < 0) {
+                return -1;
+            } else {
+                return 0;
+            }
+        });
         return result;
     }
 
