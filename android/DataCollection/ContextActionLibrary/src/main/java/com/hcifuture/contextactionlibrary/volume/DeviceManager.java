@@ -5,7 +5,9 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.media.AudioDeviceCallback;
 import android.media.AudioDeviceInfo;
+import android.media.AudioManager;
 import android.media.MediaRouter;
 import android.os.Build;
 import android.os.Bundle;
@@ -35,11 +37,14 @@ public class DeviceManager extends TriggerManager {
 
     private static final String TAG = "DeviceManager";
 
+    private final String FILE_DEVICE_LIST = "device.json";
+    private final String FILE_DEVICE_HISTORY = "device_history.json";
+
     Context context;
     ScheduledExecutorService scheduledExecutorService;
     List<ScheduledFuture<?>> futureList;
-//    private AudioManager audioManager;
-    private MediaRouter mediaRouter;
+    private final AudioManager audioManager;
+    private final MediaRouter mediaRouter;
 
     private ScheduledFuture<?> scheduledDeviceDetection;
     private BroadcastReceiver broadcastReceiver;
@@ -50,8 +55,6 @@ public class DeviceManager extends TriggerManager {
     private List<Device> devices;
     private long lastTimestamp = 0;
 
-    private final String FILE_DEVICE_LIST = "device.json";
-    private final String FILE_DEVICE_HISTORY = "device_history.json";
 
     @RequiresApi(api = Build.VERSION_CODES.N)
     public DeviceManager(VolEventListener volEventListener, Context context, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList) {
@@ -59,7 +62,7 @@ public class DeviceManager extends TriggerManager {
         this.context = context;
         this.scheduledExecutorService = scheduledExecutorService;
         this.futureList = futureList;
-//        this.audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+        this.audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
         this.mediaRouter = (MediaRouter) context.getSystemService(Context.MEDIA_ROUTER_SERVICE);
         setPresentDevice(genDevice(getCurrentRouteInfo()));
         readDevices();
@@ -87,7 +90,8 @@ public class DeviceManager extends TriggerManager {
         routerCallback = new MediaRouter.Callback() {
             @Override
             public void onRouteSelected(MediaRouter router, int type, MediaRouter.RouteInfo info) {
-                ContextActionContainer.handler.post(() -> checkRouteInfo(info, "onRouteSelected: " + type));
+//                ContextActionContainer.handler.postDelayed(() -> checkRouteInfo(info, "onRouteSelected: " + type), 100);
+                ContextActionContainer.handler.postDelayed(() -> checkDevice("onRouteSelected: " + type), 100);
             }
 
             @Override
@@ -107,7 +111,8 @@ public class DeviceManager extends TriggerManager {
 
             @Override
             public void onRouteChanged(MediaRouter router, MediaRouter.RouteInfo info) {
-                ContextActionContainer.handler.post(() -> checkRouteInfo(info, "onRouteChanged"));
+//                ContextActionContainer.handler.postDelayed(() -> checkRouteInfo(info, "onRouteChanged"), 100);
+                ContextActionContainer.handler.postDelayed(() -> checkDevice("onRouteChanged"), 100);
             }
 
             @Override
@@ -122,7 +127,8 @@ public class DeviceManager extends TriggerManager {
 
             @Override
             public void onRouteVolumeChanged(MediaRouter router, MediaRouter.RouteInfo info) {
-                ContextActionContainer.handler.post(() -> checkRouteInfo(info, "onRouteVolumeChanged"));
+//                ContextActionContainer.handler.postDelayed(() -> checkRouteInfo(info, "onRouteVolumeChanged"), 100);
+                ContextActionContainer.handler.postDelayed(() -> checkDevice("onRouteVolumeChanged"), 100);
             }
         };
 
@@ -134,10 +140,12 @@ public class DeviceManager extends TriggerManager {
                 switch (action) {
                     case Intent.ACTION_HEADSET_PLUG:
                     case BluetoothDevice.ACTION_ACL_DISCONNECTED:
-                        checkDevice();
+                        ContextActionContainer.handler.postDelayed(() -> checkDevice(action), 100);
+//                        checkDevice();
                         break;
                     case BluetoothDevice.ACTION_ACL_CONNECTED:
-                        futureList.add(scheduledExecutorService.schedule(() -> checkDevice(), 5000, TimeUnit.MILLISECONDS));
+                        ContextActionContainer.handler.postDelayed(() -> checkDevice(action), 5000);
+//                        futureList.add(scheduledExecutorService.schedule(() -> checkDevice(), 5000, TimeUnit.MILLISECONDS));
                         break;
                 }
             }
@@ -150,11 +158,12 @@ public class DeviceManager extends TriggerManager {
 
     @Override
     public void start() {
-        setPresentDevice(genDevice(getCurrentRouteInfo()));
-
 //        audioManager.registerAudioDeviceCallback(audioDeviceCallback, handler);
         mediaRouter.addCallback(MediaRouter.ROUTE_TYPE_LIVE_AUDIO, routerCallback, MediaRouter.CALLBACK_FLAG_UNFILTERED_EVENTS);
         context.registerReceiver(broadcastReceiver, intentFilter, null, ContextActionContainer.handler);
+
+        setPresentDevice(genDevice(getCurrentRouteInfo()));
+
         futureList.add(scheduledDeviceDetection = scheduledExecutorService.scheduleAtFixedRate(this::checkDevice, 3000, 60000, TimeUnit.MILLISECONDS));
     }
 
@@ -179,7 +188,11 @@ public class DeviceManager extends TriggerManager {
     }
 
     public void checkDevice() {
-        checkRouteInfo(getCurrentRouteInfo(), "checkDevice");
+        checkDevice("checkDevice");
+    }
+
+    public void checkDevice(String prefix) {
+        checkRouteInfo(getCurrentRouteInfo(), prefix);
     }
 
     @RequiresApi(api = Build.VERSION_CODES.M)
@@ -198,8 +211,27 @@ public class DeviceManager extends TriggerManager {
         int deviceType = info.getDeviceType();
         String name = info.getName() == null? "NULL" : info.getName().toString();
         String description = info.getDescription() == null? "NULL" : info.getDescription().toString();
-        String deviceID = "$" + deviceType + "$" + name + "$" + description;
-        return new Device(deviceID, name, description, deviceType);
+        if (deviceType == MediaRouter.RouteInfo.DEVICE_TYPE_UNKNOWN) {
+            for (AudioDeviceInfo audioDeviceInfo : audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)) {
+                if (audioDeviceInfo.getType() == AudioDeviceInfo.TYPE_WIRED_HEADSET) {
+                    name = "wired_headset";
+                    description = audioDeviceInfo.getProductName() == null? "NULL" : audioDeviceInfo.getProductName().toString();
+                    break;
+                } else if (audioDeviceInfo.getType() == AudioDeviceInfo.TYPE_WIRED_HEADPHONES) {
+                    name = "wired_headphones";
+                    description = audioDeviceInfo.getProductName() == null? "NULL" : audioDeviceInfo.getProductName().toString();
+                    break;
+                } else if (audioDeviceInfo.getType() == AudioDeviceInfo.TYPE_USB_HEADSET) {
+                    name = "usb_headset";
+                    description = audioDeviceInfo.getProductName() == null? "NULL" : audioDeviceInfo.getProductName().toString();
+                    break;
+                } else if (audioDeviceInfo.getType() == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER) {
+                    name = "phone";
+                    description = audioDeviceInfo.getProductName() == null? "NULL" : audioDeviceInfo.getProductName().toString();
+                }
+            }
+        }
+        return new Device(name, description, deviceType);
     }
 
     public void checkRouteInfo(MediaRouter.RouteInfo info, String prefix) {
@@ -252,11 +284,11 @@ public class DeviceManager extends TriggerManager {
         public String description;
         public int deviceType;
 
-        Device(String deviceID, String name, String description, int deviceType) {
-            this.deviceID = deviceID;
+        Device(String name, String description, int deviceType) {
             this.name = name;
             this.description = description;
             this.deviceType = deviceType;
+            this.deviceID = "$" + deviceType + "$" + name + "$" + description;
         }
 
         @NonNull
