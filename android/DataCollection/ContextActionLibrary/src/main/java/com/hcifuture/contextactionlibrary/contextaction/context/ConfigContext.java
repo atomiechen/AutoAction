@@ -1,12 +1,9 @@
 package com.hcifuture.contextactionlibrary.contextaction.context;
 
 import android.bluetooth.BluetoothAdapter;
-import android.content.ComponentName;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.content.pm.ResolveInfo;
 import android.content.res.Configuration;
 import android.hardware.display.DisplayManager;
 import android.net.Uri;
@@ -28,7 +25,6 @@ import com.hcifuture.contextactionlibrary.sensor.collector.async.GPSCollector;
 import com.hcifuture.contextactionlibrary.sensor.collector.async.WifiCollector;
 import com.hcifuture.contextactionlibrary.sensor.data.NonIMUData;
 import com.hcifuture.contextactionlibrary.sensor.data.SingleIMUData;
-import com.hcifuture.contextactionlibrary.sensor.data.SingleWifiData;
 import com.hcifuture.contextactionlibrary.utils.FileUtils;
 import com.hcifuture.contextactionlibrary.utils.JSONUtils;
 import com.hcifuture.contextactionlibrary.volume.AppManager;
@@ -84,11 +80,20 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     public static String NEED_SCAN = "context.config.need_scan";
     public static String NEED_POSITION = "context.config.need_position";
 
-    // front end states
-    public static int TYPE_OFF = -1;
-    public static int TYPE_MANUAL = 0;
-    public static int TYPE_AUTO_DIRECT = 1;
-    public static int TYPE_AUTO_COUNTDOWN = 2;
+    // communication from UI
+    static final String EXTERNAL_TYPE = "event.ui.volume";
+    static final int EVENT_POPUP = 1;
+    static final int EVENT_QUIETMODE = 2;
+
+    // communication to UI
+    static final String CONTEXT_VOLUME = "context.volume";
+    static final int CONTEXT_EVENT_POPUP = 1;
+
+    // front end state & popup reason
+    static int TYPE_OFF = -1;
+    static final int REASON_MANUAL = 0;
+    static final int REASON_AUTO_DIRECT = 1;
+    static final int REASON_AUTO_COUNTDOWN = 2;
 
     // modes
     public static int MODE_NORMAL = 0;
@@ -99,7 +104,6 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     private long lastKeyDownTime = 0;
 
     private String appName;
-    private Bundle rules;
     private int brightness;
     private final HashMap<String, Integer> volume;
 
@@ -111,16 +115,15 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     private int frontEndState = TYPE_OFF;
     private int currentMode = MODE_NORMAL;
 
-    private NoiseManager noiseManager;
-    private AppManager appManager;
-    private PositionManager positionManager;
-    private CrowdManager crowdManager;
-    private DeviceManager deviceManager;
-    private SoundManager soundManager;
-    private VolumeManager volumeManager;
-    private MotionManager motionManager;
+    private final NoiseManager noiseManager;
+    private final AppManager appManager;
+    private final PositionManager positionManager;
+    private final CrowdManager crowdManager;
+    private final DeviceManager deviceManager;
+    private final SoundManager soundManager;
+    private final MotionManager motionManager;
 
-    private String defaultFid;
+    private final VolumeManager volumeManager;
 
     private Map<String, String> context2FID;
 
@@ -134,7 +137,6 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         volumeRuleManager = new VolumeRuleManager();
 
         volumeManager = new VolumeManager();
-        defaultFid = volumeManager.newFunction();
 
         noiseManager = new NoiseManager(this, scheduledExecutorService, futureList,
                 (AudioCollector) collectorManager.getCollector(CollectorManager.CollectorType.Audio));
@@ -202,11 +204,11 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         // do not perform record_all() in stop(),
         // it may cause crashes when frequently called
 
+        crowdManager.stop();
         positionManager.stop();
         deviceManager.stop();
         noiseManager.stop();
         appManager.stop();
-        crowdManager.stop();
     }
 
     @Override
@@ -390,7 +392,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                 JSONUtils.jsonPut(json, "keycodeString", KeyEvent.keyCodeToString(keycode));
 
 //                detectKeyGesture(keycode, keyAction);
-                detectKeyVolume(keycode);
+//                detectKeyVolume(keycode);
 
 //                switch (keycode) {
 //                    case KeyEvent.KEYCODE_MEDIA_AUDIO_TRACK:
@@ -435,50 +437,78 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
     @Override
     public void onExternalEvent(Bundle bundle) {
-        if (bundle.containsKey("exit")) {
-            boolean exit = bundle.getBoolean("exit");
-            if (exit) {
-                int from = bundle.getInt("from");
-                if (from == 1) {
-                    int behavior = bundle.getInt("behavior");
-                    double finalVolume = bundle.getDouble("finalVolume");
-                    Log.e(TAG, "from PAIPAI_HELPER from:" + from + ", behavior:" + behavior + ", finalVolume:" + finalVolume);
-                    if (frontEndState == TYPE_MANUAL) {
-                        if (detectedNoiseFt != null) {
-                            Log.e(TAG, "onExternalEvent: check manual noise detection");
-                            detectedNoiseFt.whenComplete((v, e) -> {
-                                // 当用户调整结束且噪音检测结束时，记录用户调整音量及噪音值
-                                Log.e(TAG, "onExternalEvent: manual detectedNoiseFt " + v + " " + e);
-                                addData(finalVolume, TYPE_MANUAL, behavior, "updated_noise", false);
-                                Log.e(TAG, "onExternalEvent: recorded to file");
-                                detectedNoiseFt = null;
-                            });
-                        } else {
-                            Log.e(TAG, "onExternalEvent: manual null detectedNoiseFt (already stopped) ");
-                            addData(finalVolume, frontEndState, behavior, "last_noise", false);
-                            Log.e(TAG, "onExternalEvent: recorded to file");
+        if (bundle.containsKey("type") && EXTERNAL_TYPE.equals(bundle.getString("type"))) {
+            int event = bundle.getInt("event");
+            switch (event) {
+                case EVENT_POPUP:
+                    boolean popup = bundle.getBoolean("popup");
+                    if (popup) {
+                        // popup
+                        int reason = bundle.getInt("reason");
+                        frontEndState = reason;
+                        Log.e(TAG, "onExternalEvent: pop up, reason: " + reason);
+                        if (reason == REASON_MANUAL) {
+                            // detect current noise
+                            if (detectedNoiseFt == null) {
+                                detectedNoiseFt = noiseManager.detectNoise(5000, 10);
+                            }
+                            Log.e(TAG, "Local Context Data: " + String.format("%d,%f,%s,%s,%s,%b,%d",
+                                    System.currentTimeMillis(),
+                                    noiseManager.getPresentNoise(),
+                                    deviceManager.getPresentDeviceID(),
+                                    appManager.getPresentApp(),
+                                    positionManager.getPresentPosition(),
+                                    soundManager.isAudioOn(),
+                                    soundManager.getAudioMode()
+                            ));
+                            List<CrowdManager.BluetoothItem> bluetoothItemList = crowdManager.getPhoneList();
+                            for (CrowdManager.BluetoothItem bluetoothItem: bluetoothItemList) {
+                                Log.e(TAG, bluetoothItem.toString());
+                            }
                         }
-                    } else if (frontEndState == TYPE_AUTO_DIRECT || frontEndState == TYPE_AUTO_COUNTDOWN) {
-                        if (behavior != 0) {
-                            Log.e(TAG, "onExternalEvent: auto modified by hand");
-                            addData(finalVolume, frontEndState, behavior, "last_noise", true);
-                            Log.e(TAG, "onExternalEvent: recorded to file");
+                    } else {
+                        // exit
+                        Log.e(TAG, "onExternalEvent: UI exit");
+                        int from = bundle.getInt("from");
+                        if (from == 1) {
+                            int behavior = bundle.getInt("behavior");
+                            double finalVolume = bundle.getDouble("finalVolume");
+                            Log.e(TAG, "onExternalEvent: from:" + from + ", behavior:" + behavior + ", finalVolume:" + finalVolume);
+                            if (frontEndState == REASON_MANUAL) {
+                                if (detectedNoiseFt != null) {
+                                    Log.e(TAG, "onExternalEvent: check manual noise detection");
+                                    detectedNoiseFt.whenComplete((v, e) -> {
+                                        // 当用户调整结束且噪音检测结束时，记录用户调整音量及噪音值
+                                        Log.e(TAG, "onExternalEvent: manual detectedNoiseFt " + v + " " + e);
+                                        addData(finalVolume, REASON_MANUAL, behavior, "updated_noise", false);
+                                        Log.e(TAG, "onExternalEvent: recorded to file");
+                                        detectedNoiseFt = null;
+                                    });
+                                } else {
+                                    Log.e(TAG, "onExternalEvent: manual null detectedNoiseFt (already stopped) ");
+                                    addData(finalVolume, frontEndState, behavior, "last_noise", false);
+                                    Log.e(TAG, "onExternalEvent: recorded to file");
+                                }
+                            } else if (frontEndState == REASON_AUTO_DIRECT || frontEndState == REASON_AUTO_COUNTDOWN) {
+                                if (behavior != 0) {
+                                    Log.e(TAG, "onExternalEvent: auto modified by hand");
+                                    addData(finalVolume, frontEndState, behavior, "last_noise", true);
+                                    Log.e(TAG, "onExternalEvent: recorded to file");
+                                }
+                            }
+                            frontEndState = TYPE_OFF;
+                        } else if (from == 2) {
+                            int editedRank = bundle.getInt("editedRank");
+                            boolean action = bundle.getBoolean("action");
+                            double finalVolume = bundle.getDouble("finalVolume");
+                            Log.e(TAG, "onExternalEvent: from:" + from + ", editedRank:" + editedRank + ", action:" + action + ", finalVolume:" + finalVolume);
+                            frontEndState = TYPE_OFF;
                         }
                     }
-                    frontEndState = TYPE_OFF;
-                } else if (from == 2) {
-                    int editedRank = bundle.getInt("editedRank");
-                    boolean action = bundle.getBoolean("action");
-                    double finalVolume = bundle.getDouble("finalVolume");
-                    Log.e(TAG, "from PAIPAI_HELPER from:" + from + ", editedRank:" + editedRank + ", action:" + action + ", finalVolume:" + finalVolume);
-                    frontEndState = TYPE_OFF;
-                }
-            } else if (bundle.containsKey("quietMode")) {
-                currentMode = bundle.getBoolean("quietMode")? MODE_QUIET : MODE_NORMAL;
-//                if (currentMode == MODE_QUIET) {
-//                    // user switches to quiet mode, then auto adjust volume
-//                    changeToQuietMode(20);
-//                }
+                    break;
+                case EVENT_QUIETMODE:
+                    currentMode = bundle.getBoolean("quietMode")? MODE_QUIET : MODE_NORMAL;
+                    break;
             }
         }
     }
@@ -651,7 +681,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                     Log.e(TAG, bluetoothItem.toString());
                 }
                 Log.e(TAG, "KeyEvent End");
-                tryPopUpFrontend(TYPE_MANUAL, 0);
+                tryPopUpFrontend(REASON_MANUAL, 0);
         }
     }
 
@@ -716,7 +746,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
             // (1) new context (no data yet), adjustedVolume = -1
             // (2) the predicted volume is the same as current volume
             if (adjustedVolume >= 0 && soundManager.percent2int(adjustedVolume) != soundManager.getVolume()) {
-                tryPopUpFrontend(TYPE_AUTO_DIRECT, adjustedVolume);
+                tryPopUpFrontend(REASON_AUTO_DIRECT, adjustedVolume);
             }
         }
     }
@@ -732,26 +762,27 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         return result;
     }
 
-    public void tryPopUpFrontend(int type, double adjustedVolume) {
+    public void tryPopUpFrontend(int reason, double adjustedVolume) {
         if (frontEndState == TYPE_OFF) {
             VolumeContext volumeContext = getPresentContext();
-            rules = getRules(volumeContext, type);
-            if (type != TYPE_MANUAL) {
+            Bundle rules = getRules(volumeContext, reason);
+            if (reason != REASON_MANUAL) {
                 List<Bundle> rulesList = rules.getParcelableArrayList("rules");
                 rulesList.get(0).putDouble("volume", adjustedVolume);
             }
-            rules.putBoolean("quietMode", currentMode == MODE_QUIET);
-            notifyFrontend("data from context-package", rules);
-            frontEndState = type;
-            Log.e(TAG, "toFrontend: Volume UI pops up, type: " + type);
+//            rules.putBoolean("quietMode", currentMode == MODE_QUIET);
+            rules.putInt("event", CONTEXT_EVENT_POPUP);
+            rules.putInt("reason", reason);
+            notifyFrontend(CONTEXT_VOLUME, rules);
+            Log.e(TAG, "tryPopUpFrontend: Volume UI pops up, type: " + reason);
         } else {
-            Log.e(TAG, "toFrontend: not pop up because already on");
+            Log.e(TAG, "tryPopUpFrontend: not pop up because already on");
         }
     }
 
     private void changeToQuietMode(double volume) {
         // pop up the panel
-        tryPopUpFrontend(TYPE_MANUAL, 0);
+        tryPopUpFrontend(REASON_MANUAL, 0);
         // then adjust volume
         Bundle bundle = new Bundle();
         bundle.putDouble("vol", volume);
