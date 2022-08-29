@@ -84,10 +84,12 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     static final String EXTERNAL_TYPE = "event.ui.volume";
     static final int EVENT_POPUP = 1;
     static final int EVENT_QUIETMODE = 2;
+    static final int EVENT_CAPTURE_PERMISSION = 3;
 
     // communication to UI
     static final String CONTEXT_VOLUME = "context.volume";
     static final int CONTEXT_EVENT_POPUP = 1;
+    static final int CONTEXT_EVENT_CAPTURE_PERMISSION = 3;
 
     // front end state & popup reason
     static int TYPE_OFF = -1;
@@ -508,6 +510,11 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                     break;
                 case EVENT_QUIETMODE:
                     currentMode = bundle.getBoolean("quietMode")? MODE_QUIET : MODE_NORMAL;
+                    break;
+                case EVENT_CAPTURE_PERMISSION:
+                    int resultCode = bundle.getInt("resultCode");
+                    Intent data = bundle.getParcelable("data");
+                    Log.e(TAG, "onExternalEvent: get capture permission result: " + resultCode);
                     break;
             }
         }
