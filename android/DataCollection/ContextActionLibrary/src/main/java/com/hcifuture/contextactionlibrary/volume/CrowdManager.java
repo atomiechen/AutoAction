@@ -1,9 +1,19 @@
 package com.hcifuture.contextactionlibrary.volume;
 
 import android.annotation.SuppressLint;
+import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothClass;
 import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothManager;
+import android.bluetooth.le.AdvertiseCallback;
+import android.bluetooth.le.AdvertiseData;
+import android.bluetooth.le.AdvertiseSettings;
+import android.bluetooth.le.BluetoothLeAdvertiser;
+import android.bluetooth.le.ScanResult;
+import android.content.Context;
+import android.content.Intent;
 import android.os.Build;
+import android.os.ParcelUuid;
 import android.util.Log;
 
 import androidx.annotation.RequiresApi;
@@ -13,6 +23,7 @@ import com.hcifuture.contextactionlibrary.sensor.data.BluetoothData;
 import com.hcifuture.contextactionlibrary.sensor.data.SingleBluetoothData;
 import com.hcifuture.contextactionlibrary.sensor.trigger.TriggerConfig;
 
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -28,18 +39,23 @@ public class CrowdManager extends TriggerManager {
     List<ScheduledFuture<?>> futureList;
     private BluetoothCollector bluetoothCollector;
     private List<BluetoothItem> phoneList;
+    private Context mContext;
+    private BLEManager bleManager;
 
     private ScheduledFuture<?> scheduledPhoneDetection;
     private ScheduledFuture<?> repeatScan;
     private long initialDelay = 0;
     private long period = 1000 * 60;  // detect phones every 15s
 
-    public CrowdManager(VolEventListener volEventListener, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, BluetoothCollector bluetoothCollector) {
+    @SuppressLint("MissingPermission")
+    public CrowdManager(VolEventListener volEventListener, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, BluetoothCollector bluetoothCollector, Context context) {
         super(volEventListener);
         this.scheduledExecutorService = scheduledExecutorService;
         this.futureList = futureList;
         this.bluetoothCollector = bluetoothCollector;
         phoneList = new ArrayList<>();
+        mContext = context;
+        bleManager = new BLEManager(scheduledExecutorService, futureList, mContext);
     }
 
     public static class BluetoothItem {
@@ -109,6 +125,7 @@ public class CrowdManager extends TriggerManager {
     @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     public void start() {
+        bleManager.startAdvertising();
         // detect phones periodically
         Log.e(TAG, "schedule periodic phones detection");
         scheduledPhoneDetection = scheduledExecutorService.scheduleAtFixedRate(() -> {
@@ -123,6 +140,7 @@ public class CrowdManager extends TriggerManager {
 
     @Override
     public void stop() {
+        bleManager.stopAdvertising();
         if (scheduledPhoneDetection != null) {
             scheduledPhoneDetection.cancel(true);
         }
@@ -174,8 +192,13 @@ public class CrowdManager extends TriggerManager {
     @RequiresApi(api = Build.VERSION_CODES.O)
     public CompletableFuture<List<BluetoothItem>> toScan() {
         Log.e(TAG, "start to detect phones");
-        return bluetoothCollector.getData(new TriggerConfig().setBluetoothScanTime(10000)).thenApply(v -> {
-            phoneList = device2BluetoothItem((BluetoothData) v.getData());
+//        return bluetoothCollector.getData(new TriggerConfig().setBluetoothScanTime(10000)).thenApply(v -> {
+//            phoneList = device2BluetoothItem((BluetoothData) v.getData());
+//            Log.e(TAG, "toScan: get phone list " + phoneList);
+//            return phoneList;
+//        });
+        return bleManager.startScan().thenApply(v -> {
+            phoneList = scanResult2BtItem(v);
             Log.e(TAG, "toScan: get phone list " + phoneList);
             return phoneList;
         });
@@ -281,6 +304,24 @@ public class CrowdManager extends TriggerManager {
             }
         }
         Log.e(TAG, "end device2item");
+        return result;
+    }
+
+    @SuppressLint("MissingPermission")
+    public List<BluetoothItem> scanResult2BtItem(List<ScanResult> scanResults) {
+        List<BluetoothItem> result = new ArrayList<>();
+        for (ScanResult scanResult: scanResults) {
+            BluetoothDevice device = scanResult.getDevice();
+            if (isFilteredDevice(device)) {
+                double distance = rssi2distance(scanResult.getRssi());
+                String name = device.getName();
+                String address = device.getAddress();
+                result.add(new BluetoothItem(name, address,
+                        device.getBluetoothClass().getMajorDeviceClass(),
+                        device.getBluetoothClass().getDeviceClass(),
+                        distance));
+            }
+        }
         return result;
     }
 
