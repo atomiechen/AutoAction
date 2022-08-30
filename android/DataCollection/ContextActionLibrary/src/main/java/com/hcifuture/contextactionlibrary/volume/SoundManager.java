@@ -103,7 +103,7 @@ public class SoundManager extends TriggerManager {
 
     @RequiresApi(api = Build.VERSION_CODES.Q)
     @SuppressLint("MissingPermission")
-    public boolean startAudioCapture() {
+    public boolean startAudioCapture(long milliseconds) {
         if (isCollecting.compareAndSet(false, true)) {
             if (hasCapturePermission) {
                 mediaProjection = mediaProjectionManager.getMediaProjection(resultCode, data);
@@ -133,10 +133,10 @@ public class SoundManager extends TriggerManager {
 
                     startLoopToSaveAudioFile(mPcmFilePath);
 
-                    // stop after 10s
+                    // stop after certain duration
                     futureList.add(scheduledExecutorService.schedule(() -> {
                         stopAudioCapture();
-                    }, 10000, TimeUnit.MILLISECONDS));
+                    }, milliseconds, TimeUnit.MILLISECONDS));
 
                     Log.e(TAG, "startAudioCapture: start success");
                     return true;

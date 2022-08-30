@@ -200,7 +200,9 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         crowdManager.start();
 
         // get audio capture permission
-        notifyRequestRecordPermission();
+        if (!soundManager.hasCapturePermission()) {
+            notifyRequestRecordPermission();
+        }
     }
 
     @Override
@@ -428,7 +430,8 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
 //                // special test for audio capture functionality
 //                if (keycode == KeyEvent.KEYCODE_VOLUME_UP && keyAction == KeyEvent.ACTION_DOWN) {
-//                    soundManager.startAudioCapture();
+//                    // record 10s
+//                    soundManager.startAudioCapture(10000);
 //                }
             }
 
