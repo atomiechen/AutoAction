@@ -9,6 +9,7 @@ import android.bluetooth.le.AdvertiseCallback;
 import android.bluetooth.le.AdvertiseData;
 import android.bluetooth.le.AdvertiseSettings;
 import android.bluetooth.le.BluetoothLeAdvertiser;
+import android.bluetooth.le.ScanRecord;
 import android.bluetooth.le.ScanResult;
 import android.content.Context;
 import android.content.Intent;
@@ -23,8 +24,10 @@ import com.hcifuture.contextactionlibrary.sensor.data.BluetoothData;
 import com.hcifuture.contextactionlibrary.sensor.data.SingleBluetoothData;
 import com.hcifuture.contextactionlibrary.sensor.trigger.TriggerConfig;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
@@ -140,7 +143,7 @@ public class CrowdManager extends TriggerManager {
 
     @Override
     public void stop() {
-        bleManager.stopAdvertising();
+//        bleManager.stopAdvertising();
         if (scheduledPhoneDetection != null) {
             scheduledPhoneDetection.cancel(true);
         }
@@ -208,33 +211,49 @@ public class CrowdManager extends TriggerManager {
     public List<BluetoothItem> setBluetoothDeviceList(List<List<BluetoothItem>> listOfList) {
         Log.e(TAG, "start setBluetoothDeviceList");
         List<BluetoothItem> result = new ArrayList<>();
+        List<BluetoothItem> tmp = new ArrayList<>();
         for (List<BluetoothItem> list : listOfList) {
             for (BluetoothItem item : list) {
-                if (!result.contains(item)) {
-                    result.add(item);
-                }
+//                if (!result.contains(item)) {
+//                    result.add(item);
+//                }
+                if (findByDistance(tmp, item.getDistance()) != null && findByDistance(tmp, item.getDistance()).getAddress().equals(item.getAddress()))
+                    continue;
+                tmp.add(item);
             }
         }
-        for (BluetoothItem item: result) {
-//            if (list2.contains(item) && list3.contains(item)) {
-//                Log.e(TAG, "" + item.getDistance() + " " + findByAddress(list2, item.getAddress()).getDistance() + " " + findByAddress(list3, item.getAddress()).getDistance());
-//                result.add(new BluetoothItem(
-//                        item.getName(),
-//                        item.getAddress(),
-//                        item.getMajorDeviceClass(),
-//                        item.getDeviceClass(),
-//                        (item.getDistance() + findByAddress(list2, item.getAddress()).getDistance() + findByAddress(list3, item.getAddress()).getDistance()) / 3));
+        Log.e(TAG, "tmp: " + tmp);
+        for (BluetoothItem item: tmp) {
+////            if (list2.contains(item) && list3.contains(item)) {
+////                Log.e(TAG, "" + item.getDistance() + " " + findByAddress(list2, item.getAddress()).getDistance() + " " + findByAddress(list3, item.getAddress()).getDistance());
+////                result.add(new BluetoothItem(
+////                        item.getName(),
+////                        item.getAddress(),
+////                        item.getMajorDeviceClass(),
+////                        item.getDeviceClass(),
+////                        (item.getDistance() + findByAddress(list2, item.getAddress()).getDistance() + findByAddress(list3, item.getAddress()).getDistance()) / 3));
+////            }
+//            double distance = 0;
+//            int cnt = 0;
+//            for (List<BluetoothItem> list : listOfList) {
+//                int idx = list.indexOf(item);
+//                if (idx >= 0) {
+//                    distance += list.get(idx).getDistance();
+//                    cnt += 1;
+//                }
 //            }
-            double distance = 0;
-            int cnt = 0;
-            for (List<BluetoothItem> list : listOfList) {
-                int idx = list.indexOf(item);
-                if (idx >= 0) {
-                    distance += list.get(idx).getDistance();
-                    cnt += 1;
+//            item.setDistance(distance / cnt);
+            if (findByAddress(result, item.getAddress()) == null) {
+                double distance = 0;
+                int cnt = 0;
+                for (BluetoothItem item1: tmp) {
+                    if (item1.getAddress().equals(item.getAddress())) {
+                        distance += item1.getDistance();
+                        cnt += 1;
+                    }
                 }
+                result.add(new BluetoothItem(item.getName(), item.getAddress(), item.getMajorDeviceClass(), item.getDeviceClass(), distance / cnt));
             }
-            item.setDistance(distance / cnt);
         }
         result.sort((a, b) -> {
             double diff = a.getDistance() - b.getDistance();
@@ -260,6 +279,14 @@ public class CrowdManager extends TriggerManager {
     public BluetoothItem findByAddress(List<BluetoothItem> list, String address) {
         for (BluetoothItem bluetoothItem: list) {
             if (address.equals(bluetoothItem.getAddress()))
+                return bluetoothItem;
+        }
+        return null;
+    }
+
+    public BluetoothItem findByDistance(List<BluetoothItem> list, double distance) {
+        for (BluetoothItem bluetoothItem: list) {
+            if (distance == bluetoothItem.getDistance())
                 return bluetoothItem;
         }
         return null;
@@ -309,10 +336,13 @@ public class CrowdManager extends TriggerManager {
 
     @SuppressLint("MissingPermission")
     public List<BluetoothItem> scanResult2BtItem(List<ScanResult> scanResults) {
+        Log.e(TAG, "start scanResult2BtItem");
         List<BluetoothItem> result = new ArrayList<>();
+        Log.e(TAG, "scanResults size: " + scanResults.size());
         for (ScanResult scanResult: scanResults) {
             BluetoothDevice device = scanResult.getDevice();
-            if (isFilteredDevice(device)) {
+            ScanRecord scanRecord = scanResult.getScanRecord();
+            if (scanRecord != null && Arrays.equals(scanRecord.getManufacturerSpecificData(2), BLEManager.MANUFACTURER_DATA)) {
                 double distance = rssi2distance(scanResult.getRssi());
                 String name = device.getName();
                 String address = device.getAddress();
@@ -322,6 +352,7 @@ public class CrowdManager extends TriggerManager {
                         distance));
             }
         }
+        Log.e(TAG, "end scanResult2BtItem");
         return result;
     }
 
