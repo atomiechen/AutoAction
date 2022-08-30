@@ -145,7 +145,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
         deviceManager = new DeviceManager(this, mContext, scheduledExecutorService, futureList);
 
-        soundManager = new SoundManager(this, mContext);
+        soundManager = new SoundManager(this, mContext, scheduledExecutorService, futureList);
 
         appManager = new AppManager(this, mContext);
 
@@ -198,6 +198,9 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         deviceManager.start();
         positionManager.start();
         crowdManager.start();
+
+        // get audio capture permission
+        notifyRequestRecordPermission();
     }
 
     @Override
@@ -287,6 +290,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 //        return _volumes;
 //    }
 
+    @RequiresApi(api = Build.VERSION_CODES.Q)
     @Override
     public void onBroadcastEvent(BroadcastEvent event) {
         long timestamp = event.getTimestamp();
@@ -421,6 +425,11 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 //                        notifyContext(NEED_SCAN, timestamp, logID, "key event: " + KeyEvent.keyCodeToString(keycode));
 //                        notifyContext(NEED_POSITION, timestamp, logID, "key event: " + KeyEvent.keyCodeToString(keycode));
 //                }
+
+//                // special test for audio capture functionality
+//                if (keycode == KeyEvent.KEYCODE_VOLUME_UP && keyAction == KeyEvent.ACTION_DOWN) {
+//                    soundManager.startAudioCapture();
+//                }
             }
 
             if (record) {
@@ -510,11 +519,13 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                     break;
                 case EVENT_QUIETMODE:
                     currentMode = bundle.getBoolean("quietMode")? MODE_QUIET : MODE_NORMAL;
+                    Log.e(TAG, "onExternalEvent: quiet mode changed to " + currentMode);
                     break;
                 case EVENT_CAPTURE_PERMISSION:
                     int resultCode = bundle.getInt("resultCode");
                     Intent data = bundle.getParcelable("data");
                     Log.e(TAG, "onExternalEvent: get capture permission result: " + resultCode);
+                    soundManager.saveAudioCaptureToken(resultCode, data);
                     break;
             }
         }
@@ -796,6 +807,12 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         bundle.putBoolean("quietMode", currentMode == MODE_QUIET);
         notifyFrontend("on quiet-mode changed volume adjust", bundle);
         Log.e(TAG, "changeToQuietMode signaled");
+    }
+
+    private void notifyRequestRecordPermission() {
+        Bundle bundle = new Bundle();
+        bundle.putInt("event", CONTEXT_EVENT_CAPTURE_PERMISSION);
+        notifyFrontend(CONTEXT_VOLUME, bundle);
     }
 
     private void notifyFrontend(String context, Bundle bundle) {
