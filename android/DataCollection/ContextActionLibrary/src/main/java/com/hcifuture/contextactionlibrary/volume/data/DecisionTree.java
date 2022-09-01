@@ -7,6 +7,10 @@ import java.util.Set;
 
 public class DecisionTree {
 
+    enum Algorithm {
+        ID3, C45
+    }
+
     class TreeNode {
         Map<Dataset.FeatureValue, TreeNode> branches;
         Dataset.Feature feature;
@@ -15,6 +19,7 @@ public class DecisionTree {
 
     TreeNode root = new TreeNode();
     int labelCount = 2;
+    Algorithm algorithm = Algorithm.C45;
 
     public void train(Dataset dataset) {
         genTree(root, dataset);
@@ -82,12 +87,19 @@ public class DecisionTree {
         return maxLabel;
     }
 
-    // ID3 algorithm
     private Dataset.Feature decideBestFeature(Dataset dataset) {
         double maxGain = 0;
         Dataset.Feature bestFeature = dataset.features.get(0);
         for (Dataset.Feature feature : dataset.features) {
-            double currentGain = gain(dataset, feature);
+            double currentGain = 0;
+            switch (algorithm) {
+                case ID3:
+                    currentGain = gain(dataset, feature);
+                    break;
+                case C45:
+                    currentGain = gainRatio(dataset, feature);
+                    break;
+            }
             if (currentGain > maxGain) {
                 maxGain = currentGain;
                 bestFeature = feature;
@@ -122,6 +134,21 @@ public class DecisionTree {
 
     private double gain(Dataset dataset, Dataset.Feature feature) {
         return infoD(dataset) - infoA(dataset, feature);
+    }
+
+    private double splitInfo(Dataset dataset, Dataset.Feature feature) {
+        double sum = 0;
+        Set<Dataset.FeatureValue> values = getValues(dataset, feature);
+        for (Dataset.FeatureValue value : values) {
+            Dataset newDataset = splitDataset(dataset, feature, value);
+            double prob = newDataset.samples.size() / (double) dataset.samples.size();
+            sum -= prob * Math.log(prob) / Math.log(2);
+        }
+        return sum;
+    }
+
+    private double gainRatio(Dataset dataset, Dataset.Feature feature) {
+        return gain(dataset, feature) / splitInfo(dataset, feature);
     }
 
     private Set<Dataset.FeatureValue> getValues(Dataset dataset, Dataset.Feature feature) {
