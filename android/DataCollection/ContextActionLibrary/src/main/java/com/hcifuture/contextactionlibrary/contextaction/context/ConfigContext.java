@@ -198,6 +198,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         deviceManager.start();
         positionManager.start();
         crowdManager.start();
+        soundManager.start();
 
         // get audio capture permission
         if (!soundManager.hasCapturePermission()) {
@@ -211,6 +212,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         // do not perform record_all() in stop(),
         // it may cause crashes when frequently called
 
+        soundManager.stop();
         crowdManager.stop();
         positionManager.stop();
         deviceManager.stop();

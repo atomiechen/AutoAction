@@ -36,6 +36,7 @@ public class SoundManager extends TriggerManager {
     private MediaProjection mediaProjection;
     private AudioRecord audioRecord;
     private ScheduledFuture<?> recordingFt;
+    private ScheduledFuture<?> countdownStopFt;
 
     private boolean hasCapturePermission = false;
     private int resultCode;
@@ -65,6 +66,15 @@ public class SoundManager extends TriggerManager {
 
         mediaProjectionManager = (MediaProjectionManager) mContext.getSystemService(Context.MEDIA_PROJECTION_SERVICE);
         mPcmFilePath = mContext.getExternalMediaDirs()[0].getAbsolutePath() + "/tmp/system_audio.pcm";
+    }
+
+    @Override
+    public void stop() {
+        if (countdownStopFt != null) {
+            countdownStopFt.cancel(true);
+        }
+        stopAudioCapture();
+        super.stop();
     }
 
     public boolean isAudioOn() {
@@ -113,36 +123,47 @@ public class SoundManager extends TriggerManager {
                     Log.e(TAG, "startAudioCapture: start fail because no permission null mediaProject");
                     return false;
                 } else {
-                    AudioPlaybackCaptureConfiguration audioPlaybackCaptureConfiguration =
-                            new AudioPlaybackCaptureConfiguration.Builder(mediaProjection)
-                                    .addMatchingUsage(AudioAttributes.USAGE_MEDIA)
-                                    .build();
+                    try {
+                        AudioPlaybackCaptureConfiguration audioPlaybackCaptureConfiguration =
+                                new AudioPlaybackCaptureConfiguration.Builder(mediaProjection)
+                                        .addMatchingUsage(AudioAttributes.USAGE_MEDIA)
+                                        .build();
 
-                    AudioFormat audioFormat = new AudioFormat.Builder()
-                            .setEncoding(ENCODING)
-                            .setSampleRate(SAMPLE_RATE)
-                            .setChannelMask(CHANNEL_MASK)
-                            .build();
+                        AudioFormat audioFormat = new AudioFormat.Builder()
+                                .setEncoding(ENCODING)
+                                .setSampleRate(SAMPLE_RATE)
+                                .setChannelMask(CHANNEL_MASK)
+                                .build();
 
-                    audioRecord = new AudioRecord.Builder()
-                            .setAudioFormat(audioFormat)
-                            .setAudioPlaybackCaptureConfig(audioPlaybackCaptureConfiguration)
-                            .build();
+                        audioRecord = new AudioRecord.Builder()
+                                .setAudioFormat(audioFormat)
+                                .setAudioPlaybackCaptureConfig(audioPlaybackCaptureConfiguration)
+                                .build();
 
-                    audioRecord.startRecording();
+                        audioRecord.startRecording();
 
-                    startLoopToSaveAudioFile(mPcmFilePath);
+                        startLoopToSaveAudioFile(mPcmFilePath);
 
-                    // stop after certain duration
-                    futureList.add(scheduledExecutorService.schedule(() -> {
+                        // stop after certain duration
+                        futureList.add(countdownStopFt = scheduledExecutorService.schedule(() -> {
+                            stopAudioCapture();
+                        }, milliseconds, TimeUnit.MILLISECONDS));
+
+                        Log.e(TAG, "startAudioCapture: start success");
+                        return true;
+                    } catch (Exception e) {
+                        Log.e(TAG, "startAudioCapture: start fail because error happens");
+                        e.printStackTrace();
+                        if (countdownStopFt != null) {
+                            countdownStopFt.cancel(true);
+                        }
                         stopAudioCapture();
-                    }, milliseconds, TimeUnit.MILLISECONDS));
-
-                    Log.e(TAG, "startAudioCapture: start success");
-                    return true;
+                        isCollecting.set(false);
+                        return false;
+                    }
                 }
             } else {
-                Log.e(TAG, "startAudioCapture: start fail because no permission 2");
+                Log.e(TAG, "startAudioCapture: start fail because no permission");
                 isCollecting.set(false);
                 return false;
             }
@@ -182,7 +203,7 @@ public class SoundManager extends TriggerManager {
         }, 0, TimeUnit.MILLISECONDS));
     }
 
-    public void stopAudioCapture() {
+    synchronized public void stopAudioCapture() {
         if (recordingFt != null) {
             // do not use cancel to interrupt, may break audioRecord
 //            recordingFt.cancel(true);
