@@ -47,6 +47,7 @@ public class SoundManager extends TriggerManager {
     private final int ENCODING = AudioFormat.ENCODING_PCM_16BIT;
     private final int BUFFER_SIZE = 2 * AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL_MASK, ENCODING);
     private final String mPcmFilePath;
+    public static double SYSTEM_VOLUME;
 
     private final Context mContext;
     private final ScheduledExecutorService scheduledExecutorService;
@@ -116,6 +117,16 @@ public class SoundManager extends TriggerManager {
                     AudioPlaybackCaptureConfiguration audioPlaybackCaptureConfiguration =
                             new AudioPlaybackCaptureConfiguration.Builder(mediaProjection)
                                     .addMatchingUsage(AudioAttributes.USAGE_MEDIA)
+                                    .addMatchingUsage(AudioAttributes.USAGE_ALARM)
+                                    .addMatchingUsage(AudioAttributes.USAGE_ASSISTANT)
+                                    .addMatchingUsage(AudioAttributes.USAGE_NOTIFICATION)
+                                    .addMatchingUsage(AudioAttributes.USAGE_UNKNOWN)
+                                    .addMatchingUsage(AudioAttributes.USAGE_GAME)
+                                    .addMatchingUsage(AudioAttributes.USAGE_ASSISTANCE_ACCESSIBILITY)
+                                    .addMatchingUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE)
+                                    .addMatchingUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
+//                                    .addMatchingUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
+//                                    .addMatchingUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION_SIGNALLING)
                                     .build();
 
                     AudioFormat audioFormat = new AudioFormat.Builder()
@@ -156,6 +167,8 @@ public class SoundManager extends TriggerManager {
         audioCaptureThreadOn.set(true);
         futureList.add(recordingFt = scheduledExecutorService.schedule(() -> {
             FileOutputStream fos = null;
+            double loudness_cnt = 0;
+            int cnt = 0;
             try {
                 Log.i(TAG, "文件地址: " + mPcmFilePath);
                 fos = new FileOutputStream(mPcmFilePath);
@@ -163,6 +176,10 @@ public class SoundManager extends TriggerManager {
 
                 while (audioCaptureThreadOn.get()) {
                     audioRecord.read(bytes, 0, bytes.length);
+                    for (byte _byte: bytes) {
+                        loudness_cnt += Math.abs(_byte);
+                    }
+                    cnt += 1;
                     fos.write(bytes, 0, bytes.length);
                     fos.flush();
                 }
@@ -172,6 +189,9 @@ public class SoundManager extends TriggerManager {
                 Log.i(TAG, "停止录制");
                 if (fos != null) {
                     try {
+                        Log.e(TAG, "" + loudness_cnt + " " + cnt);
+                        SYSTEM_VOLUME = Math.max(0, 20 * Math.log10(loudness_cnt / (BUFFER_SIZE * cnt)));
+                        Log.e(TAG, "System Volume: " + SYSTEM_VOLUME + "dB");
                         fos.flush();
                         fos.close();
                     } catch (IOException e) {
