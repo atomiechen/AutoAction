@@ -168,6 +168,9 @@ public class SoundManager extends TriggerManager {
                         if (countdownStopFt != null) {
                             countdownStopFt.cancel(true);
                         }
+                        stopAudioCapture();
+                        isCollecting.set(false);
+                        return false;
                     }
                 }
             } else {
@@ -179,7 +182,6 @@ public class SoundManager extends TriggerManager {
             Log.e(TAG, "startAudioCapture: start fail because concurrent audio capture");
             return false;
         }
-        return false;
     }
 
     private void startLoopToSaveAudioFile(String mPcmFilePath) {

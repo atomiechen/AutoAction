@@ -430,11 +430,11 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 //                        notifyContext(NEED_POSITION, timestamp, logID, "key event: " + KeyEvent.keyCodeToString(keycode));
 //                }
 
-                // special test for audio capture functionality
-                if (keycode == KeyEvent.KEYCODE_VOLUME_UP && keyAction == KeyEvent.ACTION_DOWN) {
-                    // record 10s
-                    soundManager.startAudioCapture(10000);
-                }
+//                // special test for audio capture functionality
+//                if (keycode == KeyEvent.KEYCODE_VOLUME_UP && keyAction == KeyEvent.ACTION_DOWN) {
+//                    // record 10s
+//                    soundManager.startAudioCapture(10000);
+//                }
             }
 
             if (record) {
