@@ -8,7 +8,7 @@ import java.util.Set;
 public class DecisionTree {
 
     enum Algorithm {
-        ID3, C45
+        ID3, C4_5
     }
 
     class TreeNode {
@@ -19,7 +19,7 @@ public class DecisionTree {
 
     TreeNode root = new TreeNode();
     int labelCount = 2;
-    Algorithm algorithm = Algorithm.C45;
+    Algorithm algorithm = Algorithm.C4_5;
     Dataset dataset;
 
     public void train(Dataset dataset) {
@@ -98,7 +98,7 @@ public class DecisionTree {
                 case ID3:
                     currentGain = gain(dataset, feature);
                     break;
-                case C45:
+                case C4_5:
                     currentGain = gainRatio(dataset, feature);
                     break;
             }

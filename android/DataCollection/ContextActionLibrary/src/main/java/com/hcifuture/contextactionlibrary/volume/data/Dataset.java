@@ -25,7 +25,7 @@ public class Dataset {
         return new Sample(label, featureValues);
     }
 
-    class Feature {
+    static class Feature {
         String name;
         public Feature(String name) {
             this.name = name;
@@ -45,11 +45,11 @@ public class Dataset {
         }
     }
 
-    public class FeatureValue {
+    abstract public static class FeatureValue {
         // TODO: override equal() and hash()
     }
 
-    public class DiscreteFeatureValue extends FeatureValue {
+    public static class DiscreteFeatureValue extends FeatureValue {
         int value;
 
         public DiscreteFeatureValue(int value) {
@@ -70,7 +70,7 @@ public class Dataset {
         }
     }
 
-    public class NumericFeatureValue extends FeatureValue {
+    public static class NumericFeatureValue extends FeatureValue {
         double value;
 
         public NumericFeatureValue(double value) {
@@ -93,32 +93,25 @@ public class Dataset {
 
     public class Sample {
         // 特征取值
-        FeatureValue [] fvalues;
+        Map<Feature, FeatureValue> featureValues = new HashMap<>();
         // label从0开始取值
         int label;
 
+        // 初始化时，feature value 顺序必须和表头一致
         public Sample(int label, Object [] featureValues) {
-            FeatureValue [] values = new FeatureValue[features.size()];
-            int index = 0;
-            for (Object v : featureValues) {
-                if (v instanceof Integer) {
-                    values[index] = new DiscreteFeatureValue((int) v);
-                } else if (v instanceof  Double) {
-                    values[index] = new NumericFeatureValue((double) v);
-                }
-                index++;
-            }
-            this.fvalues = values;
             this.label = label;
+            for (int idx = 0; idx < featureValues.length; idx++) {
+                Object v = featureValues[idx];
+                if (v instanceof Integer) {
+                    this.featureValues.put(features.get(idx), new DiscreteFeatureValue((int) v));
+                } else if (v instanceof  Double) {
+                    this.featureValues.put(features.get(idx), new NumericFeatureValue((double) v));
+                }
+            }
         }
 
         FeatureValue getValue(Feature feature) {
-//            return featureValues.get(feature);
-            return fvalues[features.indexOf(feature)];
-        }
-
-        void setValues(FeatureValue [] values) {
-            fvalues = values;
+            return featureValues.get(feature);
         }
     }
 }
