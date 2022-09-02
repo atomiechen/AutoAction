@@ -12,11 +12,10 @@ public class DecisionTreeTest {
         System.out.println("start decision tree test");
 
         DecisionTree tree = new DecisionTree();
-        Dataset dataset = new Dataset();
-        dataset.addFeature("A");
-        dataset.addFeature("B");
-        dataset.addFeature("C");
+        Dataset dataset = new Dataset(2);
+        dataset.addFeatures("A", "B", "C");
 
+        // sample里面的数据顺序必须和feature顺序一致
         dataset.addSample(0, new Integer[]{1,2,3});
         dataset.addSample(1, new Integer[]{2,2,4});
         dataset.addSample(1, new Integer[]{3,3,5});

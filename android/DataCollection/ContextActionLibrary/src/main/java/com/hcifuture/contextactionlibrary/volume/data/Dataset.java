@@ -8,13 +8,25 @@ import java.util.Objects;
 
 public class Dataset {
 
+    // 标签数量，几分类
+    int labelCount = 2;
     // 特征列表，表头
     List<Feature> features = new ArrayList<>();
     // 样本，内部存储的数据顺序与上述表头相同
     List<Sample> samples = new ArrayList<>();
 
+    public Dataset(int labelCount) {
+        this.labelCount = labelCount;
+    }
+
     public void addFeature(String name) {
         features.add(new Feature(name));
+    }
+
+    public void addFeatures(String... names) {
+        for (String name : names) {
+            addFeature(name);
+        }
     }
 
     public void addSample(int label, Object [] featureValues) {

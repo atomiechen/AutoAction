@@ -18,7 +18,6 @@ public class DecisionTree {
     }
 
     TreeNode root = new TreeNode();
-    int labelCount = 2;
     Algorithm algorithm = Algorithm.C4_5;
     Dataset dataset;
 
@@ -55,7 +54,7 @@ public class DecisionTree {
     private int checkSameLabel(Dataset dataset) {
         boolean consistent = false;
         int testLabel;
-        for (testLabel = 0; testLabel < labelCount; testLabel++) {
+        for (testLabel = 0; testLabel < dataset.labelCount; testLabel++) {
             boolean same = true;
             for (Dataset.Sample sample : dataset.samples) {
                 if (sample.label != testLabel) {
@@ -76,7 +75,7 @@ public class DecisionTree {
     }
 
     private int getMajorityLabel(Dataset dataset) {
-        int [] countBin = new int[labelCount];
+        int [] countBin = new int[dataset.labelCount];
         int maxCount = 0;
         int maxLabel = -1;
         for (Dataset.Sample sample : dataset.samples) {
@@ -111,12 +110,12 @@ public class DecisionTree {
     }
 
     private double infoD(Dataset dataset) {
-        int [] countBin = new int[labelCount];
+        int [] countBin = new int[dataset.labelCount];
         for (Dataset.Sample sample : dataset.samples) {
             countBin[sample.label]++;
         }
         double sum = 0;
-        for (int label = 0; label < labelCount; label++) {
+        for (int label = 0; label < dataset.labelCount; label++) {
             double prob = countBin[label] / (double) dataset.samples.size();
             sum -= prob * Math.log(prob) / Math.log(2);
         }
@@ -162,7 +161,7 @@ public class DecisionTree {
     }
 
     private Dataset splitDataset(Dataset dataset, Dataset.Feature feature, Dataset.FeatureValue featureValue) {
-        Dataset dataset1 = new Dataset();
+        Dataset dataset1 = new Dataset(dataset.labelCount);
         for (Dataset.Sample sample : dataset.samples) {
             if (sample.getValue(feature).equals(featureValue)) {
                 dataset1.samples.add(sample);
