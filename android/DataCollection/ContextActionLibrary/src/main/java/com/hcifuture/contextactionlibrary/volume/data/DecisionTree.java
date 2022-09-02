@@ -20,9 +20,11 @@ public class DecisionTree {
     TreeNode root = new TreeNode();
     int labelCount = 2;
     Algorithm algorithm = Algorithm.C45;
+    Dataset dataset;
 
     public void train(Dataset dataset) {
         genTree(root, dataset);
+        this.dataset = dataset;
     }
 
     private void genTree(TreeNode rootNode, Dataset dataset) {
@@ -181,5 +183,9 @@ public class DecisionTree {
             }
             currentNode = branchNode;
         }
+    }
+
+    public int predict(Object [] featureValues) {
+        return predict(dataset.genSample(-1, featureValues));
     }
 }
