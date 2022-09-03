@@ -22,10 +22,13 @@ public class DecisionTreeTest {
 
         // sample里面的数据顺序必须和feature顺序一致
         dataset.addSample(0, new Object[]{1,2,3});
+        // duplicate sample with different label
+        dataset.addSample(1, new Object[]{1,2,3});
+        dataset.addSample(1, new Object[]{1,2,3});
         dataset.addSample(1, new Object[]{2,2,4});
         dataset.addSample(0, new Object[]{3,3,5});
         dataset.addSample(0, new Object[]{1,2,3});
-        dataset.addSample(1, new Object[]{1,2,3});
+        dataset.addSample(1, new Object[]{1,4,3});
 
         tree.train(dataset);
         int prediction = tree.predict(new Object[]{3,3,5});

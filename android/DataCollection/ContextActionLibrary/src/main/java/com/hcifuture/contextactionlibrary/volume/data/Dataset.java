@@ -10,6 +10,8 @@ import androidx.annotation.NonNull;
 
 public class Dataset {
 
+    static int LABEL_INVALID = -1;
+
     // 标签数量，几分类
     int labelCount = 2;
     // 特征列表，表头

@@ -15,7 +15,7 @@ public class DecisionTree {
     static class TreeNode {
         Map<Dataset.FeatureValue, TreeNode> branches;
         Dataset.Feature feature;
-        int label;
+        Integer label = null;
     }
 
     TreeNode root = new TreeNode();
@@ -29,7 +29,7 @@ public class DecisionTree {
 
     private void genTree(TreeNode rootNode, Dataset dataset) {
         int label = checkSameLabel(dataset);
-        if (label != -1) {
+        if (label != Dataset.LABEL_INVALID) {
             // same label
             rootNode.label = label;
             return;
@@ -71,7 +71,7 @@ public class DecisionTree {
         if (consistent) {
             return testLabel;
         } else {
-            return -1;
+            return Dataset.LABEL_INVALID;
         }
     }
 
@@ -186,7 +186,7 @@ public class DecisionTree {
     }
 
     public int predict(Object [] featureValues) {
-        return predict(new Dataset.Sample(-1, featureValues, features));
+        return predict(new Dataset.Sample(Dataset.LABEL_INVALID, featureValues, features));
     }
 
     public static String toJson(DecisionTree tree) {
