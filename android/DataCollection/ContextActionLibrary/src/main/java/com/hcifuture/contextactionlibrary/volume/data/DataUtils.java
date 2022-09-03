@@ -1,8 +1,6 @@
 package com.hcifuture.contextactionlibrary.volume.data;
 
-import android.content.Context;
 import android.os.Build;
-import android.util.Log;
 
 import androidx.annotation.RequiresApi;
 
@@ -10,7 +8,12 @@ import com.google.gson.reflect.TypeToken;
 import com.hcifuture.contextactionlibrary.contextaction.context.ConfigContext;
 import com.hcifuture.contextactionlibrary.sensor.collector.Collector;
 import com.hcifuture.contextactionlibrary.utils.FileUtils;
-import com.hcifuture.contextactionlibrary.volume.Position;
+import com.hcifuture.contextactionlibrary.volume.AppManager;
+import com.hcifuture.contextactionlibrary.volume.CrowdManager;
+import com.hcifuture.contextactionlibrary.volume.DeviceManager;
+import com.hcifuture.contextactionlibrary.volume.NoiseManager;
+import com.hcifuture.contextactionlibrary.volume.PositionManager;
+import com.hcifuture.contextactionlibrary.volume.SoundManager;
 
 import java.io.File;
 import java.lang.reflect.Type;
@@ -82,6 +85,44 @@ public class DataUtils {
 
         String result = Collector.gson.toJson(tree);
         FileUtils.writeStringToFile(result, new File(FILE_DIR + "DT/" + id + ".json"));
+    }
+
+    public static Object[] getLatestFeatureValues(List<Dataset.Feature> features) {
+        Integer int_val = -1;
+        Double double_val = -1.0;
+        List<Object> valueList = new ArrayList<>();
+        for (Dataset.Feature feature: features) {
+            switch (feature.name) {
+                case "Noise":
+                    valueList.add(NoiseManager.latest_noiseLevel);
+                    break;
+                case "Device":
+                    valueList.add(DeviceManager.latest_device);
+                    break;
+                case "Position":
+                    valueList.add(PositionManager.latest_position);
+                    break;
+                case "App":
+                    valueList.add(AppManager.latest_id);
+                    break;
+                case "Bluetooth":
+                    valueList.add(CrowdManager.latest_bleNumLevel);
+                    break;
+                case "Audio":
+                    valueList.add(SoundManager.latest_audioLevel);
+                    break;
+                case "Time":
+                    // TODO: create TimeManager
+//                    valueList.add(TimeManager.getIntegerizedTime());
+                    valueList.add(0);
+                    break;
+                case "Volume":
+                    // TODO: get present Volume
+                    valueList.add(0);
+                    break;
+            }
+        }
+        return new Object[]{valueList};
     }
 }
 

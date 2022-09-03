@@ -1,20 +1,13 @@
 package com.hcifuture.contextactionlibrary.volume;
 
 import android.annotation.SuppressLint;
-import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothClass;
 import android.bluetooth.BluetoothDevice;
-import android.bluetooth.BluetoothManager;
-import android.bluetooth.le.AdvertiseCallback;
-import android.bluetooth.le.AdvertiseData;
-import android.bluetooth.le.AdvertiseSettings;
-import android.bluetooth.le.BluetoothLeAdvertiser;
 import android.bluetooth.le.ScanRecord;
 import android.bluetooth.le.ScanResult;
 import android.content.Context;
-import android.content.Intent;
 import android.os.Build;
-import android.os.ParcelUuid;
+import android.os.Bundle;
 import android.util.Log;
 
 import androidx.annotation.RequiresApi;
@@ -22,10 +15,7 @@ import androidx.annotation.RequiresApi;
 import com.hcifuture.contextactionlibrary.sensor.collector.async.BluetoothCollector;
 import com.hcifuture.contextactionlibrary.sensor.data.BluetoothData;
 import com.hcifuture.contextactionlibrary.sensor.data.SingleBluetoothData;
-import com.hcifuture.contextactionlibrary.sensor.trigger.TriggerConfig;
 
-import java.lang.reflect.Array;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -42,6 +32,7 @@ public class CrowdManager extends TriggerManager {
     List<ScheduledFuture<?>> futureList;
     private BluetoothCollector bluetoothCollector;
     private List<BluetoothItem> phoneList;
+    public static Integer latest_bleNumLevel = -1;
     private Context mContext;
     private BLEManager bleManager;
 
@@ -169,9 +160,25 @@ public class CrowdManager extends TriggerManager {
         Log.e(TAG, "scanAndUpdate: start 3 times");
         return repeatScan(3).thenApply(listOfList -> {
             phoneList = setBluetoothDeviceList(listOfList);
+            int after_size = (phoneList == null) ? 0 : phoneList.size();
+            if (!Objects.equals(latest_bleNumLevel, getBluetoothLevel(after_size))) {
+                latest_bleNumLevel = getBluetoothLevel(after_size);
+                Bundle bundle = new Bundle();
+                bundle.putInt("BluetoothLevel", latest_bleNumLevel);
+                volEventListener.onVolEvent(VolEventListener.EventType.Bluetooth, bundle);
+            }
             Log.e(TAG, "scanAndUpdate: get phone list " + phoneList);
             return phoneList;
         });
+    }
+
+    public Integer getBluetoothLevel(int num) {
+        if (num <= 0)
+            return 0;
+        else if (num <= 3)
+            return 1;
+        else
+            return 2;
     }
 
     @RequiresApi(api = Build.VERSION_CODES.O)
@@ -201,9 +208,9 @@ public class CrowdManager extends TriggerManager {
 //            return phoneList;
 //        });
         return bleManager.startScan().thenApply(v -> {
-            phoneList = scanResult2BtItem(v);
-            Log.e(TAG, "toScan: get phone list " + phoneList);
-            return phoneList;
+            List<BluetoothItem> list = scanResult2BtItem(v);
+            Log.e(TAG, "toScan: get phone list " + list);
+            return list;
         });
     }
 

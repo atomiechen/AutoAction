@@ -50,6 +50,7 @@ public class PositionManager extends TriggerManager {
     private List<Position> positions;
     private List<HistoryItem> history;
     private Position lastPosition;
+    public static Integer latest_position;
 
     @RequiresApi(api = Build.VERSION_CODES.N)
     public PositionManager(VolEventListener volEventListener, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, GPSCollector gpsCollector, WifiCollector wifiCollector) {
@@ -239,6 +240,7 @@ public class PositionManager extends TriggerManager {
                         volEventListener.onVolEvent(VolEventListener.EventType.Position, bundle);
                     }
                     lastPosition = tmp;
+                    latest_position = Integer.parseInt(lastPosition.getId());
                 }
                 ft.complete(lastPosition);
             } catch (Exception e) {

@@ -54,6 +54,7 @@ public class DeviceManager extends TriggerManager {
     private Device currentDevice;
     private List<Device> devices;
     private long lastTimestamp = 0;
+    public static Integer latest_device;
 
 
     @RequiresApi(api = Build.VERSION_CODES.N)
@@ -275,6 +276,7 @@ public class DeviceManager extends TriggerManager {
 
     private void setPresentDevice(Device device) {
         currentDevice = device;
+        latest_device = currentDevice.deviceID.hashCode();
         lastTimestamp = System.currentTimeMillis();
     }
 
