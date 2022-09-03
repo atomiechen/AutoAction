@@ -11,7 +11,7 @@ public class DecisionTree {
         ID3, C4_5
     }
 
-    class TreeNode {
+    static class TreeNode {
         Map<Dataset.FeatureValue, TreeNode> branches;
         Dataset.Feature feature;
         int label;

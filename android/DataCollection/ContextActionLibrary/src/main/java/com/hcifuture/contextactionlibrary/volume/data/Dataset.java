@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import androidx.annotation.NonNull;
+
 public class Dataset {
 
     // 标签数量，几分类
@@ -55,6 +57,12 @@ public class Dataset {
         public int hashCode() {
             return Objects.hash(name);
         }
+
+        @NonNull
+        @Override
+        public String toString() {
+            return name;
+        }
     }
 
     abstract public static class FeatureValue {
@@ -80,6 +88,12 @@ public class Dataset {
         public int hashCode() {
             return Objects.hash(value);
         }
+
+        @NonNull
+        @Override
+        public String toString() {
+            return Integer.toString(value);
+        }
     }
 
     public static class NumericFeatureValue extends FeatureValue {
@@ -100,6 +114,12 @@ public class Dataset {
         @Override
         public int hashCode() {
             return Objects.hash(value);
+        }
+
+        @NonNull
+        @Override
+        public String toString() {
+            return Double.toString(value);
         }
     }
 
