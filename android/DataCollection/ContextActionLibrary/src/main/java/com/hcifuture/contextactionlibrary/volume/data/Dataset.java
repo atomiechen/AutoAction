@@ -32,11 +32,7 @@ public class Dataset {
     }
 
     public void addSample(int label, Object [] featureValues) {
-        samples.add(new Sample(label, featureValues));
-    }
-
-    public Sample genSample(int label, Object [] featureValues) {
-        return new Sample(label, featureValues);
+        samples.add(new Sample(label, featureValues, features));
     }
 
     static class Feature {
@@ -65,8 +61,17 @@ public class Dataset {
         }
     }
 
-    abstract public static class FeatureValue {
-        // TODO: override equal() and hash()
+    public static class FeatureValue {
+        // factory method
+        public static FeatureValue createFeatureValue(Object v) {
+            if (v instanceof Integer) {
+                return new DiscreteFeatureValue((int) v);
+            } else if (v instanceof  Double) {
+                return new NumericFeatureValue((double) v);
+            } else {
+                return null;
+            }
+        }
     }
 
     public static class DiscreteFeatureValue extends FeatureValue {
@@ -123,22 +128,18 @@ public class Dataset {
         }
     }
 
-    public class Sample {
+    public static class Sample {
         // 特征取值
         Map<Feature, FeatureValue> featureValues = new HashMap<>();
         // label从0开始取值
         int label;
 
         // 初始化时，feature value 顺序必须和表头一致
-        public Sample(int label, Object [] featureValues) {
+        public Sample(int label, Object [] featureValues, List<Feature> features) {
             this.label = label;
             for (int idx = 0; idx < featureValues.length; idx++) {
                 Object v = featureValues[idx];
-                if (v instanceof Integer) {
-                    this.featureValues.put(features.get(idx), new DiscreteFeatureValue((int) v));
-                } else if (v instanceof  Double) {
-                    this.featureValues.put(features.get(idx), new NumericFeatureValue((double) v));
-                }
+                this.featureValues.put(features.get(idx), FeatureValue.createFeatureValue(v));
             }
         }
 

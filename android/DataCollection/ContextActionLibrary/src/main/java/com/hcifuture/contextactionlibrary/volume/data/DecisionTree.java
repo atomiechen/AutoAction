@@ -2,6 +2,7 @@ package com.hcifuture.contextactionlibrary.volume.data;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -19,11 +20,11 @@ public class DecisionTree {
 
     TreeNode root = new TreeNode();
     Algorithm algorithm = Algorithm.C4_5;
-    Dataset dataset;
+    List<Dataset.Feature> features;
 
     public void train(Dataset dataset) {
+        this.features = dataset.features;
         genTree(root, dataset);
-        this.dataset = dataset;
     }
 
     private void genTree(TreeNode rootNode, Dataset dataset) {
@@ -185,6 +186,14 @@ public class DecisionTree {
     }
 
     public int predict(Object [] featureValues) {
-        return predict(dataset.genSample(-1, featureValues));
+        return predict(new Dataset.Sample(-1, featureValues, features));
+    }
+
+    public static String toJson(DecisionTree tree) {
+        return ModelUtils.gson.toJson(tree, DecisionTree.class);
+    }
+
+    public static DecisionTree fromJson(String jsonStr) {
+        return ModelUtils.gson.fromJson(jsonStr, DecisionTree.class);
     }
 }

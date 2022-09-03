@@ -1,16 +1,12 @@
 package com.hcifuture.contextactionlibrary.volume.data;
 
-import android.content.Context;
 import android.os.Build;
-import android.util.Log;
 
 import androidx.annotation.RequiresApi;
 
 import com.google.gson.reflect.TypeToken;
 import com.hcifuture.contextactionlibrary.contextaction.context.ConfigContext;
-import com.hcifuture.contextactionlibrary.sensor.collector.Collector;
 import com.hcifuture.contextactionlibrary.utils.FileUtils;
-import com.hcifuture.contextactionlibrary.volume.Position;
 
 import java.io.File;
 import java.lang.reflect.Type;
@@ -22,13 +18,13 @@ public class DataUtils {
     private static final String FILE_DIR = ConfigContext.VOLUME_SAVE_FOLDER + "data/";
 
     public static void saveReasons(List<Reason> reasons) {
-        String result = Collector.gson.toJson(reasons);
+        String result = ModelUtils.gson.toJson(reasons);
         FileUtils.writeStringToFile(result, new File(FILE_DIR + "reasons.json"));
     }
 
     public static List<Reason> getReasons() {
         Type type = new TypeToken<List<Reason>>(){}.getType();
-        List<Reason> result = Collector.gson.fromJson(
+        List<Reason> result = ModelUtils.gson.fromJson(
                 FileUtils.getFileContent(FILE_DIR + "reasons.json"),
                 type
         );
@@ -49,7 +45,7 @@ public class DataUtils {
         int id = reason.getId();
 
         Type type = new TypeToken<List<Dataset.Sample>>(){}.getType();
-        List<Dataset.Sample> result = Collector.gson.fromJson(
+        List<Dataset.Sample> result = ModelUtils.gson.fromJson(
                 FileUtils.getFileContent(FILE_DIR + id + ".json"),
                 type
         );
@@ -61,17 +57,15 @@ public class DataUtils {
     public static void saveSamplesForReason(Reason reason, List<Dataset.Sample> samples) {
         int id = reason.getId();
 
-        String result = Collector.gson.toJson(samples);
+        String result = ModelUtils.gson.toJson(samples);
         FileUtils.writeStringToFile(result, new File(FILE_DIR + id + ".json"));
     }
 
     public static DecisionTree getDTForReason(Reason reason) {
         int id = reason.getId();
 
-        Type type = new TypeToken<DecisionTree>(){}.getType();
-        DecisionTree result = Collector.gson.fromJson(
-                FileUtils.getFileContent(FILE_DIR + "DT/" + id + ".json"),
-                type
+        DecisionTree result = DecisionTree.fromJson(
+                FileUtils.getFileContent(FILE_DIR + "DT/" + id + ".json")
         );
         // result might be null
         return result;
@@ -80,7 +74,7 @@ public class DataUtils {
     public static void saveDTForReason(Reason reason, DecisionTree tree) {
         int id = reason.getId();
 
-        String result = Collector.gson.toJson(tree);
+        String result = DecisionTree.toJson(tree);
         FileUtils.writeStringToFile(result, new File(FILE_DIR + "DT/" + id + ".json"));
     }
 }
