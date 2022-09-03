@@ -15,6 +15,7 @@ import java.util.List;
 public class AppManager extends TriggerManager {
     private static final String TAG = "AppManager";
     private String appName;
+    public static Integer latest_id = -1;
     private String last_appName;
     private boolean overlay_has_showed_for_other_reason;
     private String last_valid_widget;
@@ -35,16 +36,20 @@ public class AppManager extends TriggerManager {
         intent.addCategory(Intent.CATEGORY_HOME);
         List<ResolveInfo> resolveInfo = packageManager.queryIntentActivities(intent,
                 PackageManager.MATCH_DEFAULT_ONLY);
+        int tmp_cnt = need_overlay_apps.size() + not_need_overlay_apps.size();
         for (ResolveInfo ri : resolveInfo) {
-            not_need_overlay_apps.add(new AppItem("系统桌面", ri.activityInfo.packageName));
+            tmp_cnt++;
+            not_need_overlay_apps.add(new AppItem(tmp_cnt, "系统桌面", ri.activityInfo.packageName));
         }
     }
 
     public static class AppItem {
+        private final int id;
         private final String appName;
         private final String packageName;
 
-        public AppItem(String appName, String packageName) {
+        public AppItem(int id, String appName, String packageName) {
+            this.id = id;
             this.appName = appName;
             this.packageName = packageName;
         }
@@ -59,71 +64,71 @@ public class AppManager extends TriggerManager {
     }
 
     private final List<AppItem> need_overlay_apps = new ArrayList<>(Arrays.asList(
-            new AppItem("抖音", "com.ss.android.ugc.aweme"),
-            new AppItem("抖音极速版", "com.ss.android.ugc.aweme.lite"),
-            new AppItem("抖音火山版", "com.ss.android.ugc.live"),
-            new AppItem("快手", "com.smile.gifmaker"),
-            new AppItem("快手极速版", "com.kuaishou.nebula"),
-            new AppItem("快手概念版", "com.kwai.thanos"),
-            new AppItem("西瓜视频", "com.ss.android.article.video"),
-            new AppItem("优酷视频", "com.youku.phone"),
-            new AppItem("爱奇艺", "com.qiyi.video"),
-            new AppItem("斗鱼", "air.tv.douyu.android"),
-            new AppItem("虎牙直播", "com.duowan.kiwi"),
-            new AppItem("搜狐视频", "com.sohu.sohuvideo"),
-            new AppItem("AcFun", "tv.acfundanmaku.video"),
-            new AppItem("腾讯视频", "com.tencent.qqlive"),
-            new AppItem("哔哩哔哩", "tv.danmaku.bili"),
-            new AppItem("哔哩哔哩概念版", "com.bilibili.app.blue"),
-            new AppItem("腾讯会议", "com.tencent.wemeet.app"),
-            new AppItem("Zoom", "us.zoom.videomeetings"),
-            new AppItem("瞩目", "com.suirui.zhumu"),
-            new AppItem("华为云会议", "com.huawei.CloudLink"),
-            new AppItem("飞书", "com.ss.android.lark"),
-            new AppItem("钉钉", "com.alibaba.android.rimet"),
-            new AppItem("网易云音乐", "com.netease.cloudmusic"),
-            new AppItem("QQ音乐", "com.tencent.qqmusic"),
-            new AppItem("酷狗音乐", "com.kugou.android"),
-            new AppItem("酷我音乐", "cn.kuwo.player"),
-            new AppItem("咪咕音乐", "cmccwm.mobilemusic"),
-            new AppItem("蜻蜓FM", "fm.qingting.qtradio"),
-            new AppItem("全民K歌", "com.tencent.karaoke"),
-            new AppItem("虾米音乐", "fm.xiami.main"),
-            new AppItem("唱吧", "com.changba"),
-            new AppItem("喜马拉雅", "com.ximalaya.ting.android")
+            new AppItem(1, "抖音", "com.ss.android.ugc.aweme"),
+            new AppItem(2, "抖音极速版", "com.ss.android.ugc.aweme.lite"),
+            new AppItem(3, "抖音火山版", "com.ss.android.ugc.live"),
+            new AppItem(4, "快手", "com.smile.gifmaker"),
+            new AppItem(5, "快手极速版", "com.kuaishou.nebula"),
+            new AppItem(6, "快手概念版", "com.kwai.thanos"),
+            new AppItem(7, "西瓜视频", "com.ss.android.article.video"),
+            new AppItem(8, "优酷视频", "com.youku.phone"),
+            new AppItem(9, "爱奇艺", "com.qiyi.video"),
+            new AppItem(10, "斗鱼", "air.tv.douyu.android"),
+            new AppItem(11, "虎牙直播", "com.duowan.kiwi"),
+            new AppItem(12, "搜狐视频", "com.sohu.sohuvideo"),
+            new AppItem(13, "AcFun", "tv.acfundanmaku.video"),
+            new AppItem(14, "腾讯视频", "com.tencent.qqlive"),
+            new AppItem(15, "哔哩哔哩", "tv.danmaku.bili"),
+            new AppItem(16, "哔哩哔哩概念版", "com.bilibili.app.blue"),
+            new AppItem(17, "腾讯会议", "com.tencent.wemeet.app"),
+            new AppItem(18, "Zoom", "us.zoom.videomeetings"),
+            new AppItem(19, "瞩目", "com.suirui.zhumu"),
+            new AppItem(20, "华为云会议", "com.huawei.CloudLink"),
+            new AppItem(21, "飞书", "com.ss.android.lark"),
+            new AppItem(22, "钉钉", "com.alibaba.android.rimet"),
+            new AppItem(23, "网易云音乐", "com.netease.cloudmusic"),
+            new AppItem(24, "QQ音乐", "com.tencent.qqmusic"),
+            new AppItem(25, "酷狗音乐", "com.kugou.android"),
+            new AppItem(26, "酷我音乐", "cn.kuwo.player"),
+            new AppItem(27, "咪咕音乐", "cmccwm.mobilemusic"),
+            new AppItem(28, "蜻蜓FM", "fm.qingting.qtradio"),
+            new AppItem(29, "全民K歌", "com.tencent.karaoke"),
+            new AppItem(30, "虾米音乐", "fm.xiami.main"),
+            new AppItem(31, "唱吧", "com.changba"),
+            new AppItem(32, "喜马拉雅", "com.ximalaya.ting.android")
     ));
 
     private final List<AppItem> not_need_overlay_apps = new ArrayList<>(Arrays.asList(
-            new AppItem("微信", "com.tencent.mm"),
-            new AppItem("知乎", "com.zhihu.android"),
-            new AppItem("QQ", "com.tencent.mobileqq"),
-            new AppItem("Soul", "cn.soulapp.android"),
-            new AppItem("陌陌", "com.immomo.momo"),
-            new AppItem("Summer", "cn.imsummer.summer"),
-            new AppItem("百度贴吧", "com.baidu.tieba"),
-            new AppItem("微博", "com.sina.weibo"),
-            new AppItem("小红书", "com.xingin.xhs"),
-            new AppItem("百度", "com.baidu.searchbox"),
-            new AppItem("今日头条", "com.ss.android.article.news"),
-            new AppItem("今日头条极速版", "com.ss.android.article.lite"),
-            new AppItem("搜狐新闻", "com.sohu.newsclient"),
-            new AppItem("网易新闻", "com.netease.newsreader.activity"),
-            new AppItem("澎湃新闻", "com.wondertek.paper"),
-            new AppItem("腾讯新闻", "com.tencent.news"),
-            new AppItem("Keep", "com.gotokeep.keep"),
-            new AppItem("高德地图", "com.autonavi.minimap"),
-            new AppItem("腾讯地图", "com.tencent.map"),
-            new AppItem("百度地图", "com.baidu.BaiduMap"),
-            new AppItem("美团", "com.sankuai.meituan"),
-            new AppItem("大众点评", "com.dianping.v1"),
-            new AppItem("淘宝", "com.taobao.taobao"),
-            new AppItem("京东", "com.jingdong.app.mall"),
-            new AppItem("闲鱼", "com.taobao.idlefish"),
-            new AppItem("苏宁易购", "com.suning.mobile.ebuy"),
-            new AppItem("拼多多", "com.xunmeng.pinduoduo"),
-            new AppItem("唯品会", "com.achievo.vipshop"),
-            new AppItem("当当", "com.dangdang.buy2"),
-            new AppItem("得物", "com.shizhuang.duapp")
+            new AppItem(33, "微信", "com.tencent.mm"),
+            new AppItem(34, "知乎", "com.zhihu.android"),
+            new AppItem(35, "QQ", "com.tencent.mobileqq"),
+            new AppItem(36, "Soul", "cn.soulapp.android"),
+            new AppItem(37, "陌陌", "com.immomo.momo"),
+            new AppItem(38, "Summer", "cn.imsummer.summer"),
+            new AppItem(39, "百度贴吧", "com.baidu.tieba"),
+            new AppItem(40, "微博", "com.sina.weibo"),
+            new AppItem(41, "小红书", "com.xingin.xhs"),
+            new AppItem(42, "百度", "com.baidu.searchbox"),
+            new AppItem(43, "今日头条", "com.ss.android.article.news"),
+            new AppItem(44, "今日头条极速版", "com.ss.android.article.lite"),
+            new AppItem(45, "搜狐新闻", "com.sohu.newsclient"),
+            new AppItem(46, "网易新闻", "com.netease.newsreader.activity"),
+            new AppItem(47, "澎湃新闻", "com.wondertek.paper"),
+            new AppItem(48, "腾讯新闻", "com.tencent.news"),
+            new AppItem(49, "Keep", "com.gotokeep.keep"),
+            new AppItem(50, "高德地图", "com.autonavi.minimap"),
+            new AppItem(51, "腾讯地图", "com.tencent.map"),
+            new AppItem(52, "百度地图", "com.baidu.BaiduMap"),
+            new AppItem(53, "美团", "com.sankuai.meituan"),
+            new AppItem(54, "大众点评", "com.dianping.v1"),
+            new AppItem(55, "淘宝", "com.taobao.taobao"),
+            new AppItem(56, "京东", "com.jingdong.app.mall"),
+            new AppItem(57, "闲鱼", "com.taobao.idlefish"),
+            new AppItem(58, "苏宁易购", "com.suning.mobile.ebuy"),
+            new AppItem(59, "拼多多", "com.xunmeng.pinduoduo"),
+            new AppItem(60, "唯品会", "com.achievo.vipshop"),
+            new AppItem(61, "当当", "com.dangdang.buy2"),
+            new AppItem(62, "得物", "com.shizhuang.duapp")
     ));
 
     private final List<String> video_widgets = new ArrayList<>(Arrays.asList(
@@ -157,6 +162,7 @@ public class AppManager extends TriggerManager {
         return null;
     }
 
+    // TODO: Only call front-end when begin to play audio
     public void onAccessibilityEvent(AccessibilityEvent event) {
         if (event.getPackageName() != null && event.getPackageName().toString().equals("com.hcifuture.scanner"))
             return;
@@ -167,6 +173,10 @@ public class AppManager extends TriggerManager {
                 packageName = event.getPackageName().toString();
             if (isNeedOverlayApp(tmp_name, packageName) || isNotNeedOverlayApp(tmp_name, packageName)) {
                 appName = tmp_name;
+                if (findByAppName(need_overlay_apps, appName) != null)
+                    latest_id = findByAppName(need_overlay_apps, appName).id;
+                else if (findByAppName(not_need_overlay_apps, appName) != null)
+                    latest_id = findByAppName(not_need_overlay_apps, appName).id;
                 if (!(appName.equals(last_appName))) {
                     if (isNeedOverlayApp(appName, packageName) && !(event.getClassName() != null && isVideoWidget(event.getClassName().toString()))) {
                         Bundle bundle = new Bundle();

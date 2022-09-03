@@ -56,6 +56,8 @@ public class SoundManager extends TriggerManager {
 
     private final int MAX_VOLUME_MUSIC;
 
+    public static Integer latest_audioLevel;
+
     public SoundManager(VolEventListener volEventListener, Context context, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList) {
         super(volEventListener);
         mContext = context;
@@ -86,6 +88,17 @@ public class SoundManager extends TriggerManager {
         // Value is MODE_NORMAL, MODE_RINGTONE, MODE_IN_CALL, MODE_IN_COMMUNICATION, MODE_CALL_SCREENING,
         // MODE_CALL_REDIRECT, or MODE_COMMUNICATION_REDIRECT
         return audioManager.getMode();
+    }
+
+    public Integer getAudioLevel(double db) {
+        if (db <= 0)
+            return 0;
+        else if (db < 15)
+            return 1;
+        else if (db < 40)
+            return 2;
+        else
+            return 3;
     }
 
     public int getVolume() {
@@ -156,6 +169,7 @@ public class SoundManager extends TriggerManager {
                         startLoopToSaveAudioFile(mPcmFilePath);
 
                         // stop after certain duration
+                        // TODO: continuing record and check; add callback
                         futureList.add(countdownStopFt = scheduledExecutorService.schedule(() -> {
                             stopAudioCapture();
                         }, milliseconds, TimeUnit.MILLISECONDS));
@@ -212,6 +226,7 @@ public class SoundManager extends TriggerManager {
                     try {
                         Log.e(TAG, "" + loudness_cnt + " " + cnt);
                         SYSTEM_VOLUME = Math.max(0, 20 * Math.log10(loudness_cnt / (BUFFER_SIZE * cnt)));
+                        latest_audioLevel = getAudioLevel(SYSTEM_VOLUME);
                         Log.e(TAG, "System Volume: " + SYSTEM_VOLUME + "dB");
                         fos.flush();
                         fos.close();

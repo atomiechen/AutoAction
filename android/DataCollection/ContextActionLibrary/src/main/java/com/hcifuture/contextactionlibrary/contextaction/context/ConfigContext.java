@@ -759,6 +759,12 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                 popup = false;
                 Log.e(TAG, "onVolEvent: " + motion);
                 break;
+            // TODO
+            case Bluetooth:
+            case Audio:
+            case Time:
+                popup = false;
+                break;
         }
         if (popup && currentMode != MODE_QUIET && !soundManager.isAudioOn()) {
             // map noise to volume and adjust
@@ -779,7 +785,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         if (result > 100) {
             result = 100;
         }
-        if (result < 0 ) {
+        if (result < 0) {
             result = 0;
         }
         return result;

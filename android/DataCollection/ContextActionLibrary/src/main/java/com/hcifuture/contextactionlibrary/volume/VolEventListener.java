@@ -8,7 +8,10 @@ public interface VolEventListener {
         Device,
         Position,
         App,
-        Motion
+        Motion,
+        Bluetooth,
+        Audio,
+        Time
     }
 
     void onVolEvent(EventType eventType, Bundle bundle);

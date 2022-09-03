@@ -30,6 +30,7 @@ public class NoiseManager extends TriggerManager {
     private boolean hasFirstDetection = false;
     private long lastTimestamp = 0;
     private final double threshold = 20;
+    public static Integer latest_noiseLevel;
 
     public NoiseManager(VolEventListener volEventListener, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, AudioCollector audioCollector) {
         super(volEventListener);
@@ -58,6 +59,17 @@ public class NoiseManager extends TriggerManager {
         if (scheduledNoiseDetection != null) {
             scheduledNoiseDetection.cancel(true);
         }
+    }
+
+    public Integer getNoiseLevel(double db) {
+        if (db <= 0)
+            return 0;
+        else if (db <= 35)
+            return 1;
+        else if (db <= 60)
+            return 2;
+        else
+            return 3;
     }
 
     public CompletableFuture<Double> detectNoise(long length, long period) {
@@ -98,6 +110,7 @@ public class NoiseManager extends TriggerManager {
     private void setPresentNoise(double noise) {
         lastNoise = noise;
         lastTimestamp = System.currentTimeMillis();
+        latest_noiseLevel = getNoiseLevel(noise);
     }
 
 }
