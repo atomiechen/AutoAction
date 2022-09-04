@@ -8,8 +8,8 @@ import java.util.Set;
 
 public class DecisionTree {
 
-    enum Algorithm {
-        ID3, C4_5
+    public enum Algorithm {
+        ID3, C4_5, CART
     }
 
     static class TreeNode {
@@ -21,10 +21,21 @@ public class DecisionTree {
     TreeNode root = new TreeNode();
     Algorithm algorithm = Algorithm.C4_5;
     List<Dataset.Feature> features;
+    boolean trained = false;
+
+    public DecisionTree setAlgorithm(Algorithm algorithm) {
+        this.algorithm = algorithm;
+        return this;
+    }
 
     public void train(Dataset dataset) {
-        this.features = dataset.features;
-        genTree(root, dataset);
+        if (dataset.samples.isEmpty()) {
+            return;
+        } else {
+            this.features = dataset.features;
+            genTree(root, dataset);
+            trained = true;
+        }
     }
 
     private void genTree(TreeNode rootNode, Dataset dataset) {
@@ -35,24 +46,29 @@ public class DecisionTree {
             return;
         }
         if (dataset.features.isEmpty()) {
+            // no feature, choose the majority
             rootNode.label = getMajorityLabel(dataset);
             return;
         }
 
-        Dataset.Feature feature = decideBestFeature(dataset);
+        Dataset.Feature feature = decideBestFeature(dataset, algorithm);
         Set<Dataset.FeatureValue> values = getValues(dataset, feature);
-
-        rootNode.branches = new HashMap<>();
-        rootNode.feature = feature;
-        for (Dataset.FeatureValue value : values) {
-            Dataset newDataset = splitDataset(dataset, feature, value);
-            TreeNode subNode = new TreeNode();
-            rootNode.branches.put(value, subNode);
-            genTree(subNode, newDataset);
+        if (!values.isEmpty()) {
+            rootNode.branches = new HashMap<>();
+            rootNode.feature = feature;
+            for (Dataset.FeatureValue value : values) {
+                Dataset newDataset = splitDataset(dataset, feature, value);
+                TreeNode subNode = new TreeNode();
+                rootNode.branches.put(value, subNode);
+                genTree(subNode, newDataset);
+            }
+        } else {
+            // Should not happen
+            rootNode.label = Dataset.LABEL_INVALID;
         }
     }
 
-    private int checkSameLabel(Dataset dataset) {
+    private static int checkSameLabel(Dataset dataset) {
         boolean consistent = false;
         int testLabel;
         for (testLabel = 0; testLabel < dataset.labelCount; testLabel++) {
@@ -75,22 +91,29 @@ public class DecisionTree {
         }
     }
 
-    private int getMajorityLabel(Dataset dataset) {
+    private static int[] countLabels(Dataset dataset) {
         int [] countBin = new int[dataset.labelCount];
-        int maxCount = 0;
-        int maxLabel = -1;
         for (Dataset.Sample sample : dataset.samples) {
             countBin[sample.label]++;
-            if (countBin[sample.label] > maxCount) {
-                maxCount = countBin[sample.label];
-                maxLabel = sample.label;
+        }
+        return countBin;
+    }
+
+    private static int getMajorityLabel(Dataset dataset) {
+        int [] countBin = countLabels(dataset);;
+        int maxCount = 0;
+        int maxLabel = Dataset.LABEL_INVALID;
+        for (int label = 0; label < dataset.labelCount; label++) {
+            if (countBin[label] > maxCount) {
+                maxCount = countBin[label];
+                maxLabel = label;
             }
         }
         return maxLabel;
     }
 
-    private Dataset.Feature decideBestFeature(Dataset dataset) {
-        double maxGain = 0;
+    private static Dataset.Feature decideBestFeature(Dataset dataset, Algorithm algorithm) {
+        double maxGain = -1.1; // max gini index is 1; using the negative initial value
         Dataset.Feature bestFeature = dataset.features.get(0);
         for (Dataset.Feature feature : dataset.features) {
             double currentGain = 0;
@@ -101,6 +124,10 @@ public class DecisionTree {
                 case C4_5:
                     currentGain = gainRatio(dataset, feature);
                     break;
+                case CART:
+                    // smaller is better
+                    currentGain = -giniIndex(dataset, feature);
+                    break;
             }
             if (currentGain > maxGain) {
                 maxGain = currentGain;
@@ -110,11 +137,8 @@ public class DecisionTree {
         return bestFeature;
     }
 
-    private double infoD(Dataset dataset) {
-        int [] countBin = new int[dataset.labelCount];
-        for (Dataset.Sample sample : dataset.samples) {
-            countBin[sample.label]++;
-        }
+    private static double infoD(Dataset dataset) {
+        int [] countBin = countLabels(dataset);
         double sum = 0;
         for (int label = 0; label < dataset.labelCount; label++) {
             double prob = countBin[label] / (double) dataset.samples.size();
@@ -123,7 +147,7 @@ public class DecisionTree {
         return sum;
     }
 
-    private double infoA(Dataset dataset, Dataset.Feature feature) {
+    private static double infoA(Dataset dataset, Dataset.Feature feature) {
         double sum = 0;
         Set<Dataset.FeatureValue> values = getValues(dataset, feature);
         for (Dataset.FeatureValue value : values) {
@@ -134,11 +158,11 @@ public class DecisionTree {
         return sum;
     }
 
-    private double gain(Dataset dataset, Dataset.Feature feature) {
+    private static double gain(Dataset dataset, Dataset.Feature feature) {
         return infoD(dataset) - infoA(dataset, feature);
     }
 
-    private double splitInfo(Dataset dataset, Dataset.Feature feature) {
+    private static double splitInfo(Dataset dataset, Dataset.Feature feature) {
         double sum = 0;
         Set<Dataset.FeatureValue> values = getValues(dataset, feature);
         for (Dataset.FeatureValue value : values) {
@@ -149,11 +173,31 @@ public class DecisionTree {
         return sum;
     }
 
-    private double gainRatio(Dataset dataset, Dataset.Feature feature) {
+    private static double gainRatio(Dataset dataset, Dataset.Feature feature) {
         return gain(dataset, feature) / splitInfo(dataset, feature);
     }
 
-    private Set<Dataset.FeatureValue> getValues(Dataset dataset, Dataset.Feature feature) {
+    private static double gini(Dataset dataset) {
+        int [] countBin = countLabels(dataset);
+        double sum = 1.0;
+        for (int label = 0; label < dataset.labelCount; label++) {
+            double prob = countBin[label] / (double) dataset.samples.size();
+            sum -= prob * prob;
+        }
+        return sum;
+    }
+
+    private static double giniIndex(Dataset dataset, Dataset.Feature feature) {
+        double sum = 0;
+        Set<Dataset.FeatureValue> values = getValues(dataset, feature);
+        for (Dataset.FeatureValue value : values) {
+            Dataset newDataset = splitDataset(dataset, feature, value);
+            sum += gini(newDataset) * newDataset.samples.size() / dataset.samples.size();
+        }
+        return sum;
+    }
+
+    private static Set<Dataset.FeatureValue> getValues(Dataset dataset, Dataset.Feature feature) {
         Set<Dataset.FeatureValue> values = new HashSet<>();
         for (Dataset.Sample sample : dataset.samples) {
             values.add(sample.getValue(feature));
@@ -161,7 +205,7 @@ public class DecisionTree {
         return values;
     }
 
-    private Dataset splitDataset(Dataset dataset, Dataset.Feature feature, Dataset.FeatureValue featureValue) {
+    private static Dataset splitDataset(Dataset dataset, Dataset.Feature feature, Dataset.FeatureValue featureValue) {
         Dataset dataset1 = new Dataset(dataset.labelCount);
         for (Dataset.Sample sample : dataset.samples) {
             if (sample.getValue(feature).equals(featureValue)) {
@@ -174,19 +218,27 @@ public class DecisionTree {
     }
 
     public int predict(Dataset.Sample sample) {
-        TreeNode currentNode = root;
-        while (true) {
-            TreeNode branchNode = currentNode.branches.get(sample.getValue(currentNode.feature));
-            if (branchNode.branches == null) {
-                // leaf node
-                return branchNode.label;
+        if (trained) {
+            TreeNode currentNode = root;
+            while (true) {
+                if (currentNode.branches == null) {
+                    // leaf node
+                    return currentNode.label;
+                }
+                // go to child node
+                currentNode = currentNode.branches.get(sample.getValue(currentNode.feature));
             }
-            currentNode = branchNode;
+        } else {
+            return Dataset.LABEL_INVALID;
         }
     }
 
     public int predict(Object [] featureValues) {
-        return predict(new Dataset.Sample(Dataset.LABEL_INVALID, featureValues, features));
+        if (trained) {
+            return predict(new Dataset.Sample(Dataset.LABEL_INVALID, featureValues, features));
+        } else {
+            return Dataset.LABEL_INVALID;
+        }
     }
 
     public static String toJson(DecisionTree tree) {

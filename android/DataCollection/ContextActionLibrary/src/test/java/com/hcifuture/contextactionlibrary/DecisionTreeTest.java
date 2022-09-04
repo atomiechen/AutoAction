@@ -16,7 +16,7 @@ public class DecisionTreeTest {
     public void testDecisionTree() {
         System.out.println("start decision tree test");
 
-        DecisionTree tree = new DecisionTree();
+        DecisionTree tree = new DecisionTree().setAlgorithm(DecisionTree.Algorithm.CART);
         Dataset dataset = new Dataset(2);
         dataset.addFeatures("A", "B", "C");
 
