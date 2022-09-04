@@ -1,14 +1,12 @@
 package com.hcifuture.contextactionlibrary;
 
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
-import com.hcifuture.contextactionlibrary.contextaction.context.ConfigContext;
-import com.hcifuture.contextactionlibrary.sensor.collector.Collector;
 import com.hcifuture.contextactionlibrary.volume.data.Dataset;
 import com.hcifuture.contextactionlibrary.volume.data.DecisionTree;
-import com.hcifuture.contextactionlibrary.volume.data.ModelUtils;
+import com.hcifuture.contextactionlibrary.volume.data.Model;
 
 import org.junit.Test;
+
+import java.util.List;
 
 public class DecisionTreeTest {
 
@@ -33,13 +31,14 @@ public class DecisionTreeTest {
         int prediction = tree.predict(new Object[]{3,3,5});
 
         // print dataset
-        System.out.println(ModelUtils.gson.toJson(dataset));
+        System.out.println(Model.gson.toJson(dataset));
 
         // print prediction
         System.out.println("prediction: " + prediction);
 
         // print accuracy
-        System.out.println("accuracy on train set: " + tree.testAccuracy(dataset));
+        List<Integer> results = tree.predict(dataset);
+        System.out.println("accuracy on train set: " + Model.testAccuracy(dataset, results));
 
         // print tree
         String strRepresentation = DecisionTree.toJson(tree);

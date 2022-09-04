@@ -6,8 +6,13 @@ import com.google.gson.JsonDeserializer;
 import com.google.gson.JsonNull;
 import com.google.gson.JsonSerializer;
 
-public class ModelUtils {
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 
+abstract public class Model {
+
+    // GSON part
     public static final JsonSerializer<Dataset.FeatureValue> featureValueSerializer = (src, typeOfSrc, context) -> {
         if (src == null) {
             return JsonNull.INSTANCE;
@@ -58,4 +63,26 @@ public class ModelUtils {
             .registerTypeAdapter(Dataset.Feature.class, featureDeserializer)
             .create();
 
+    // class methods
+    abstract public int predict(Dataset.Sample sample);
+    abstract public void train(Dataset dataset);
+
+    public List<Integer> predict(Dataset dataset) {
+        List<Integer> results = new ArrayList<>(dataset.samples.size());
+        for (Dataset.Sample sample : dataset.samples) {
+            results.add(predict(sample));
+        }
+        return results;
+    }
+
+    public static double testAccuracy(Dataset dataset, List<Integer> results) {
+        int correct = 0;
+        Iterator<Integer> iterator = results.iterator();
+        for (Dataset.Sample sample : dataset.samples) {
+            if (sample.label == iterator.next()) {
+                correct += 1;
+            }
+        }
+        return correct / (double) dataset.samples.size();
+    }
 }

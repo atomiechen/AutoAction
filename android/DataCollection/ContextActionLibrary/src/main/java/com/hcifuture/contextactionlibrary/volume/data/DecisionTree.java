@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class DecisionTree {
+public class DecisionTree extends Model {
 
     public enum Algorithm {
         ID3, C4_5, CART
@@ -28,10 +28,9 @@ public class DecisionTree {
         return this;
     }
 
+    @Override
     public void train(Dataset dataset) {
-        if (dataset.samples.isEmpty()) {
-            return;
-        } else {
+        if (!dataset.samples.isEmpty()) {
             this.features = dataset.features;
             genTree(root, dataset);
             trained = true;
@@ -217,6 +216,7 @@ public class DecisionTree {
         return dataset1;
     }
 
+    @Override
     public int predict(Dataset.Sample sample) {
         if (trained) {
             TreeNode currentNode = root;
@@ -241,25 +241,11 @@ public class DecisionTree {
         }
     }
 
-    public double testAccuracy(Dataset dataset) {
-        if (trained) {
-            int correct = 0;
-            for (Dataset.Sample sample : dataset.samples) {
-                if (sample.label == predict(sample)) {
-                    correct += 1;
-                }
-            }
-            return correct / (double) dataset.samples.size();
-        } else {
-            return 0;
-        }
-    }
-
     public static String toJson(DecisionTree tree) {
-        return ModelUtils.gson.toJson(tree, DecisionTree.class);
+        return gson.toJson(tree, DecisionTree.class);
     }
 
     public static DecisionTree fromJson(String jsonStr) {
-        return ModelUtils.gson.fromJson(jsonStr, DecisionTree.class);
+        return gson.fromJson(jsonStr, DecisionTree.class);
     }
 }
