@@ -241,6 +241,20 @@ public class DecisionTree {
         }
     }
 
+    public double testAccuracy(Dataset dataset) {
+        if (trained) {
+            int correct = 0;
+            for (Dataset.Sample sample : dataset.samples) {
+                if (sample.label == predict(sample)) {
+                    correct += 1;
+                }
+            }
+            return correct / (double) dataset.samples.size();
+        } else {
+            return 0;
+        }
+    }
+
     public static String toJson(DecisionTree tree) {
         return ModelUtils.gson.toJson(tree, DecisionTree.class);
     }

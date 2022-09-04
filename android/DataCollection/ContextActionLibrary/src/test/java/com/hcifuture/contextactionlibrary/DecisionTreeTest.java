@@ -27,7 +27,6 @@ public class DecisionTreeTest {
         dataset.addSample(1, new Object[]{1,2,3});
         dataset.addSample(1, new Object[]{2,2,4});
         dataset.addSample(0, new Object[]{3,3,5});
-        dataset.addSample(0, new Object[]{1,2,3});
         dataset.addSample(1, new Object[]{1,4,3});
 
         tree.train(dataset);
@@ -38,6 +37,9 @@ public class DecisionTreeTest {
 
         // print prediction
         System.out.println("prediction: " + prediction);
+
+        // print accuracy
+        System.out.println("accuracy on train set: " + tree.testAccuracy(dataset));
 
         // print tree
         String strRepresentation = DecisionTree.toJson(tree);
