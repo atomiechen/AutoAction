@@ -12,11 +12,13 @@ import android.media.AudioRecord;
 import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
 import android.os.Build;
+import android.os.Bundle;
 import android.util.Log;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -71,6 +73,13 @@ public class SoundManager extends TriggerManager {
         mPcmFilePath = mContext.getExternalMediaDirs()[0].getAbsolutePath() + "/tmp/system_audio.pcm";
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.Q)
+    @Override
+    public void start() {
+        startAudioCapture(0);
+        super.start();
+    }
+
     @Override
     public void stop() {
         if (countdownStopFt != null) {
@@ -101,8 +110,14 @@ public class SoundManager extends TriggerManager {
             return 3;
     }
 
-    public int getVolume() {
-        return audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
+    public double getVolume() {
+        return ((double) audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)) / audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
+    }
+
+    public static Integer volume2level(double volume) {
+        if (volume == 0)
+            return 0;
+        return ((int) volume) / 20 + 1;
     }
 
     public int percent2int(double vol_percent) {
@@ -169,10 +184,9 @@ public class SoundManager extends TriggerManager {
                         startLoopToSaveAudioFile(mPcmFilePath);
 
                         // stop after certain duration
-                        // TODO: continuing record and check; add callback
-                        futureList.add(countdownStopFt = scheduledExecutorService.schedule(() -> {
-                            stopAudioCapture();
-                        }, milliseconds, TimeUnit.MILLISECONDS));
+//                        futureList.add(countdownStopFt = scheduledExecutorService.schedule(() -> {
+//                            stopAudioCapture();
+//                        }, milliseconds, TimeUnit.MILLISECONDS));
 
                         Log.e(TAG, "startAudioCapture: start success");
                         return true;
@@ -215,6 +229,17 @@ public class SoundManager extends TriggerManager {
                         loudness_cnt += Math.abs(_byte);
                     }
                     cnt += 1;
+                    if (cnt == 40) {
+                        SYSTEM_VOLUME = Math.max(0, 20 * Math.log10(loudness_cnt / (BUFFER_SIZE * cnt)));
+                        if (!Objects.equals(latest_audioLevel, getAudioLevel(SYSTEM_VOLUME))) {
+                            latest_audioLevel = getAudioLevel(SYSTEM_VOLUME);
+                            Bundle bundle = new Bundle();
+                            bundle.putInt("AudioLevel", latest_audioLevel);
+                            volEventListener.onVolEvent(VolEventListener.EventType.Audio, bundle);
+                        }
+                        cnt = 0;
+                        loudness_cnt = 0;
+                    }
                     fos.write(bytes, 0, bytes.length);
                     fos.flush();
                 }

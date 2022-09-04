@@ -1,5 +1,7 @@
 package com.hcifuture.contextactionlibrary.volume.data;
 
+import android.content.Context;
+import android.media.AudioManager;
 import android.os.Build;
 
 import androidx.annotation.RequiresApi;
@@ -14,6 +16,7 @@ import com.hcifuture.contextactionlibrary.volume.DeviceManager;
 import com.hcifuture.contextactionlibrary.volume.NoiseManager;
 import com.hcifuture.contextactionlibrary.volume.PositionManager;
 import com.hcifuture.contextactionlibrary.volume.SoundManager;
+import com.hcifuture.contextactionlibrary.volume.TimeManager;
 
 import java.io.File;
 import java.lang.reflect.Type;
@@ -22,6 +25,12 @@ import java.util.List;
 
 @RequiresApi(api = Build.VERSION_CODES.N)
 public class DataUtils {
+    private Context mContext;
+
+    public DataUtils(Context context) {
+        mContext = context;
+    }
+
     private static final String FILE_DIR = ConfigContext.VOLUME_SAVE_FOLDER + "data/";
 
     public static void saveReasons(List<Reason> reasons) {
@@ -85,7 +94,7 @@ public class DataUtils {
         FileUtils.writeStringToFile(result, new File(FILE_DIR + "DT/" + id + ".json"));
     }
 
-    public static Object[] getLatestFeatureValues(List<Dataset.Feature> features) {
+    public Object[] getLatestFeatureValues(List<Dataset.Feature> features) {
         Integer int_val = -1;
         Double double_val = -1.0;
         List<Object> valueList = new ArrayList<>();
@@ -110,13 +119,12 @@ public class DataUtils {
                     valueList.add(SoundManager.latest_audioLevel);
                     break;
                 case "Time":
-                    // TODO: create TimeManager
-//                    valueList.add(TimeManager.getIntegerizedTime());
-                    valueList.add(0);
+                    valueList.add(TimeManager.latest_formalizedTime);
                     break;
                 case "Volume":
-                    // TODO: get present Volume
-                    valueList.add(0);
+                    AudioManager audioManager = (AudioManager) mContext.getSystemService(Context.AUDIO_SERVICE);
+                    double volume = ((double) audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)) / audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
+                    valueList.add(SoundManager.volume2level(volume));
                     break;
             }
         }

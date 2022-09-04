@@ -34,11 +34,13 @@ import com.hcifuture.contextactionlibrary.volume.MotionManager;
 import com.hcifuture.contextactionlibrary.volume.Position;
 import com.hcifuture.contextactionlibrary.volume.PositionManager;
 import com.hcifuture.contextactionlibrary.volume.SoundManager;
+import com.hcifuture.contextactionlibrary.volume.TimeManager;
 import com.hcifuture.contextactionlibrary.volume.VolEventListener;
 import com.hcifuture.contextactionlibrary.volume.VolumeContext;
 import com.hcifuture.contextactionlibrary.volume.NoiseManager;
 import com.hcifuture.contextactionlibrary.volume.VolumeManager;
 import com.hcifuture.contextactionlibrary.volume.VolumeRuleManager;
+import com.hcifuture.contextactionlibrary.volume.data.DataUtils;
 import com.hcifuture.shared.communicate.config.ContextConfig;
 import com.hcifuture.contextactionlibrary.contextaction.event.BroadcastEvent;
 import com.hcifuture.shared.communicate.listener.ContextListener;
@@ -124,6 +126,9 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     private final DeviceManager deviceManager;
     private final SoundManager soundManager;
     private final MotionManager motionManager;
+    private final TimeManager timeManager;
+
+    private final DataUtils dataUtils;
 
     private final VolumeManager volumeManager;
 
@@ -158,6 +163,10 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
         motionManager = new MotionManager(this);
 
+        timeManager = new TimeManager(this, scheduledExecutorService, futureList);
+
+        dataUtils = new DataUtils(mContext);
+
         readContextMap();
 
         // initialize
@@ -189,7 +198,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.O)
+    @RequiresApi(api = Build.VERSION_CODES.Q)
     @Override
     public void start() {
         record_all("start");
@@ -199,6 +208,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         positionManager.start();
         crowdManager.start();
         soundManager.start();
+        timeManager.start();
 
         // get audio capture permission
         if (!soundManager.hasCapturePermission()) {
@@ -218,6 +228,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         deviceManager.stop();
         noiseManager.stop();
         appManager.stop();
+        timeManager.stop();
     }
 
     @Override
