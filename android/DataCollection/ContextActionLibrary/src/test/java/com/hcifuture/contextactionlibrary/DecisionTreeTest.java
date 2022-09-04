@@ -36,9 +36,18 @@ public class DecisionTreeTest {
         // print prediction
         System.out.println("prediction: " + prediction);
 
-        // print accuracy
+        // print statistics
         List<Integer> results = tree.predict(dataset);
-        System.out.println("accuracy on train set: " + Model.testAccuracy(dataset, results));
+//        System.out.println("accuracy on train set: " + Model.getAccuracy(dataset, results));
+        // 0 for positive label
+        double[] statistics = Model.getStatistics(dataset, results, 0);
+        double accuracy = statistics[0], precision = statistics[1], recall = statistics[2], F1 = statistics[3];
+        System.out.println(String.format("statistics on train set: \n" +
+                "  accuracy = %f\n" +
+                "  precision = %f\n" +
+                "  recall = %f\n" +
+                "  F1 = %f",
+                accuracy, precision, recall, F1));
 
         // print tree
         String strRepresentation = DecisionTree.toJson(tree);
