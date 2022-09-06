@@ -17,7 +17,9 @@ import com.google.gson.reflect.TypeToken;
 import com.hcifuture.contextactionlibrary.contextaction.ContextActionContainer;
 import com.hcifuture.contextactionlibrary.contextaction.context.ConfigContext;
 import com.hcifuture.contextactionlibrary.sensor.collector.Collector;
+import com.hcifuture.contextactionlibrary.sensor.collector.sync.LogCollector;
 import com.hcifuture.contextactionlibrary.utils.FileUtils;
+import com.hcifuture.contextactionlibrary.utils.JSONUtils;
 
 import java.io.File;
 import java.lang.reflect.Type;
@@ -27,10 +29,13 @@ import java.util.Objects;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
+
+import org.json.JSONObject;
 
 @RequiresApi(api = Build.VERSION_CODES.N)
 public class DeviceManager extends TriggerManager {
@@ -58,13 +63,14 @@ public class DeviceManager extends TriggerManager {
 
 
     @RequiresApi(api = Build.VERSION_CODES.N)
-    public DeviceManager(VolEventListener volEventListener, Context context, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList) {
+    public DeviceManager(VolEventListener volEventListener, Context context, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, LogCollector logCollector) {
         super(volEventListener);
         this.context = context;
         this.scheduledExecutorService = scheduledExecutorService;
         this.futureList = futureList;
         this.audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
         this.mediaRouter = (MediaRouter) context.getSystemService(Context.MEDIA_ROUTER_SERVICE);
+        this.logCollector = logCollector;
         setPresentDevice(genDevice(getCurrentRouteInfo()));
         readDevices();
 
@@ -246,6 +252,10 @@ public class DeviceManager extends TriggerManager {
                 writeDevices();
             }
             volEventListener.onVolEvent(VolEventListener.EventType.Device, bundle);
+            JSONObject json = new JSONObject();
+            JSONUtils.jsonPut(json, "last_device", currentDevice.deviceID);
+            JSONUtils.jsonPut(json, "new_device", device.deviceID);
+            record(System.currentTimeMillis(), incLogID(), TAG, "device_change", "", json.toString());
             setPresentDevice(device);
         }
     }

@@ -2,6 +2,8 @@ package com.hcifuture.contextactionlibrary.volume;
 
 import android.os.Bundle;
 
+import com.hcifuture.contextactionlibrary.sensor.collector.sync.LogCollector;
+
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
@@ -17,10 +19,11 @@ public class TimeManager extends TriggerManager {
 
     public static Integer latest_formalizedTime;
 
-    public TimeManager(VolEventListener volEventListener, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList) {
+    public TimeManager(VolEventListener volEventListener, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, LogCollector logCollector) {
         super(volEventListener);
         this.scheduledExecutorService = scheduledExecutorService;
         this.futureList = futureList;
+        this.logCollector = logCollector;
     }
 
     @Override

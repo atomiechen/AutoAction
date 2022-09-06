@@ -26,6 +26,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import androidx.annotation.RequiresApi;
 
+import com.hcifuture.contextactionlibrary.sensor.collector.sync.LogCollector;
+
 public class SoundManager extends TriggerManager {
 
     static final String TAG = "SoundManager";
@@ -60,7 +62,7 @@ public class SoundManager extends TriggerManager {
 
     public static Integer latest_audioLevel;
 
-    public SoundManager(VolEventListener volEventListener, Context context, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList) {
+    public SoundManager(VolEventListener volEventListener, Context context, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, LogCollector logCollector) {
         super(volEventListener);
         mContext = context;
         this.scheduledExecutorService = scheduledExecutorService;
@@ -71,6 +73,7 @@ public class SoundManager extends TriggerManager {
 
         mediaProjectionManager = (MediaProjectionManager) mContext.getSystemService(Context.MEDIA_PROJECTION_SERVICE);
         mPcmFilePath = mContext.getExternalMediaDirs()[0].getAbsolutePath() + "/tmp/system_audio.pcm";
+        this.logCollector = logCollector;
     }
 
     @RequiresApi(api = Build.VERSION_CODES.Q)
