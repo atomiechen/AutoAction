@@ -8,9 +8,15 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.accessibility.AccessibilityEvent;
 
+import com.hcifuture.contextactionlibrary.sensor.collector.sync.LogCollector;
+import com.hcifuture.contextactionlibrary.utils.JSONUtils;
+
+import org.json.JSONObject;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class AppManager extends TriggerManager {
     private static final String TAG = "AppManager";
@@ -22,7 +28,7 @@ public class AppManager extends TriggerManager {
     private boolean wechat_chatting_video_on;
     private Context mContext;
 
-    public AppManager(VolEventListener volEventListener, Context context) {
+    public AppManager(VolEventListener volEventListener, Context context, LogCollector logCollector) {
         super(volEventListener);
         appName = "";
         last_appName = "";
@@ -30,6 +36,7 @@ public class AppManager extends TriggerManager {
         wechat_chatting_video_on = false;
         overlay_has_showed_for_other_reason = true;
         mContext = context;
+        this.logCollector = logCollector;
 
         PackageManager packageManager = mContext.getPackageManager();
         Intent intent = new Intent(Intent.ACTION_MAIN);
@@ -185,6 +192,12 @@ public class AppManager extends TriggerManager {
                         volEventListener.onVolEvent(VolEventListener.EventType.App, bundle);
                         overlay_has_showed_for_other_reason = true;
                     }
+                    JSONObject json = new JSONObject();
+                    JSONUtils.jsonPut(json, "last_app", last_appName);
+                    JSONUtils.jsonPut(json, "last_app_type", getAppType(last_appName));
+                    JSONUtils.jsonPut(json, "new_app", appName);
+                    JSONUtils.jsonPut(json, "new_app_type", getAppType(appName));
+                    record(System.currentTimeMillis(), incLogID(), TAG, "app_change", "", json.toString());
                     last_appName = appName;
                 }
             }
@@ -210,6 +223,15 @@ public class AppManager extends TriggerManager {
                 wechat_chatting_video_on = getWechatChattingVideoOn(event);
             }
         }
+    }
+
+    private int getAppType(String name) {
+        if (findByAppName(need_overlay_apps, name) != null)
+            return 1;
+        else if (findByAppName(not_need_overlay_apps, name) != null)
+            return 2;
+        else
+            return 0;
     }
 
     public boolean getWechatChattingVideoOn(AccessibilityEvent event) {

@@ -146,24 +146,24 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         volumeManager = new VolumeManager();
 
         noiseManager = new NoiseManager(this, scheduledExecutorService, futureList,
-                (AudioCollector) collectorManager.getCollector(CollectorManager.CollectorType.Audio));
+                (AudioCollector) collectorManager.getCollector(CollectorManager.CollectorType.Audio), logCollector);
 
-        deviceManager = new DeviceManager(this, mContext, scheduledExecutorService, futureList);
+        deviceManager = new DeviceManager(this, mContext, scheduledExecutorService, futureList, logCollector);
 
-        soundManager = new SoundManager(this, mContext, scheduledExecutorService, futureList);
+        soundManager = new SoundManager(this, mContext, scheduledExecutorService, futureList, logCollector);
 
-        appManager = new AppManager(this, mContext);
+        appManager = new AppManager(this, mContext, logCollector);
 
         crowdManager = new CrowdManager(this, scheduledExecutorService, futureList,
-                (BluetoothCollector) collectorManager.getCollector(CollectorManager.CollectorType.Bluetooth), mContext);
+                (BluetoothCollector) collectorManager.getCollector(CollectorManager.CollectorType.Bluetooth), mContext, logCollector);
 
         positionManager = new PositionManager(this, scheduledExecutorService, futureList,
                 (GPSCollector) collectorManager.getCollector(CollectorManager.CollectorType.GPS),
-                (WifiCollector) collectorManager.getCollector(CollectorManager.CollectorType.Wifi));
+                (WifiCollector) collectorManager.getCollector(CollectorManager.CollectorType.Wifi), logCollector);
 
         motionManager = new MotionManager(this);
 
-        timeManager = new TimeManager(this, scheduledExecutorService, futureList);
+        timeManager = new TimeManager(this, scheduledExecutorService, futureList, logCollector);
 
         dataUtils = new DataUtils(mContext);
 
@@ -246,7 +246,11 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         long current_call = System.currentTimeMillis();
         // periodically record_all() every 30 min
         if (current_call - last_record_all >= 30 * 60000) {
-            record_all("period_30m");
+//            record_all("period_30m");
+            JSONObject json = new JSONObject();
+            JSONUtils.jsonPut(json, "devices", deviceManager.getDeviceIDs());
+            JSONUtils.jsonPut(json, "positions", positionManager.getPositionList());
+            record(current_call, incLogID(), "period_30m", "", "", json.toString());
         }
     }
 
@@ -320,7 +324,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
         try {
             if ("ContentChange".equals(type)) {
-                record = true;
+//                record = true;
                 if (!"uri_null".equals(action)) {
                     Uri uri = Uri.parse(action);
 
@@ -353,6 +357,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                         }
 //                        notifyContext(NEED_NONIMU, timestamp, logID, "screen brightness change");
                     } else if (database_key.startsWith("volume_")) {
+                        record = true;
                         if (!volume.containsKey(database_key)) {
                             // record new volume value
                             volume.put(database_key, value);
@@ -378,7 +383,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                     }
                 }
             } else if ("BroadcastReceive".equals(type)) {
-                record = true;
+                record = false;
                 switch (action) {
                     case Intent.ACTION_CONFIGURATION_CHANGED:
                         Configuration config = mContext.getResources().getConfiguration();
@@ -488,7 +493,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                                     soundManager.isAudioOn(),
                                     soundManager.getAudioMode()
                             ));
-                            List<CrowdManager.BluetoothItem> bluetoothItemList = crowdManager.getPhoneList();
+                            List<CrowdManager.BluetoothItem> bluetoothItemList = crowdManager.getBleList();
                             for (CrowdManager.BluetoothItem bluetoothItem: bluetoothItemList) {
                                 Log.e(TAG, bluetoothItem.toString());
                             }
@@ -710,7 +715,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                         soundManager.isAudioOn(),
                         soundManager.getAudioMode()
                 ));
-                List<CrowdManager.BluetoothItem> bluetoothItemList = crowdManager.getPhoneList();
+                List<CrowdManager.BluetoothItem> bluetoothItemList = crowdManager.getBleList();
                 for (CrowdManager.BluetoothItem bluetoothItem: bluetoothItemList) {
                     Log.e(TAG, bluetoothItem.toString());
                 }

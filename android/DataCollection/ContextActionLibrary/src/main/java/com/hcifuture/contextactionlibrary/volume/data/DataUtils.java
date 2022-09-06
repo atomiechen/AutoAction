@@ -21,17 +21,54 @@ import com.hcifuture.contextactionlibrary.volume.TimeManager;
 import java.io.File;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RequiresApi(api = Build.VERSION_CODES.N)
 public class DataUtils {
     private Context mContext;
+    private List<Reason> reasonList;
+    private Map<Reason, List<Dataset.Sample>> map;
 
     public DataUtils(Context context) {
         mContext = context;
+        reasonList = getReasons();
+        map = new HashMap<>();
+        for (Reason reason: reasonList) {
+            map.put(reason, getSamplesForReason(reason));
+        }
     }
 
     private static final String FILE_DIR = ConfigContext.VOLUME_SAVE_FOLDER + "data/";
+
+    public List<Reason> getReasonList() {
+        return reasonList;
+    }
+
+    public void setReasonList(List<Reason> reasonList) {
+        this.reasonList = reasonList;
+        saveReasons(reasonList);
+    }
+
+    public List<Dataset.Sample> getSamples(Reason reason) {
+        return map.get(reason);
+    }
+
+    public void setSamples(Reason reason, List<Dataset.Sample> samples) {
+        map.replace(reason, samples);
+        saveSamplesForReason(reason, samples);
+    }
+
+    public void addSample(Reason reason, Dataset.Sample sample) {
+        List<Dataset.Sample> list = map.get(reason);
+        if (list == null)
+            list = new ArrayList<>();
+        list.add(sample);
+        map.replace(reason, list);
+        saveSamplesForReason(reason, list);
+    }
 
     public static void saveReasons(List<Reason> reasons) {
         String result = Model.gson.toJson(reasons);
@@ -93,6 +130,17 @@ public class DataUtils {
         String result = DecisionTree.toJson(tree);
         FileUtils.writeStringToFile(result, new File(FILE_DIR + "DT/" + id + ".json"));
     }
+
+    public static List<Dataset.Feature> allFeatures = new ArrayList<>(Arrays.asList(
+            new Dataset.Feature("Noise"),
+            new Dataset.Feature("Device"),
+            new Dataset.Feature("Position"),
+            new Dataset.Feature("App"),
+            new Dataset.Feature("Bluetooth"),
+            new Dataset.Feature("Audio"),
+            new Dataset.Feature("Time"),
+            new Dataset.Feature("Volume")
+    ));
 
     public Object[] getLatestFeatureValues(List<Dataset.Feature> features) {
         Integer int_val = -1;

@@ -17,6 +17,7 @@ import com.hcifuture.contextactionlibrary.sensor.collector.CollectorResult;
 import com.hcifuture.contextactionlibrary.sensor.collector.async.BluetoothCollector;
 import com.hcifuture.contextactionlibrary.sensor.collector.async.GPSCollector;
 import com.hcifuture.contextactionlibrary.sensor.collector.async.WifiCollector;
+import com.hcifuture.contextactionlibrary.sensor.collector.sync.LogCollector;
 import com.hcifuture.contextactionlibrary.sensor.data.BluetoothData;
 import com.hcifuture.contextactionlibrary.sensor.data.GPSData;
 import com.hcifuture.contextactionlibrary.sensor.data.SingleBluetoothData;
@@ -25,6 +26,9 @@ import com.hcifuture.contextactionlibrary.sensor.data.WifiData;
 import com.hcifuture.contextactionlibrary.sensor.trigger.TriggerConfig;
 import com.hcifuture.contextactionlibrary.sensor.uploader.TaskMetaBean;
 import com.hcifuture.contextactionlibrary.utils.FileUtils;
+import com.hcifuture.contextactionlibrary.utils.JSONUtils;
+
+import org.json.JSONObject;
 
 import java.io.File;
 import java.lang.reflect.Type;
@@ -53,7 +57,7 @@ public class PositionManager extends TriggerManager {
     public static Integer latest_position;
 
     @RequiresApi(api = Build.VERSION_CODES.N)
-    public PositionManager(VolEventListener volEventListener, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, GPSCollector gpsCollector, WifiCollector wifiCollector) {
+    public PositionManager(VolEventListener volEventListener, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, GPSCollector gpsCollector, WifiCollector wifiCollector, LogCollector logCollector) {
         super(volEventListener);
         this.scheduledExecutorService = scheduledExecutorService;
         this.futureList = futureList;
@@ -62,6 +66,7 @@ public class PositionManager extends TriggerManager {
         positions = getPositionsFromFile();
         history = getPositionHistoryFromFile();
         lastPosition = history.size() > 0? findById(history.get(history.size() - 1).getId()) : null;
+        this.logCollector = logCollector;
     }
 
     public static class HistoryItem {
@@ -183,14 +188,14 @@ public class PositionManager extends TriggerManager {
 
     @RequiresApi(api = Build.VERSION_CODES.O)
     public CompletableFuture<Position> scanAndUpdate() {
-        CompletableFuture<Position> ft = new CompletableFuture<>();
+//        CompletableFuture<Position> ft = new CompletableFuture<>();
 
         Log.e(TAG, "start to detect position");
         List<CompletableFuture<CollectorResult>> fts = new ArrayList<>();
         fts.add(gpsCollector.getData(new TriggerConfig()));
         fts.add(wifiCollector.getData(new TriggerConfig()));
         CompletableFuture<Void> allFutures = CompletableFuture.allOf(fts.toArray(new CompletableFuture[0]));
-        allFutures.thenAccept(v -> {
+        return allFutures.thenApply(v -> {
             try {
                 GPSData gpsData = (GPSData) fts.get(0).get().getData();
                 WifiData wifiData = (WifiData) fts.get(1).get().getData();
@@ -210,8 +215,15 @@ public class PositionManager extends TriggerManager {
                     longitude = gpsData.getLongitude();
                 }
                 Position position = new Position("" + System.currentTimeMillis(), "unknown", latitude, longitude, wifiIds);
-                if (lastPosition != null && lastPosition.sameAs(position))
+                String type;
+                if (lastPosition != null && lastPosition.sameAs(position)) {
                     Log.e(TAG, "Old Position: " + lastPosition.getId());
+                    type = "old";
+                    JSONObject json = new JSONObject();
+                    JSONUtils.jsonPut(json, "change", false);
+                    JSONUtils.jsonPut(json, "position", lastPosition.getId());
+                    record(System.currentTimeMillis(), incLogID(), TAG, "periodic_scan", "", json.toString());
+                }
                 if (lastPosition == null || !lastPosition.sameAs(position)) {
                     // 查找是否是新地点
                     Position tmp = findInList(position);
@@ -220,8 +232,10 @@ public class PositionManager extends TriggerManager {
                         Log.e(TAG, "New Position: " + position.getId());
                         writePositionsToFile();
                         tmp = position;
+                        type = "new";
                     } else {
                         Log.e(TAG, "Old Position: " + tmp.getId());
+                        type = "old";
                     }
                     // 更新地点历史
                     if (history.size() > 0) {
@@ -239,16 +253,23 @@ public class PositionManager extends TriggerManager {
                         Log.e(TAG, "Position Changed from " + lastPosition.getId() + " to " + tmp.getId() + ", timestamp: " + System.currentTimeMillis());
                         volEventListener.onVolEvent(VolEventListener.EventType.Position, bundle);
                     }
+                    JSONObject json = new JSONObject();
+                    JSONUtils.jsonPut(json, "change", true);
+                    JSONUtils.jsonPut(json, "previous_position", lastPosition.getId());
+                    JSONUtils.jsonPut(json, "now_position", tmp.getId());
+                    JSONUtils.jsonPut(json, "type", type);
+                    record(System.currentTimeMillis(), incLogID(), TAG, "periodic_scan", "", json.toString());
                     lastPosition = tmp;
                     latest_position = Integer.parseInt(lastPosition.getId());
                 }
-                ft.complete(lastPosition);
+//                ft.complete(lastPosition);
             } catch (Exception e) {
                 e.printStackTrace();
             }
+            return lastPosition;
         });
 
-        return ft;
+//        return ft;
     }
 
     public Position findInList(Position position) {
