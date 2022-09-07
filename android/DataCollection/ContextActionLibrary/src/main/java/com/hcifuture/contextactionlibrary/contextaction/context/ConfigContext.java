@@ -94,6 +94,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     static final String CONTEXT_VOLUME = "context.volume";
     static final int CONTEXT_EVENT_POPUP = 1;
     static final int CONTEXT_EVENT_CAPTURE_PERMISSION = 3;
+    static final int CONTEXT_EVENT_REASONS = 4;
 
     // front end state & popup reason
     static int TYPE_OFF = -1;
@@ -257,6 +258,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
             JSONUtils.jsonPut(json, "devices", deviceManager.getDeviceIDs());
             JSONUtils.jsonPut(json, "positions", positionManager.getPositionList());
             record(current_call, incLogID(), "period_30m", "", "", json.toString());
+            last_record_all = current_call;
         }
     }
 
@@ -521,9 +523,9 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                                 Log.e(TAG, bluetoothItem.toString());
                             }
                             Bundle bundle1 = new Bundle();
-                            bundle1.putInt("event", 4);
+                            bundle1.putInt("event", CONTEXT_EVENT_REASONS);
                             bundle1.putStringArrayList("factors", new ArrayList<>(dataUtils.getReasonStringList()));
-                            notifyFrontend("respond to manual popup", bundle1);
+                            notifyFrontend(CONTEXT_VOLUME, bundle1);
                         }
                     } else {
                         // exit
