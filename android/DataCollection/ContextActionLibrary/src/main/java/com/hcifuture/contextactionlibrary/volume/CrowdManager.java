@@ -107,7 +107,9 @@ public class CrowdManager extends TriggerManager {
             return "BluetoothItem{" +
                     "name='" + name + '\'' +
                     ", address='" + address + '\'' +
-                    ", distance=" + distance +
+                    ", distance=" + distance + '\'' +
+                    ", majorDeviceClass=" + majorDeviceClass + '\'' +
+                    ", deviceClass=" + deviceClass + '\'' +
                     '}';
         }
 
@@ -137,16 +139,16 @@ public class CrowdManager extends TriggerManager {
         futureList.add(scheduledPhoneDetection);
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.O)
-    public List<List<BluetoothItem>> scanAndGet() {
-        List<List<BluetoothItem>> result = new ArrayList<>();
-        try {
-            result = scanAndUpdate().get();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return result;
-    }
+//    @RequiresApi(api = Build.VERSION_CODES.O)
+//    public List<List<BluetoothItem>> scanAndGet() {
+//        List<List<BluetoothItem>> result = new ArrayList<>();
+//        try {
+//            result = scanAndUpdate().get();
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//        }
+//        return result;
+//    }
 
     @Override
     public void stop() {
@@ -154,6 +156,16 @@ public class CrowdManager extends TriggerManager {
         if (scheduledPhoneDetection != null) {
             scheduledPhoneDetection.cancel(true);
         }
+    }
+
+    public static List<String> blItemList2StringList(List<BluetoothItem> list) {
+        List<String> result = new ArrayList<>();
+        if (list != null) {
+            for (BluetoothItem item: list) {
+                result.add(item.toString());
+            }
+        }
+        return result;
     }
 
     @RequiresApi(api = Build.VERSION_CODES.O)

@@ -1,10 +1,13 @@
 package com.hcifuture.contextactionlibrary.volume.data;
 
+import android.os.Bundle;
+
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonDeserializer;
 import com.google.gson.JsonNull;
 import com.google.gson.JsonSerializer;
+import com.hcifuture.contextactionlibrary.utils.GsonUtils;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -61,6 +64,7 @@ abstract public class Model {
             .registerTypeAdapter(Dataset.FeatureValue.class, featureValueDeserializer)
             .registerTypeAdapter(Dataset.Feature.class, featureSerializer)
             .registerTypeAdapter(Dataset.Feature.class, featureDeserializer)
+            .registerTypeAdapter(Bundle.class, GsonUtils.bundleSerializer)
             .create();
 
     // class methods
