@@ -158,15 +158,15 @@ public class PositionManager extends TriggerManager {
         return history;
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.O)
-    public String scanAndGetId() {
-        try {
-            return scanAndUpdate().get().getId();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return "ERROR";
-    }
+//    @RequiresApi(api = Build.VERSION_CODES.O)
+//    public String scanAndGetId() {
+//        try {
+//            return scanAndUpdate().get().getId();
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//        }
+//        return "ERROR";
+//    }
 
     @RequiresApi(api = Build.VERSION_CODES.O)
     @Override

@@ -3,15 +3,15 @@ package com.hcifuture.contextactionlibrary.volume.data;
 import java.util.Objects;
 
 public class Reason {
-    int id;
+    String id;
     String name;
 
-    public Reason(int id, String reason) {
+    public Reason(String id, String reason) {
         this.id = id;
         this.name = reason;
     }
 
-    public int getId() {
+    public String getId() {
         return id;
     }
 

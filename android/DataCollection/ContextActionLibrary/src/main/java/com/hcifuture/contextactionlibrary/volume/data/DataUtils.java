@@ -3,6 +3,7 @@ package com.hcifuture.contextactionlibrary.volume.data;
 import android.content.Context;
 import android.media.AudioManager;
 import android.os.Build;
+import android.os.Bundle;
 
 import androidx.annotation.RequiresApi;
 
@@ -25,12 +26,14 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RequiresApi(api = Build.VERSION_CODES.N)
 public class DataUtils {
     private Context mContext;
     private List<Reason> reasonList;
     private Map<Reason, List<Dataset.Sample>> map;
+    private Map<Reason, List<Bundle>> context_map;
 
     public DataUtils(Context context) {
         mContext = context;
@@ -38,6 +41,10 @@ public class DataUtils {
         map = new HashMap<>();
         for (Reason reason: reasonList) {
             map.put(reason, getSamplesForReason(reason));
+        }
+        context_map = new HashMap<>();
+        for (Reason reason: reasonList) {
+            context_map.put(reason, getContextsForReason(reason));
         }
     }
 
@@ -47,8 +54,22 @@ public class DataUtils {
         return reasonList;
     }
 
+    public List<String> getReasonStringList() {
+        return reasonList.stream().map(Reason::getName).collect(Collectors.toList());
+    }
+
     public void setReasonList(List<Reason> reasonList) {
         this.reasonList = reasonList;
+        saveReasons(reasonList);
+    }
+
+    public void addReason(Reason reason) {
+        if (reason == null)
+            return;
+
+        if (reasonList == null)
+            reasonList = new ArrayList<>();
+        reasonList.add(reason);
         saveReasons(reasonList);
     }
 
@@ -57,11 +78,17 @@ public class DataUtils {
     }
 
     public void setSamples(Reason reason, List<Dataset.Sample> samples) {
+        if (reason == null)
+            return;
+
         map.replace(reason, samples);
         saveSamplesForReason(reason, samples);
     }
 
     public void addSample(Reason reason, Dataset.Sample sample) {
+        if (reason == null)
+            return;
+
         List<Dataset.Sample> list = map.get(reason);
         if (list == null)
             list = new ArrayList<>();
@@ -87,15 +114,17 @@ public class DataUtils {
     }
 
     public static Reason getReasonByName(List<Reason> reasons, String name) {
-        for (Reason reason: reasons) {
-            if (reason.getName().equals(name))
-                return reason;
+        if (reasons != null) {
+            for (Reason reason : reasons) {
+                if (reason.getName().equals(name))
+                    return reason;
+            }
         }
         return null;
     }
 
     public static List<Dataset.Sample> getSamplesForReason(Reason reason) {
-        int id = reason.getId();
+        String id = reason.getId();
 
         Type type = new TypeToken<List<Dataset.Sample>>(){}.getType();
         List<Dataset.Sample> result = Model.gson.fromJson(
@@ -108,14 +137,34 @@ public class DataUtils {
     }
 
     public static void saveSamplesForReason(Reason reason, List<Dataset.Sample> samples) {
-        int id = reason.getId();
+        String id = reason.getId();
 
         String result = Model.gson.toJson(samples);
         FileUtils.writeStringToFile(result, new File(FILE_DIR + id + ".json"));
     }
 
+    public static List<Bundle> getContextsForReason(Reason reason) {
+        String id = reason.getId();
+
+        Type type = new TypeToken<List<Bundle>>(){}.getType();
+        List<Bundle> result = Model.gson.fromJson(
+                FileUtils.getFileContent(FILE_DIR + id + "_context.json"),
+                type
+        );
+        if (result == null)
+            result = new ArrayList<>();
+        return result;
+    }
+
+    public static void saveContextsForReason(Reason reason, List<Bundle> contexts) {
+        String id = reason.getId();
+
+        String result = Model.gson.toJson(contexts);
+        FileUtils.writeStringToFile(result, new File(FILE_DIR + id + "_context.json"));
+    }
+
     public static DecisionTree getDTForReason(Reason reason) {
-        int id = reason.getId();
+        String id = reason.getId();
 
         DecisionTree result = DecisionTree.fromJson(
                 FileUtils.getFileContent(FILE_DIR + "DT/" + id + ".json")
@@ -125,7 +174,7 @@ public class DataUtils {
     }
 
     public static void saveDTForReason(Reason reason, DecisionTree tree) {
-        int id = reason.getId();
+        String id = reason.getId();
 
         String result = DecisionTree.toJson(tree);
         FileUtils.writeStringToFile(result, new File(FILE_DIR + "DT/" + id + ".json"));
@@ -142,9 +191,16 @@ public class DataUtils {
             new Dataset.Feature("Volume")
     ));
 
+    public void addContextForReason(Reason reason, Bundle context) {
+        List<Bundle> list = context_map.get(reason);
+        if (list == null)
+            list = new ArrayList<>();
+        list.add(context);
+        context_map.replace(reason, list);
+        saveContextsForReason(reason, list);
+    }
+
     public Object[] getLatestFeatureValues(List<Dataset.Feature> features) {
-        Integer int_val = -1;
-        Double double_val = -1.0;
         List<Object> valueList = new ArrayList<>();
         for (Dataset.Feature feature: features) {
             switch (feature.name) {

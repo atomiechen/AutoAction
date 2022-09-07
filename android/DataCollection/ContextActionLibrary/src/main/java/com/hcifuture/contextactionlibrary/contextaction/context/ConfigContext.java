@@ -41,6 +41,7 @@ import com.hcifuture.contextactionlibrary.volume.NoiseManager;
 import com.hcifuture.contextactionlibrary.volume.VolumeManager;
 import com.hcifuture.contextactionlibrary.volume.VolumeRuleManager;
 import com.hcifuture.contextactionlibrary.volume.data.DataUtils;
+import com.hcifuture.contextactionlibrary.volume.data.Reason;
 import com.hcifuture.shared.communicate.config.ContextConfig;
 import com.hcifuture.contextactionlibrary.contextaction.event.BroadcastEvent;
 import com.hcifuture.shared.communicate.listener.ContextListener;
@@ -62,6 +63,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -135,6 +137,10 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     private Map<String, String> context2FID;
 
     private CompletableFuture<Double> detectedNoiseFt = null;
+    private CompletableFuture<List<List<CrowdManager.BluetoothItem>>> scanBluetoothDeviceFt = null;
+    private CompletableFuture<Position> detectPositionFt = null;
+    private CompletableFuture<Void> allFutures = null;
+    private List<CompletableFuture<?>> fts = new ArrayList<>();
 
     public ConfigContext(Context context, ContextConfig config, RequestListener requestListener, List<ContextListener> contextListener, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, CollectorManager collectorManager) {
         super(context, config, requestListener, contextListener, scheduledExecutorService, futureList);
@@ -467,6 +473,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         }
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     public void onExternalEvent(Bundle bundle) {
         if (bundle.containsKey("type") && EXTERNAL_TYPE.equals(bundle.getString("type"))) {
@@ -474,6 +481,10 @@ public class ConfigContext extends BaseContext implements VolEventListener {
             switch (event) {
                 case EVENT_POPUP:
                     boolean popup = bundle.getBoolean("popup");
+                    long time = System.currentTimeMillis();
+                    JSONObject json = new JSONObject();
+                    JSONUtils.jsonPut(json, "params", Collector.gson.toJson(bundle));
+                    record(time, incLogID(), "frontend_event", "popup", "" + popup, json.toString());
                     if (popup) {
                         // popup
                         int reason = bundle.getInt("reason");
@@ -484,6 +495,18 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                             if (detectedNoiseFt == null) {
                                 detectedNoiseFt = noiseManager.detectNoise(5000, 10);
                             }
+                            if (detectPositionFt == null) {
+                                detectPositionFt = positionManager.scanAndUpdate();
+                            }
+                            if (scanBluetoothDeviceFt == null) {
+                                scanBluetoothDeviceFt = crowdManager.scanAndUpdate();
+                            }
+                            fts.clear();
+                            fts.add(detectedNoiseFt);
+                            fts.add(detectPositionFt);
+                            fts.add(scanBluetoothDeviceFt);
+                            allFutures = CompletableFuture.allOf(fts.toArray(new CompletableFuture[0]));
+
                             Log.e(TAG, "Local Context Data: " + String.format("%d,%f,%s,%s,%s,%b,%d",
                                     System.currentTimeMillis(),
                                     noiseManager.getPresentNoise(),
@@ -497,6 +520,10 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                             for (CrowdManager.BluetoothItem bluetoothItem: bluetoothItemList) {
                                 Log.e(TAG, bluetoothItem.toString());
                             }
+                            Bundle bundle1 = new Bundle();
+                            bundle1.putInt("event", 4);
+                            bundle1.putStringArrayList("factors", new ArrayList<>(dataUtils.getReasonStringList()));
+                            notifyFrontend("respond to manual popup", bundle1);
                         }
                     } else {
                         // exit
@@ -505,35 +532,78 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                         if (from == 1) {
                             int behavior = bundle.getInt("behavior");
                             double finalVolume = bundle.getDouble("finalVolume");
-                            Log.e(TAG, "onExternalEvent: from:" + from + ", behavior:" + behavior + ", finalVolume:" + finalVolume);
+                            String keyFactor = bundle.getString("keyFactor");
+                            boolean openOverlay = bundle.getBoolean("openOverlay");
+                            Log.e(TAG, "onExternalEvent: from:" + from + ", behavior:" + behavior + ", finalVolume:" + finalVolume + ", keyFactor:" + keyFactor + ", openOverlay:" + openOverlay);
+//                            if (frontEndState == REASON_MANUAL) {
+//                                if (detectedNoiseFt != null) {
+//                                    Log.e(TAG, "onExternalEvent: check manual noise detection");
+//                                    detectedNoiseFt.whenComplete((v, e) -> {
+//                                        // 当用户调整结束且噪音检测结束时，记录用户调整音量及噪音值
+//                                        Log.e(TAG, "onExternalEvent: manual detectedNoiseFt " + v + " " + e);
+//                                        addData(finalVolume, REASON_MANUAL, behavior, "updated_noise", false);
+//                                        Log.e(TAG, "onExternalEvent: recorded to file");
+//                                        detectedNoiseFt = null;
+//                                    });
+//                                } else {
+//                                    Log.e(TAG, "onExternalEvent: manual null detectedNoiseFt (already stopped) ");
+//                                    addData(finalVolume, frontEndState, behavior, "last_noise", false);
+//                                    Log.e(TAG, "onExternalEvent: recorded to file");
+//                                }
+//                            } else if (frontEndState == REASON_AUTO_DIRECT || frontEndState == REASON_AUTO_COUNTDOWN) {
+//                                if (behavior != 0) {
+//                                    Log.e(TAG, "onExternalEvent: auto modified by hand");
+//                                    addData(finalVolume, frontEndState, behavior, "last_noise", true);
+//                                    Log.e(TAG, "onExternalEvent: recorded to file");
+//                                }
+//                            }
+                            if (!openOverlay) {
+                                frontEndState = TYPE_OFF;
+                                record(System.currentTimeMillis(), incLogID(), TAG, "volume_adjust_without_choosing_reason", "", "");
+                            }
+                        } else if (from == 2) {
+                            double finalVolume = bundle.getDouble("finalVolume");
+                            ArrayList<String> factors = bundle.getStringArrayList("factors");
+                            String newFactor = bundle.getString("newFactor");
+                            String keyFactor = bundle.getString("keyFactor");
+                            Log.e(TAG, "onExternalEvent: from:" + from + ", finalVolume:" + finalVolume + ", newFactor" + newFactor + ", keyFactor" + keyFactor);
+                            if (newFactor != null)
+                                dataUtils.addReason(new Reason("" + System.currentTimeMillis(), newFactor));
+                            if (keyFactor == null)
+                                record(System.currentTimeMillis(), incLogID(), TAG, "volume_adjust_without_choosing_reason", "", "");
                             if (frontEndState == REASON_MANUAL) {
-                                if (detectedNoiseFt != null) {
-                                    Log.e(TAG, "onExternalEvent: check manual noise detection");
-                                    detectedNoiseFt.whenComplete((v, e) -> {
-                                        // 当用户调整结束且噪音检测结束时，记录用户调整音量及噪音值
-                                        Log.e(TAG, "onExternalEvent: manual detectedNoiseFt " + v + " " + e);
-                                        addData(finalVolume, REASON_MANUAL, behavior, "updated_noise", false);
-                                        Log.e(TAG, "onExternalEvent: recorded to file");
-                                        detectedNoiseFt = null;
+                                Bundle context = new Bundle();
+                                context.putDouble("volume", finalVolume);
+                                context.putLong("time", System.currentTimeMillis());
+                                context.putDouble("audio", SoundManager.SYSTEM_VOLUME);
+                                context.putString("app", appManager.getPresentApp());
+                                context.putString("device", deviceManager.getPresentDeviceID());
+                                if (allFutures != null) {
+                                    Log.e(TAG, "onExternalEvent: check manual detection");
+                                    allFutures.whenComplete((v, e) -> {
+                                        if (fts.size() == 3) {
+                                            try {
+                                                context.putDouble("noise", (double) fts.get(0).get());
+                                                context.putString("position", ((Position) fts.get(1).get()).getId());
+                                                List<List<CrowdManager.BluetoothItem>> listOfList = (List<List<CrowdManager.BluetoothItem>>) fts.get(2).get();
+                                                if (listOfList != null && listOfList.size() == 2) {
+                                                    context.putStringArrayList("bleDevices", new ArrayList<>(CrowdManager.blItemList2StringList(listOfList.get(1))));
+                                                    context.putStringArrayList("filteredDevices", new ArrayList<>(CrowdManager.blItemList2StringList(listOfList.get(0))));
+                                                }
+                                            } catch (Exception ex) {
+                                                ex.printStackTrace();
+                                            }
+                                        }
+                                        if (keyFactor != null)
+                                            dataUtils.addContextForReason(DataUtils.getReasonByName(dataUtils.getReasonList(), keyFactor), context);
+                                        record(System.currentTimeMillis(), incLogID(), TAG, "manual_detect", "reason: " + keyFactor, Collector.gson.toJson(context));
+                                        fts.clear();
+                                        allFutures = null;
                                     });
                                 } else {
-                                    Log.e(TAG, "onExternalEvent: manual null detectedNoiseFt (already stopped) ");
-                                    addData(finalVolume, frontEndState, behavior, "last_noise", false);
-                                    Log.e(TAG, "onExternalEvent: recorded to file");
-                                }
-                            } else if (frontEndState == REASON_AUTO_DIRECT || frontEndState == REASON_AUTO_COUNTDOWN) {
-                                if (behavior != 0) {
-                                    Log.e(TAG, "onExternalEvent: auto modified by hand");
-                                    addData(finalVolume, frontEndState, behavior, "last_noise", true);
-                                    Log.e(TAG, "onExternalEvent: recorded to file");
+                                    Log.e(TAG, "onExternalEvent: manual null detection (already stopped) ");
                                 }
                             }
-                            frontEndState = TYPE_OFF;
-                        } else if (from == 2) {
-                            int editedRank = bundle.getInt("editedRank");
-                            boolean action = bundle.getBoolean("action");
-                            double finalVolume = bundle.getDouble("finalVolume");
-                            Log.e(TAG, "onExternalEvent: from:" + from + ", editedRank:" + editedRank + ", action:" + action + ", finalVolume:" + finalVolume);
                             frontEndState = TYPE_OFF;
                         }
                     }
@@ -748,7 +818,8 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
     @Override
     public void onVolEvent(EventType eventType, Bundle bundle) {
-        boolean popup = true;
+        // popup == false ONLY FOR EXPERIMENT_1
+        boolean popup = false;
         double noise = noiseManager.getPresentNoise();
         switch (eventType) {
             case Noise:
