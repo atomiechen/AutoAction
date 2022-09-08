@@ -537,6 +537,8 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                             int behavior = bundle.getInt("behavior");
                             finalVolume = bundle.getDouble("finalVolume");
                             keyFactor = bundle.getString("keyFactor");
+                            if (keyFactor == null)
+                                record(System.currentTimeMillis(), incLogID(), TAG, "volume_adjust_without_choosing_reason", "", "");
                             Log.e(TAG, "onExternalEvent: from:" + from + ", behavior:" + behavior + ", finalVolume:" + finalVolume + ", keyFactor:" + keyFactor);
 //                            if (frontEndState == REASON_MANUAL) {
 //                                if (detectedNoiseFt != null) {
@@ -560,19 +562,18 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 //                                    Log.e(TAG, "onExternalEvent: recorded to file");
 //                                }
 //                            }
-                            frontEndState = TYPE_OFF;
                         } else if (from == 2) {
                             finalVolume = bundle.getDouble("finalVolume");
                             ArrayList<String> factors = bundle.getStringArrayList("factors");
                             String newFactor = bundle.getString("newFactor");
                             keyFactor = bundle.getString("keyFactor");
-                            Log.e(TAG, "onExternalEvent: from:" + from + ", finalVolume:" + finalVolume + ", newFactor" + newFactor + ", keyFactor" + keyFactor);
+                            boolean behavior = bundle.getBoolean("behavior");
+                            if (!behavior)
+                                record(System.currentTimeMillis(), incLogID(), TAG, "volume_adjust_without_choosing_reason", "", "");
+                            Log.e(TAG, "onExternalEvent: from:" + from + ", finalVolume:" + finalVolume + ", newFactor:" + newFactor + ", keyFactor:" + keyFactor);
                             if (newFactor != null)
                                 dataUtils.addReason(new Reason("" + System.currentTimeMillis(), newFactor));
-                            frontEndState = TYPE_OFF;
                         }
-                        if (keyFactor == null)
-                            record(System.currentTimeMillis(), incLogID(), TAG, "volume_adjust_without_choosing_reason", "", "");
                         if (frontEndState == REASON_MANUAL) {
                             Bundle context = new Bundle();
                             context.putDouble("volume", finalVolume);
@@ -607,6 +608,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                                 Log.e(TAG, "onExternalEvent: manual null detection (already stopped) ");
                             }
                         }
+                        frontEndState = TYPE_OFF;
                     }
                     break;
                 case EVENT_QUIETMODE:
