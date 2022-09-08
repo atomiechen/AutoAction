@@ -537,7 +537,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                             int behavior = bundle.getInt("behavior");
                             finalVolume = bundle.getDouble("finalVolume");
                             keyFactor = bundle.getString("keyFactor");
-                            Log.e(TAG, "onExternalEvent: from:" + from + ", behavior:" + behavior + ", finalVolume:" + finalVolume + ", keyFactor:" + keyFactor + ", openOverlay:" + openOverlay);
+                            Log.e(TAG, "onExternalEvent: from:" + from + ", behavior:" + behavior + ", finalVolume:" + finalVolume + ", keyFactor:" + keyFactor);
 //                            if (frontEndState == REASON_MANUAL) {
 //                                if (detectedNoiseFt != null) {
 //                                    Log.e(TAG, "onExternalEvent: check manual noise detection");
