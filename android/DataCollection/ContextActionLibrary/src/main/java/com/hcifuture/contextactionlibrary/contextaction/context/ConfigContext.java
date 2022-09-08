@@ -531,11 +531,12 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                         // exit
                         Log.e(TAG, "onExternalEvent: UI exit");
                         int from = bundle.getInt("from");
+                        double finalVolume = -1;
+                        String keyFactor = null;
                         if (from == 1) {
                             int behavior = bundle.getInt("behavior");
-                            double finalVolume = bundle.getDouble("finalVolume");
-                            String keyFactor = bundle.getString("keyFactor");
-                            boolean openOverlay = bundle.getBoolean("openOverlay");
+                            finalVolume = bundle.getDouble("finalVolume");
+                            keyFactor = bundle.getString("keyFactor");
                             Log.e(TAG, "onExternalEvent: from:" + from + ", behavior:" + behavior + ", finalVolume:" + finalVolume + ", keyFactor:" + keyFactor + ", openOverlay:" + openOverlay);
 //                            if (frontEndState == REASON_MANUAL) {
 //                                if (detectedNoiseFt != null) {
@@ -559,54 +560,52 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 //                                    Log.e(TAG, "onExternalEvent: recorded to file");
 //                                }
 //                            }
-                            if (!openOverlay) {
-                                frontEndState = TYPE_OFF;
-                                record(System.currentTimeMillis(), incLogID(), TAG, "volume_adjust_without_choosing_reason", "", "");
-                            }
+                            frontEndState = TYPE_OFF;
                         } else if (from == 2) {
-                            double finalVolume = bundle.getDouble("finalVolume");
+                            finalVolume = bundle.getDouble("finalVolume");
                             ArrayList<String> factors = bundle.getStringArrayList("factors");
                             String newFactor = bundle.getString("newFactor");
-                            String keyFactor = bundle.getString("keyFactor");
+                            keyFactor = bundle.getString("keyFactor");
                             Log.e(TAG, "onExternalEvent: from:" + from + ", finalVolume:" + finalVolume + ", newFactor" + newFactor + ", keyFactor" + keyFactor);
                             if (newFactor != null)
                                 dataUtils.addReason(new Reason("" + System.currentTimeMillis(), newFactor));
-                            if (keyFactor == null)
-                                record(System.currentTimeMillis(), incLogID(), TAG, "volume_adjust_without_choosing_reason", "", "");
-                            if (frontEndState == REASON_MANUAL) {
-                                Bundle context = new Bundle();
-                                context.putDouble("volume", finalVolume);
-                                context.putLong("time", System.currentTimeMillis());
-                                context.putDouble("audio", SoundManager.SYSTEM_VOLUME);
-                                context.putString("app", appManager.getPresentApp());
-                                context.putString("device", deviceManager.getPresentDeviceID());
-                                if (allFutures != null) {
-                                    Log.e(TAG, "onExternalEvent: check manual detection");
-                                    allFutures.whenComplete((v, e) -> {
-                                        if (fts.size() == 3) {
-                                            try {
-                                                context.putDouble("noise", (double) fts.get(0).get());
-                                                context.putString("position", ((Position) fts.get(1).get()).getId());
-                                                List<List<CrowdManager.BluetoothItem>> listOfList = (List<List<CrowdManager.BluetoothItem>>) fts.get(2).get();
-                                                if (listOfList != null && listOfList.size() == 2) {
-                                                    context.putStringArrayList("bleDevices", new ArrayList<>(CrowdManager.blItemList2StringList(listOfList.get(1))));
-                                                    context.putStringArrayList("filteredDevices", new ArrayList<>(CrowdManager.blItemList2StringList(listOfList.get(0))));
-                                                }
-                                            } catch (Exception ex) {
-                                                ex.printStackTrace();
-                                            }
-                                        }
-                                        if (keyFactor != null)
-                                            dataUtils.addContextForReason(DataUtils.getReasonByName(dataUtils.getReasonList(), keyFactor), context);
-                                        record(System.currentTimeMillis(), incLogID(), TAG, "manual_detect", "reason: " + keyFactor, Collector.gson.toJson(context));
-                                        fts.clear();
-                                        allFutures = null;
-                                    });
-                                } else {
-                                    Log.e(TAG, "onExternalEvent: manual null detection (already stopped) ");
-                                }
-                            }
                             frontEndState = TYPE_OFF;
+                        }
+                        if (keyFactor == null)
+                            record(System.currentTimeMillis(), incLogID(), TAG, "volume_adjust_without_choosing_reason", "", "");
+                        if (frontEndState == REASON_MANUAL) {
+                            Bundle context = new Bundle();
+                            context.putDouble("volume", finalVolume);
+                            context.putLong("time", System.currentTimeMillis());
+                            context.putDouble("audio", SoundManager.SYSTEM_VOLUME);
+                            context.putString("app", appManager.getPresentApp());
+                            context.putString("device", deviceManager.getPresentDeviceID());
+                            if (allFutures != null) {
+                                Log.e(TAG, "onExternalEvent: check manual detection");
+                                String finalKeyFactor = keyFactor;
+                                allFutures.whenComplete((v, e) -> {
+                                    if (fts.size() == 3) {
+                                        try {
+                                            context.putDouble("noise", (double) fts.get(0).get());
+                                            context.putString("position", ((Position) fts.get(1).get()).getId());
+                                            List<List<CrowdManager.BluetoothItem>> listOfList = (List<List<CrowdManager.BluetoothItem>>) fts.get(2).get();
+                                            if (listOfList != null && listOfList.size() == 2) {
+                                                context.putStringArrayList("bleDevices", new ArrayList<>(CrowdManager.blItemList2StringList(listOfList.get(1))));
+                                                context.putStringArrayList("filteredDevices", new ArrayList<>(CrowdManager.blItemList2StringList(listOfList.get(0))));
+                                            }
+                                        } catch (Exception ex) {
+                                            ex.printStackTrace();
+                                        }
+                                    }
+                                    if (finalKeyFactor != null)
+                                        dataUtils.addContextForReason(DataUtils.getReasonByName(dataUtils.getReasonList(), finalKeyFactor), context);
+                                    record(System.currentTimeMillis(), incLogID(), TAG, "manual_detect", "reason: " + finalKeyFactor, Collector.gson.toJson(context));
+                                    fts.clear();
+                                    allFutures = null;
+                                });
+                            } else {
+                                Log.e(TAG, "onExternalEvent: manual null detection (already stopped) ");
+                            }
                         }
                     }
                     break;
