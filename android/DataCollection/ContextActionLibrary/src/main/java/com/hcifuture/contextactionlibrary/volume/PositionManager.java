@@ -57,7 +57,7 @@ public class PositionManager extends TriggerManager {
     public static Integer latest_position;
 
     @RequiresApi(api = Build.VERSION_CODES.N)
-    public PositionManager(VolEventListener volEventListener, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, GPSCollector gpsCollector, WifiCollector wifiCollector, LogCollector logCollector) {
+    public PositionManager(VolEventListener volEventListener, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, GPSCollector gpsCollector, WifiCollector wifiCollector) {
         super(volEventListener);
         this.scheduledExecutorService = scheduledExecutorService;
         this.futureList = futureList;
@@ -66,7 +66,6 @@ public class PositionManager extends TriggerManager {
         positions = getPositionsFromFile();
         history = getPositionHistoryFromFile();
         lastPosition = history.size() > 0? findById(history.get(history.size() - 1).getId()) : null;
-        this.logCollector = logCollector;
     }
 
     public static class HistoryItem {
@@ -222,7 +221,7 @@ public class PositionManager extends TriggerManager {
                     JSONObject json = new JSONObject();
                     JSONUtils.jsonPut(json, "change", false);
                     JSONUtils.jsonPut(json, "position", lastPosition.getId());
-                    record(System.currentTimeMillis(), incLogID(), TAG, "periodic_scan", "", json.toString());
+                    volEventListener.recordEvent(VolEventListener.EventType.Position, "periodic_scan", json.toString());
                 }
                 if (lastPosition == null || !lastPosition.sameAs(position)) {
                     // 查找是否是新地点
@@ -258,7 +257,7 @@ public class PositionManager extends TriggerManager {
                     JSONUtils.jsonPut(json, "previous_position", lastPosition.getId());
                     JSONUtils.jsonPut(json, "now_position", tmp.getId());
                     JSONUtils.jsonPut(json, "type", type);
-                    record(System.currentTimeMillis(), incLogID(), TAG, "periodic_scan", "", json.toString());
+                    volEventListener.recordEvent(VolEventListener.EventType.Position, "periodic_scan", json.toString());
                     lastPosition = tmp;
                     latest_position = Integer.parseInt(lastPosition.getId());
                 }

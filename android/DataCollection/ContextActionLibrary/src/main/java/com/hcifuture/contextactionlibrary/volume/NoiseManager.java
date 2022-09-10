@@ -37,12 +37,11 @@ public class NoiseManager extends TriggerManager {
     private final double threshold = 20;
     public static Integer latest_noiseLevel;
 
-    public NoiseManager(VolEventListener volEventListener, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, AudioCollector audioCollector, LogCollector logCollector) {
+    public NoiseManager(VolEventListener volEventListener, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, AudioCollector audioCollector) {
         super(volEventListener);
         this.scheduledExecutorService = scheduledExecutorService;
         this.futureList = futureList;
         this.audioCollector = audioCollector;
-        this.logCollector = logCollector;
     }
 
     @Override
@@ -97,7 +96,7 @@ public class NoiseManager extends TriggerManager {
             JSONUtils.jsonPut(json, "noise", noise);
             JSONUtils.jsonPut(json, "old_noise", getPresentNoise());
             JSONUtils.jsonPut(json, "diff", diff);
-            record(System.currentTimeMillis(), incLogID(), TAG, "periodic_detect", "" + diff, json.toString());
+            volEventListener.recordEvent(VolEventListener.EventType.Noise, "periodic_detect", json.toString());
             setPresentNoise(noise);
             return noise;
         });

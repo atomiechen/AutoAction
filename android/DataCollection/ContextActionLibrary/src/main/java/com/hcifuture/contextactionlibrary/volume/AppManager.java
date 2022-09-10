@@ -28,7 +28,7 @@ public class AppManager extends TriggerManager {
     private boolean wechat_chatting_video_on;
     private Context mContext;
 
-    public AppManager(VolEventListener volEventListener, Context context, LogCollector logCollector) {
+    public AppManager(VolEventListener volEventListener, Context context) {
         super(volEventListener);
         appName = "";
         last_appName = "";
@@ -36,7 +36,6 @@ public class AppManager extends TriggerManager {
         wechat_chatting_video_on = false;
         overlay_has_showed_for_other_reason = true;
         mContext = context;
-        this.logCollector = logCollector;
 
         PackageManager packageManager = mContext.getPackageManager();
         Intent intent = new Intent(Intent.ACTION_MAIN);
@@ -197,7 +196,7 @@ public class AppManager extends TriggerManager {
                     JSONUtils.jsonPut(json, "last_app_type", getAppType(last_appName));
                     JSONUtils.jsonPut(json, "new_app", appName);
                     JSONUtils.jsonPut(json, "new_app_type", getAppType(appName));
-                    record(System.currentTimeMillis(), incLogID(), TAG, "app_change", "", json.toString());
+                    volEventListener.recordEvent(VolEventListener.EventType.App, "app_change", json.toString());
                     last_appName = appName;
                 }
             }

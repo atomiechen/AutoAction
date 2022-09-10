@@ -153,24 +153,24 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         volumeManager = new VolumeManager();
 
         noiseManager = new NoiseManager(this, scheduledExecutorService, futureList,
-                (AudioCollector) collectorManager.getCollector(CollectorManager.CollectorType.Audio), logCollector);
+                (AudioCollector) collectorManager.getCollector(CollectorManager.CollectorType.Audio));
 
-        deviceManager = new DeviceManager(this, mContext, scheduledExecutorService, futureList, logCollector);
+        deviceManager = new DeviceManager(this, mContext, scheduledExecutorService, futureList);
 
-        soundManager = new SoundManager(this, mContext, scheduledExecutorService, futureList, logCollector);
+        soundManager = new SoundManager(this, mContext, scheduledExecutorService, futureList);
 
-        appManager = new AppManager(this, mContext, logCollector);
+        appManager = new AppManager(this, mContext);
 
         crowdManager = new CrowdManager(this, scheduledExecutorService, futureList,
-                (BluetoothCollector) collectorManager.getCollector(CollectorManager.CollectorType.Bluetooth), mContext, logCollector);
+                (BluetoothCollector) collectorManager.getCollector(CollectorManager.CollectorType.Bluetooth), mContext);
 
         positionManager = new PositionManager(this, scheduledExecutorService, futureList,
                 (GPSCollector) collectorManager.getCollector(CollectorManager.CollectorType.GPS),
-                (WifiCollector) collectorManager.getCollector(CollectorManager.CollectorType.Wifi), logCollector);
+                (WifiCollector) collectorManager.getCollector(CollectorManager.CollectorType.Wifi));
 
         motionManager = new MotionManager(this);
 
-        timeManager = new TimeManager(this, scheduledExecutorService, futureList, logCollector);
+        timeManager = new TimeManager(this, scheduledExecutorService, futureList);
 
         dataUtils = new DataUtils(mContext);
 
@@ -483,10 +483,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
             switch (event) {
                 case EVENT_POPUP:
                     boolean popup = bundle.getBoolean("popup");
-                    long time = System.currentTimeMillis();
-                    JSONObject json = new JSONObject();
-                    JSONUtils.jsonPut(json, "params", Collector.gson.toJson(bundle));
-                    record(time, incLogID(), "frontend_event", "popup", "" + popup, json.toString());
+                    recordEvent(EventType.FrontEnd, "popup", Collector.gson.toJson(bundle));
                     if (popup) {
                         // popup
                         int reason = bundle.getInt("reason");
@@ -537,8 +534,9 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                             int behavior = bundle.getInt("behavior");
                             finalVolume = bundle.getDouble("finalVolume");
                             keyFactor = bundle.getString("keyFactor");
-                            if (keyFactor == null)
-                                record(System.currentTimeMillis(), incLogID(), TAG, "volume_adjust_without_choosing_reason", "", "");
+                            if (keyFactor == null) {
+                                recordEvent(EventType.FrontEnd, "volume_adjust_without_choosing_reason", "");
+                            }
                             Log.e(TAG, "onExternalEvent: from:" + from + ", behavior:" + behavior + ", finalVolume:" + finalVolume + ", keyFactor:" + keyFactor);
 //                            if (frontEndState == REASON_MANUAL) {
 //                                if (detectedNoiseFt != null) {
@@ -568,8 +566,9 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                             String newFactor = bundle.getString("newFactor");
                             keyFactor = bundle.getString("keyFactor");
                             boolean behavior = bundle.getBoolean("behavior");
-                            if (!behavior)
-                                record(System.currentTimeMillis(), incLogID(), TAG, "volume_adjust_without_choosing_reason", "", "");
+                            if (!behavior) {
+                                recordEvent(EventType.FrontEnd, "volume_adjust_without_choosing_reason", "");
+                            }
                             Log.e(TAG, "onExternalEvent: from:" + from + ", finalVolume:" + finalVolume + ", newFactor:" + newFactor + ", keyFactor:" + keyFactor);
                             if (newFactor != null)
                                 dataUtils.addReason(new Reason("" + System.currentTimeMillis(), newFactor));
@@ -600,12 +599,14 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                                     }
                                     if (finalKeyFactor != null)
                                         dataUtils.addContextForReason(DataUtils.getReasonByName(dataUtils.getReasonList(), finalKeyFactor), context);
-                                    record(System.currentTimeMillis(), incLogID(), TAG, "manual_detect", "reason: " + finalKeyFactor, Collector.gson.toJson(context));
+//                                    record(System.currentTimeMillis(), incLogID(), TAG, "manual_detect", "reason: " + finalKeyFactor, Collector.gson.toJson(context));
+                                    recordEvent(EventType.FrontEnd, "manual_detect", Collector.gson.toJson(context));
                                     fts.clear();
                                     allFutures = null;
                                 });
                             } else {
                                 Log.e(TAG, "onExternalEvent: manual null detection (already stopped) ");
+                                recordEvent(EventType.FrontEnd, "manual_detect", Collector.gson.toJson(context));
                             }
                         }
                         frontEndState = TYPE_OFF;
@@ -925,5 +926,10 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                 listener.onContext(contextResult);
             }
         }
+    }
+
+    @Override
+    public void recordEvent(EventType type, String action, String other) {
+        record(System.currentTimeMillis(), incLogID(), type.toString(), action, "", other);
     }
 }

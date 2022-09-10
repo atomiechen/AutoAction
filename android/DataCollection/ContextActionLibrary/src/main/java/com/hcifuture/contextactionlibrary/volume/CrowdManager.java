@@ -50,7 +50,7 @@ public class CrowdManager extends TriggerManager {
     private long period = 1000 * 60;  // detect phones every 15s
 
     @SuppressLint("MissingPermission")
-    public CrowdManager(VolEventListener volEventListener, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, BluetoothCollector bluetoothCollector, Context context, LogCollector logCollector) {
+    public CrowdManager(VolEventListener volEventListener, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, BluetoothCollector bluetoothCollector, Context context) {
         super(volEventListener);
         this.scheduledExecutorService = scheduledExecutorService;
         this.futureList = futureList;
@@ -58,7 +58,6 @@ public class CrowdManager extends TriggerManager {
         bleList = new ArrayList<>();
         mContext = context;
         bleManager = new BLEManager(scheduledExecutorService, futureList, mContext);
-        this.logCollector = logCollector;
     }
 
     public static class BluetoothItem {

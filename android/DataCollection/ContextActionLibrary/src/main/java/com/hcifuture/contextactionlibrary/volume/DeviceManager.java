@@ -63,14 +63,13 @@ public class DeviceManager extends TriggerManager {
 
 
     @RequiresApi(api = Build.VERSION_CODES.N)
-    public DeviceManager(VolEventListener volEventListener, Context context, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, LogCollector logCollector) {
+    public DeviceManager(VolEventListener volEventListener, Context context, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList) {
         super(volEventListener);
         this.context = context;
         this.scheduledExecutorService = scheduledExecutorService;
         this.futureList = futureList;
         this.audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
         this.mediaRouter = (MediaRouter) context.getSystemService(Context.MEDIA_ROUTER_SERVICE);
-        this.logCollector = logCollector;
         setPresentDevice(genDevice(getCurrentRouteInfo()));
         readDevices();
 
@@ -255,7 +254,7 @@ public class DeviceManager extends TriggerManager {
             JSONObject json = new JSONObject();
             JSONUtils.jsonPut(json, "last_device", currentDevice.deviceID);
             JSONUtils.jsonPut(json, "new_device", device.deviceID);
-            record(System.currentTimeMillis(), incLogID(), TAG, "device_change", "", json.toString());
+            volEventListener.recordEvent(VolEventListener.EventType.Device, "device_change", json.toString());
             setPresentDevice(device);
         }
     }

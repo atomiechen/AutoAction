@@ -11,8 +11,10 @@ public interface VolEventListener {
         Motion,
         Bluetooth,
         Audio,
-        Time
+        Time,
+        FrontEnd
     }
 
     void onVolEvent(EventType eventType, Bundle bundle);
+    void recordEvent(EventType type, String action, String other);
 }

@@ -19,11 +19,10 @@ public class TimeManager extends TriggerManager {
 
     public static Integer latest_formalizedTime;
 
-    public TimeManager(VolEventListener volEventListener, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, LogCollector logCollector) {
+    public TimeManager(VolEventListener volEventListener, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList) {
         super(volEventListener);
         this.scheduledExecutorService = scheduledExecutorService;
         this.futureList = futureList;
-        this.logCollector = logCollector;
     }
 
     @Override

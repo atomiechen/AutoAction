@@ -62,7 +62,7 @@ public class SoundManager extends TriggerManager {
 
     public static Integer latest_audioLevel;
 
-    public SoundManager(VolEventListener volEventListener, Context context, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, LogCollector logCollector) {
+    public SoundManager(VolEventListener volEventListener, Context context, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList) {
         super(volEventListener);
         mContext = context;
         this.scheduledExecutorService = scheduledExecutorService;
@@ -73,7 +73,6 @@ public class SoundManager extends TriggerManager {
 
         mediaProjectionManager = (MediaProjectionManager) mContext.getSystemService(Context.MEDIA_PROJECTION_SERVICE);
         mPcmFilePath = mContext.getExternalMediaDirs()[0].getAbsolutePath() + "/tmp/system_audio.pcm";
-        this.logCollector = logCollector;
     }
 
     @RequiresApi(api = Build.VERSION_CODES.Q)
