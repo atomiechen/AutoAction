@@ -27,6 +27,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import androidx.annotation.RequiresApi;
 
 import com.hcifuture.contextactionlibrary.sensor.collector.sync.LogCollector;
+import com.hcifuture.contextactionlibrary.utils.JSONUtils;
+
+import org.json.JSONObject;
 
 public class SoundManager extends TriggerManager {
 
@@ -78,8 +81,8 @@ public class SoundManager extends TriggerManager {
     @RequiresApi(api = Build.VERSION_CODES.Q)
     @Override
     public void start() {
-        startAudioCapture(0);
         super.start();
+        startAudioCapture(0);
     }
 
     @Override
@@ -232,7 +235,16 @@ public class SoundManager extends TriggerManager {
                     }
                     cnt += 1;
                     if (cnt == 40) {
-                        SYSTEM_VOLUME = Math.max(0, 20 * Math.log10(loudness_cnt / (BUFFER_SIZE * cnt)));
+                        double newDB = Math.max(0, 20 * Math.log10(loudness_cnt / (BUFFER_SIZE * cnt)));
+                        double diff = newDB - SYSTEM_VOLUME;
+                        JSONObject json = new JSONObject();
+                        JSONUtils.jsonPut(json, "audio_db", newDB);
+                        JSONUtils.jsonPut(json, "old_audio_db", SYSTEM_VOLUME);
+                        JSONUtils.jsonPut(json, "diff", diff);
+                        volEventListener.recordEvent(VolEventListener.EventType.Audio, "system_audio_db", json.toString());
+                        Log.e(TAG, "startLoopToSaveAudioFile: audio db = " + newDB);
+                        
+                        SYSTEM_VOLUME = newDB;
                         if (!Objects.equals(latest_audioLevel, getAudioLevel(SYSTEM_VOLUME))) {
                             latest_audioLevel = getAudioLevel(SYSTEM_VOLUME);
                             Bundle bundle = new Bundle();

@@ -475,7 +475,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         }
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.O)
+    @RequiresApi(api = Build.VERSION_CODES.Q)
     @Override
     public void onExternalEvent(Bundle bundle) {
         if (bundle.containsKey("type") && EXTERNAL_TYPE.equals(bundle.getString("type"))) {
@@ -621,6 +621,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                     Intent data = bundle.getParcelable("data");
                     Log.e(TAG, "onExternalEvent: get capture permission result: " + resultCode);
                     soundManager.saveAudioCaptureToken(resultCode, data);
+                    soundManager.start();
                     break;
             }
         }
