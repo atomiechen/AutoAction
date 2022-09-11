@@ -26,7 +26,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import androidx.annotation.RequiresApi;
 
-import com.hcifuture.contextactionlibrary.sensor.collector.sync.LogCollector;
 import com.hcifuture.contextactionlibrary.utils.JSONUtils;
 
 import org.json.JSONObject;
@@ -217,31 +216,51 @@ public class SoundManager extends TriggerManager {
         }
     }
 
+    public int getBytesAsWord(byte[] bytes, int start) {
+        // 注意字节序：PCM是小尾端存储，但Java中的整数是大尾端存储
+        return (short) ((bytes[start+1] & 0xff) << 8) | (bytes[start] & 0xff);
+    }
+
     private void startLoopToSaveAudioFile(String mPcmFilePath) {
         audioCaptureThreadOn.set(true);
+        int interval = 2000; // detect every 2s
         futureList.add(recordingFt = scheduledExecutorService.schedule(() -> {
             FileOutputStream fos = null;
-            double loudness_cnt = 0;
-            int cnt = 0;
+            double loudness_sum = 0;
+            int sum_cnt = 0;
             try {
-                Log.i(TAG, "文件地址: " + mPcmFilePath);
-                fos = new FileOutputStream(mPcmFilePath);
+//                Log.i(TAG, "文件地址: " + mPcmFilePath);
+//                fos = new FileOutputStream(mPcmFilePath);
                 byte[] bytes = new byte[BUFFER_SIZE];
 
+                long last_time = System.currentTimeMillis();
                 while (audioCaptureThreadOn.get()) {
-                    audioRecord.read(bytes, 0, bytes.length);
-                    for (byte _byte: bytes) {
-                        loudness_cnt += Math.abs(_byte);
+                    // 这里是小尾端存储，2个字节为一次sample
+                    int size = audioRecord.read(bytes, 0, bytes.length);
+                    if (size != bytes.length) {
+                        Log.e(TAG, "startLoopToSaveAudioFile: read fail " + size + " need " + bytes.length);
+                        audioCaptureThreadOn.set(false);
+                        break;
                     }
-                    cnt += 1;
-                    if (cnt == 40) {
-                        double newDB = Math.max(0, 20 * Math.log10(loudness_cnt / (BUFFER_SIZE * cnt)));
+                    for (int i = 0; i < bytes.length; i += 2) {
+                        int val = getBytesAsWord(bytes, i);
+//                        loudness_cnt += Math.abs(val);
+                        loudness_sum += val * val;
+                        sum_cnt++;
+                    }
+                    long cur_time = System.currentTimeMillis();
+                    if (cur_time - last_time >= interval) {
+                        // RMS dBFS，均方根计算dBFS
+                        double rms = Math.sqrt(loudness_sum / sum_cnt);
+                        double newDB = Math.max(0, 20 * Math.log10(rms));
+//                        double newDB = Math.max(0, 20 * Math.log10(loudness_sum / sum_cnt));
                         double diff = newDB - SYSTEM_VOLUME;
                         JSONObject json = new JSONObject();
                         JSONUtils.jsonPut(json, "audio_db", newDB);
                         JSONUtils.jsonPut(json, "old_audio_db", SYSTEM_VOLUME);
                         JSONUtils.jsonPut(json, "diff", diff);
                         volEventListener.recordEvent(VolEventListener.EventType.Audio, "system_audio_db", json.toString());
+                        Log.e(TAG, "startLoopToSaveAudioFile: rms = " + rms);
                         Log.e(TAG, "startLoopToSaveAudioFile: audio db = " + newDB);
                         
                         SYSTEM_VOLUME = newDB;
@@ -251,27 +270,31 @@ public class SoundManager extends TriggerManager {
                             bundle.putInt("AudioLevel", latest_audioLevel);
                             volEventListener.onVolEvent(VolEventListener.EventType.Audio, bundle);
                         }
-                        cnt = 0;
-                        loudness_cnt = 0;
+                        loudness_sum = 0;
+                        sum_cnt = 0;
+                        last_time = cur_time;
                     }
-                    fos.write(bytes, 0, bytes.length);
-                    fos.flush();
+                    if (fos != null) {
+                        fos.write(bytes, 0, bytes.length);
+                        fos.flush();
+                    }
                 }
             } catch (Exception e) {
                 e.printStackTrace();
             } finally {
                 Log.i(TAG, "停止录制");
-                if (fos != null) {
-                    try {
-                        Log.e(TAG, "" + loudness_cnt + " " + cnt);
-                        SYSTEM_VOLUME = Math.max(0, 20 * Math.log10(loudness_cnt / (BUFFER_SIZE * cnt)));
-                        latest_audioLevel = getAudioLevel(SYSTEM_VOLUME);
-                        Log.e(TAG, "System Volume: " + SYSTEM_VOLUME + "dB");
+                try {
+                    double rms = Math.sqrt(loudness_sum / sum_cnt);
+                    SYSTEM_VOLUME = Math.max(0, 20 * Math.log10(rms));
+                    latest_audioLevel = getAudioLevel(SYSTEM_VOLUME);
+                    Log.e(TAG, "System Volume rms = " + rms);
+                    Log.e(TAG, "System Volume: " + SYSTEM_VOLUME + "dB");
+                    if (fos != null) {
                         fos.flush();
                         fos.close();
-                    } catch (IOException e) {
-                        e.printStackTrace();
                     }
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
             }
         }, 0, TimeUnit.MILLISECONDS));
