@@ -391,7 +391,6 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                     }
                 }
             } else if ("BroadcastReceive".equals(type)) {
-                record = false;
                 switch (action) {
                     case Intent.ACTION_CONFIGURATION_CHANGED:
                         Configuration config = mContext.getResources().getConfiguration();
@@ -400,6 +399,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                         break;
                     case Intent.ACTION_SCREEN_OFF:
                     case Intent.ACTION_SCREEN_ON:
+                        record = true;
                         // ref: https://stackoverflow.com/a/17348755/11854304
                         DisplayManager dm = (DisplayManager) mContext.getSystemService(Context.DISPLAY_SERVICE);
                         if (dm != null) {
@@ -410,6 +410,10 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                             }
                             JSONUtils.jsonPut(json, "displays", states);
                         }
+                        break;
+                    case Intent.ACTION_POWER_CONNECTED:
+                    case Intent.ACTION_POWER_DISCONNECTED:
+                        record = true;
                         break;
                 }
                 if (Intent.ACTION_SCREEN_ON.equals(action)) {
