@@ -275,6 +275,7 @@ public class AudioCollector extends AsynchronousCollector {
     private double getAvgNoiseFromSeq(List<Integer> seq) {
         double BASE = 1.0;
         double sum = 0.0;
+        double sum_squared = 0.0;
         int count = 0;
 
         int idx = 0;
@@ -282,6 +283,7 @@ public class AudioCollector extends AsynchronousCollector {
         int next_idx;
         double next_db;
         int maxAmplitude = 0;
+        int current_maxAmplitude;
 
         // 找到第一个非零值
         while (idx < seq.size() && (maxAmplitude = seq.get(idx)) == 0) {
@@ -292,6 +294,7 @@ public class AudioCollector extends AsynchronousCollector {
             throw new CollectorException(8, "No MaxAmplitude > 0");
         }
         db = 20 * Math.log10(maxAmplitude / BASE);
+        current_maxAmplitude = maxAmplitude;
         next_idx = idx + 1;
 //            Log.e(TAG, "getNoiseLevel: " + String.format("idx: %d maxAmplitude: %d db: %f", idx, maxAmplitude, db));
         // 采样为0时使用两边非零值线性插值
@@ -301,19 +304,25 @@ public class AudioCollector extends AsynchronousCollector {
             }
             if (next_idx >= seq.size()) {
                 sum += db;
+                sum_squared += current_maxAmplitude * current_maxAmplitude;
                 count += 1;
                 break;
             }
             next_db = 20 * Math.log10(maxAmplitude / BASE);
             sum += db + (db + next_db) * 0.5 * (next_idx - idx - 1);
+            double interp = (current_maxAmplitude + maxAmplitude) * 0.5;
+            sum_squared += current_maxAmplitude * current_maxAmplitude + interp * interp * (next_idx - idx - 1);
             count += next_idx - idx;
 
             idx = next_idx++;
             db = next_db;
+            current_maxAmplitude = maxAmplitude;
 
 //                Log.e(TAG, "getNoiseLevel: " + String.format("idx: %d maxAmplitude: %d db: %f", idx, maxAmplitude, db));
         }
 
+        double rms = Math.sqrt(sum_squared / count);
+        double average_noise_rms = 20 * Math.log10(rms / BASE);
         double average_noise = (count > 0)? (sum / count) : 0.0;
 
         Log.e(TAG, String.format("getNoiseLevel: %d sampled, average %fdb", count, average_noise));
