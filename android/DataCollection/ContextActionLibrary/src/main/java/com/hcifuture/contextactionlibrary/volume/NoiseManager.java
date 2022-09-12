@@ -92,12 +92,14 @@ public class NoiseManager extends TriggerManager {
                 hasFirstDetection = true;
             }
             double diff = noise - getPresentNoise();
-            JSONObject json = new JSONObject();
-            JSONUtils.jsonPut(json, "noise", noise);
-            JSONUtils.jsonPut(json, "old_noise", getPresentNoise());
-            JSONUtils.jsonPut(json, "diff", diff);
-            volEventListener.recordEvent(VolEventListener.EventType.Noise, "periodic_detect", json.toString());
-            setPresentNoise(noise);
+            if (diff != 0.0) {
+                JSONObject json = new JSONObject();
+                JSONUtils.jsonPut(json, "noise", noise);
+                JSONUtils.jsonPut(json, "old_noise", getPresentNoise());
+                JSONUtils.jsonPut(json, "diff", diff);
+                volEventListener.recordEvent(VolEventListener.EventType.Noise, "periodic_detect", json.toString());
+                setPresentNoise(noise);
+            }
             return noise;
         });
     }

@@ -255,20 +255,22 @@ public class SoundManager extends TriggerManager {
                         double newDB = Math.max(0, 20 * Math.log10(rms));
 //                        double newDB = Math.max(0, 20 * Math.log10(loudness_sum / sum_cnt));
                         double diff = newDB - SYSTEM_VOLUME;
-                        JSONObject json = new JSONObject();
-                        JSONUtils.jsonPut(json, "audio_db", newDB);
-                        JSONUtils.jsonPut(json, "old_audio_db", SYSTEM_VOLUME);
-                        JSONUtils.jsonPut(json, "diff", diff);
-                        volEventListener.recordEvent(VolEventListener.EventType.Audio, "system_audio_db", json.toString());
-                        Log.e(TAG, "startLoopToSaveAudioFile: rms = " + rms);
-                        Log.e(TAG, "startLoopToSaveAudioFile: audio db = " + newDB);
-                        
-                        SYSTEM_VOLUME = newDB;
-                        if (!Objects.equals(latest_audioLevel, getAudioLevel(SYSTEM_VOLUME))) {
-                            latest_audioLevel = getAudioLevel(SYSTEM_VOLUME);
-                            Bundle bundle = new Bundle();
-                            bundle.putInt("AudioLevel", latest_audioLevel);
-                            volEventListener.onVolEvent(VolEventListener.EventType.Audio, bundle);
+                        if (diff != 0.0) {
+                            JSONObject json = new JSONObject();
+                            JSONUtils.jsonPut(json, "audio_db", newDB);
+                            JSONUtils.jsonPut(json, "old_audio_db", SYSTEM_VOLUME);
+                            JSONUtils.jsonPut(json, "diff", diff);
+                            volEventListener.recordEvent(VolEventListener.EventType.Audio, "system_audio_db", json.toString());
+                            Log.e(TAG, "startLoopToSaveAudioFile: rms = " + rms);
+                            Log.e(TAG, "startLoopToSaveAudioFile: audio db = " + newDB);
+
+                            SYSTEM_VOLUME = newDB;
+                            if (!Objects.equals(latest_audioLevel, getAudioLevel(SYSTEM_VOLUME))) {
+                                latest_audioLevel = getAudioLevel(SYSTEM_VOLUME);
+                                Bundle bundle = new Bundle();
+                                bundle.putInt("AudioLevel", latest_audioLevel);
+                                volEventListener.onVolEvent(VolEventListener.EventType.Audio, bundle);
+                            }
                         }
                         loudness_sum = 0;
                         sum_cnt = 0;
