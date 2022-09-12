@@ -533,15 +533,19 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                         Log.e(TAG, "onExternalEvent: UI exit");
                         int from = bundle.getInt("from");
                         double finalVolume = -1;
+                        int systemVolume = -1;
+                        int streamType = -1;
                         String keyFactor = null;
                         if (from == 1) {
                             int behavior = bundle.getInt("behavior");
+                            streamType = bundle.getInt("streamType");
                             finalVolume = bundle.getDouble("finalVolume");
+                            systemVolume = bundle.getInt("systemVolume");
                             keyFactor = bundle.getString("keyFactor");
                             if (keyFactor == null) {
                                 recordEvent(EventType.FrontEnd, "volume_adjust_without_choosing_reason", "");
                             }
-                            Log.e(TAG, "onExternalEvent: from:" + from + ", behavior:" + behavior + ", finalVolume:" + finalVolume + ", keyFactor:" + keyFactor);
+                            Log.e(TAG, "onExternalEvent: from:" + from + ", behavior:" + behavior + ", systemVolume:" + systemVolume + ", finalVolume:" + finalVolume + ", keyFactor:" + keyFactor);
 //                            if (frontEndState == REASON_MANUAL) {
 //                                if (detectedNoiseFt != null) {
 //                                    Log.e(TAG, "onExternalEvent: check manual noise detection");
@@ -565,7 +569,9 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 //                                }
 //                            }
                         } else if (from == 2) {
+                            streamType = bundle.getInt("streamType");
                             finalVolume = bundle.getDouble("finalVolume");
+                            systemVolume = bundle.getInt("systemVolume");
                             ArrayList<String> factors = bundle.getStringArrayList("factors");
                             String newFactor = bundle.getString("newFactor");
                             keyFactor = bundle.getString("keyFactor");
@@ -580,6 +586,8 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                         if (frontEndState == REASON_MANUAL) {
                             Bundle context = new Bundle();
                             context.putDouble("volume", finalVolume);
+                            context.putInt("systemVolume", systemVolume);
+                            context.putInt("streamType", streamType);
                             context.putLong("time", System.currentTimeMillis());
                             context.putDouble("audio", SoundManager.SYSTEM_VOLUME);
                             context.putString("app", appManager.getPresentApp());
