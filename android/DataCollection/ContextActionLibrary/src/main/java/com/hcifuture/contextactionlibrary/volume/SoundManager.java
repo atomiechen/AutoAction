@@ -50,7 +50,7 @@ public class SoundManager extends TriggerManager {
     private AtomicBoolean isCollecting = new AtomicBoolean(false);
     private AtomicBoolean audioCaptureThreadOn = new AtomicBoolean(false);
     private final int SAMPLE_RATE = 44100;
-    private final int CHANNEL_MASK = AudioFormat.CHANNEL_IN_MONO;
+    private final int CHANNEL_MASK = AudioFormat.CHANNEL_IN_STEREO;
     private final int ENCODING = AudioFormat.ENCODING_PCM_16BIT;
     private final int BUFFER_SIZE = 2 * AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL_MASK, ENCODING);
     private final String mPcmFilePath;
