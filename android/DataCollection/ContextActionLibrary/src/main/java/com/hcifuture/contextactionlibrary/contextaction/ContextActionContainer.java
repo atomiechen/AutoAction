@@ -651,13 +651,13 @@ public class ContextActionContainer implements ActionListener, ContextListener {
                                 );
                                 break;
                             case "Config":
-                                LogCollector configLogCollector = collectorManager.newLogCollector("Config", 8192);
+                                LogCollector configLogCollector = collectorManager.newLogCollector("Volume", 8192);
                                 setLogCollector(ConfigContext.class, configLogCollector);
                                 timedCollector.scheduleTimedLogUpload(
                                         configLogCollector,
                                         (period == null) ? 30 * 60000 : period.longValue(),
                                         (initialDelay == null) ? 5000 : initialDelay.longValue(),
-                                        (name == null) ? "Config" : name
+                                        (name == null) ? "Volume" : name
                                 );
                                 break;
                             default:

@@ -60,7 +60,7 @@ public class Uploader {
     private static final long SECOND = 1000;
     private static final long MINUTE = SECOND * 60;
     private static final long HOUR = MINUTE * 60;
-    private static final int FILES_IN_PACKAGE = 5;
+    private static final int FILES_IN_PACKAGE = 1;
 
     private static final Gson gson = new GsonBuilder()
             .disableHtmlEscaping()
@@ -409,7 +409,7 @@ public class Uploader {
             if (isUploadingLocalFiles.compareAndSet(false, true)) {
                 try {
                     Log.e(TAG, "uploadLocalFiles");
-                    long timestamp = System.currentTimeMillis() - 5 * MINUTE;
+                    long timestamp = System.currentTimeMillis();
                     uploadDirectory(new File(this.fileFolder), timestamp, false);
                     uploadDirectory(new File(this.zipFolder), timestamp, true);
                 } finally {
