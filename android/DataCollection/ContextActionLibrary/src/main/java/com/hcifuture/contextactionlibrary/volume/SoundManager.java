@@ -232,6 +232,8 @@ public class SoundManager extends TriggerManager {
             FileOutputStream fos = null;
             double loudness_sum = 0;
             int sum_cnt = 0;
+            double db_sum = 0;
+            int db_cnt = 0;
             try {
 //                Log.i(TAG, "文件地址: " + mPcmFilePath);
 //                fos = new FileOutputStream(mPcmFilePath);
@@ -248,16 +250,23 @@ public class SoundManager extends TriggerManager {
                     }
                     for (int i = 0; i < bytes.length; i += 2) {
                         int val = getBytesAsWord(bytes, i);
-//                        loudness_cnt += Math.abs(val);
                         loudness_sum += val * val;
                         sum_cnt++;
+                        if (val != 0) {
+                            db_sum += 20 * Math.log10(Math.abs(val));
+                            db_cnt++;
+                        }
                     }
                     long cur_time = System.currentTimeMillis();
                     if (cur_time - last_time >= interval) {
-                        // RMS dBFS，均方根计算dBFS
+                        // （未使用）RMS dBFS，均方根计算dBFS
                         double rms = Math.sqrt(loudness_sum / sum_cnt);
-                        double newDB = Math.max(0, 20 * Math.log10(rms));
-//                        double newDB = Math.max(0, 20 * Math.log10(loudness_sum / sum_cnt));
+                        double newDB_rms = Math.max(0, 20 * Math.log10(rms));
+                        // （使用）直接对db值进行平均
+                        double newDB = 0;
+                        if (db_cnt != 0) {
+                            newDB = db_sum / db_cnt;
+                        }
                         double diff = newDB - SYSTEM_VOLUME;
                         if (diff != 0.0) {
                             JSONObject json = new JSONObject();
@@ -280,6 +289,8 @@ public class SoundManager extends TriggerManager {
                         }
                         loudness_sum = 0;
                         sum_cnt = 0;
+                        db_sum = 0;
+                        db_cnt = 0;
                         last_time = cur_time;
                     }
                     if (fos != null) {
