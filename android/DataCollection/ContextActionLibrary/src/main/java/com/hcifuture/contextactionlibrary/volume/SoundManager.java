@@ -114,8 +114,12 @@ public class SoundManager extends TriggerManager {
             return 3;
     }
 
-    public double getVolume() {
-        return ((double) audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)) / audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
+    public int getVolume() {
+        return getVolume(AudioManager.STREAM_MUSIC);
+    }
+
+    public int getVolume(int streamType) {
+        return audioManager.getStreamVolume(streamType);
     }
 
     public static Integer volume2level(double volume) {
@@ -260,6 +264,8 @@ public class SoundManager extends TriggerManager {
                             JSONUtils.jsonPut(json, "audio_db", newDB);
                             JSONUtils.jsonPut(json, "old_audio_db", SYSTEM_VOLUME);
                             JSONUtils.jsonPut(json, "diff", diff);
+                            JSONUtils.jsonPut(json, "musicVolume", getVolume());
+                            JSONUtils.jsonPut(json, "musicVolumeMax", MAX_VOLUME_MUSIC);
                             volEventListener.recordEvent(VolEventListener.EventType.Audio, "system_audio_db", json.toString());
                             Log.e(TAG, "startLoopToSaveAudioFile: rms = " + rms);
                             Log.e(TAG, "startLoopToSaveAudioFile: audio db = " + newDB);
