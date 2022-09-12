@@ -10,6 +10,7 @@ import com.hcifuture.contextactionlibrary.utils.JSONUtils;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -48,14 +49,22 @@ public class NoiseManager extends TriggerManager {
     public void start() {
         // detect noise periodically
         Log.e(TAG, "schedule periodic noise detection");
-        scheduledNoiseDetection = scheduledExecutorService.scheduleAtFixedRate(() -> {
-            try {
-                Log.e(TAG, "start to detect noise level");
-                detectNoise(5000, 10, true);
-            } catch (Exception e) {
-                Log.e(TAG, "error during noise detection: " + e);
+        scheduledNoiseDetection = scheduledExecutorService.schedule(() -> {
+            while (true) {
+                try {
+                    detectNoise(5000, 10, true).get();
+                } catch (ExecutionException e) {
+                    // if error happens, wait 2s to try again
+                    Thread.sleep(2000);
+                }
             }
-        }, initialDelay, period, TimeUnit.MILLISECONDS);
+//            try {
+//                Log.e(TAG, "start to detect noise level");
+//                detectNoise(5000, 10, true);
+//            } catch (Exception e) {
+//                Log.e(TAG, "error during noise detection: " + e);
+//            }
+        }, initialDelay, TimeUnit.MILLISECONDS);
         futureList.add(scheduledNoiseDetection);
     }
 
