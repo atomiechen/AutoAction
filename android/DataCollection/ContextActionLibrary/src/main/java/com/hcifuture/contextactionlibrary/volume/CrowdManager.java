@@ -32,6 +32,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class CrowdManager extends TriggerManager {
     private static final String TAG = "CrowdManager";
@@ -197,7 +198,7 @@ public class CrowdManager extends TriggerManager {
             }
             Log.e(TAG, "scanAndUpdate: get phone list " + phoneList);
             Log.e(TAG, "scanAndUpdate: get ble list " + bleList);
-            return new ArrayList<>(Arrays.asList(phoneList, bleList));
+            return Arrays.asList(phoneList, bleList);
         });
     }
 
@@ -227,7 +228,7 @@ public class CrowdManager extends TriggerManager {
         return ft.thenApply(v -> {
             listOfPhoneList.add(v.get(0));
             listOfBleList.add(v.get(1));
-            return new ArrayList<>(Arrays.asList(listOfPhoneList, listOfBleList));
+            return Arrays.asList(listOfPhoneList, listOfBleList);
         });
     }
 
@@ -235,29 +236,16 @@ public class CrowdManager extends TriggerManager {
     public CompletableFuture<List<List<BluetoothItem>>> toScan() {
         Log.e(TAG, "start to detect phones");
         List<CompletableFuture<List<BluetoothItem>>> fts = new ArrayList<>();
-        CompletableFuture<List<BluetoothItem>> phoneScan = bluetoothCollector.getData(new TriggerConfig().setBluetoothScanTime(10000)).thenApply(v -> {
-            List<BluetoothItem> list = device2BluetoothItem((BluetoothData) v.getData());
-            Log.e(TAG, "toScan: get phone list " + list);
-            return list;
-        });
-        CompletableFuture<List<BluetoothItem>> bleScan = bleManager.startScan().thenApply(v -> {
-            List<BluetoothItem> list = scanResult2BtItem(v);
-            Log.e(TAG, "toScan: get ble list " + list);
-            return list;
-        });
-        fts.add(phoneScan);
-        fts.add(bleScan);
-        CompletableFuture<Void> allFutures = CompletableFuture.allOf(fts.toArray(new CompletableFuture[0]));
-        return allFutures.thenApply(v -> {
-            List<BluetoothItem> phoneScanList = new ArrayList<>();
-            List<BluetoothItem> bleScanList = new ArrayList<>();
-            try {
-                phoneScanList = fts.get(0).get();
-                bleScanList = fts.get(1).get();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-            return new ArrayList<>(Arrays.asList(phoneScanList, bleScanList));
+        return bluetoothCollector.getData(new TriggerConfig().setBluetoothScanTime(10000)).thenApply(v -> {
+            BluetoothData data = (BluetoothData) v.getData();
+            List<BluetoothItem> phoneScanList = device2BluetoothItem(data);
+            List<BluetoothItem> bleScanList = scanResult2BtItem(data
+                            .getDevices()
+                            .stream()
+                            .map(SingleBluetoothData::getScanResult)
+                            .collect(Collectors.toList()));
+            Log.e(TAG, "toScan: get phone list " + phoneScanList);
+            return Arrays.asList(phoneScanList, bleScanList);
         });
     }
 

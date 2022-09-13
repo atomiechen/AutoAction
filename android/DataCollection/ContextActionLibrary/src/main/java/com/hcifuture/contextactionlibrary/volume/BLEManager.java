@@ -117,26 +117,26 @@ public class BLEManager {
         bluetoothLeAdvertiser.stopAdvertising(mAdvertiseCallback);
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.N)
-    @SuppressLint("MissingPermission")
-    public CompletableFuture<List<ScanResult>> startScan() {
-        CompletableFuture<List<ScanResult>> ft = new CompletableFuture<>();
-        List<ScanResult> scanResults = new ArrayList<>();
-        ScanCallback mScanCallback = new ScanCallback() {
-            @Override
-            public void onScanResult(int callbackType, ScanResult result) {
-                scanResults.add(result);
-            }
-        };
-        bluetoothLeScanner.startScan(mScanCallback);
-        futureList.add(scheduledExecutorService.schedule(() -> {
-            bluetoothLeScanner.stopScan(mScanCallback);
-            mScanResults = scanResults;
-//            for (ScanResult scanResult: scanResults) {
-//                Log.e(TAG, scanResult.toString());
+//    @RequiresApi(api = Build.VERSION_CODES.N)
+//    @SuppressLint("MissingPermission")
+//    public CompletableFuture<List<ScanResult>> startScan() {
+//        CompletableFuture<List<ScanResult>> ft = new CompletableFuture<>();
+//        List<ScanResult> scanResults = new ArrayList<>();
+//        ScanCallback mScanCallback = new ScanCallback() {
+//            @Override
+//            public void onScanResult(int callbackType, ScanResult result) {
+//                scanResults.add(result);
 //            }
-            ft.complete(mScanResults);
-        }, 3000, TimeUnit.MILLISECONDS));
-        return ft;
-    }
+//        };
+//        bluetoothLeScanner.startScan(mScanCallback);
+//        futureList.add(scheduledExecutorService.schedule(() -> {
+//            bluetoothLeScanner.stopScan(mScanCallback);
+//            mScanResults = scanResults;
+////            for (ScanResult scanResult: scanResults) {
+////                Log.e(TAG, scanResult.toString());
+////            }
+//            ft.complete(mScanResults);
+//        }, 3000, TimeUnit.MILLISECONDS));
+//        return ft;
+//    }
 }
