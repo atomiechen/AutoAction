@@ -12,6 +12,7 @@ public interface VolEventListener {
         Bluetooth,
         Audio,
         Time,
+        Crowd,
         FrontEnd
     }
 
