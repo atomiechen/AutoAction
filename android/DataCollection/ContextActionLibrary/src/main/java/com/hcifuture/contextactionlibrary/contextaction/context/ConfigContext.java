@@ -138,10 +138,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     private Map<String, String> context2FID;
 
     private CompletableFuture<Double> detectedNoiseFt = null;
-    private CompletableFuture<List<List<CrowdManager.BluetoothItem>>> scanBluetoothDeviceFt = null;
-    private CompletableFuture<Position> detectPositionFt = null;
     private CompletableFuture<Void> allFutures = null;
-    private List<CompletableFuture<?>> fts = new ArrayList<>();
 
     public ConfigContext(Context context, ContextConfig config, RequestListener requestListener, List<ContextListener> contextListener, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, CollectorManager collectorManager) {
         super(context, config, requestListener, contextListener, scheduledExecutorService, futureList);
@@ -494,21 +491,14 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                         frontEndState = reason;
                         Log.e(TAG, "onExternalEvent: pop up, reason: " + reason);
                         if (reason == REASON_MANUAL) {
-                            // detect current noise
-                            if (detectedNoiseFt == null) {
-                                detectedNoiseFt = noiseManager.detectNoise(5000, 10);
+                            // detect current context
+                            if (allFutures == null) {
+                                allFutures = CompletableFuture.allOf(
+                                        noiseManager.detectNoise(5000, 10),
+                                        positionManager.scanAndUpdate(),
+                                        crowdManager.scanAndUpdate()
+                                );
                             }
-                            if (detectPositionFt == null) {
-                                detectPositionFt = positionManager.scanAndUpdate();
-                            }
-                            if (scanBluetoothDeviceFt == null) {
-                                scanBluetoothDeviceFt = crowdManager.scanAndUpdate();
-                            }
-                            fts.clear();
-                            fts.add(detectedNoiseFt);
-                            fts.add(detectPositionFt);
-                            fts.add(scanBluetoothDeviceFt);
-                            allFutures = CompletableFuture.allOf(fts.toArray(new CompletableFuture[0]));
 
                             Log.e(TAG, "Local Context Data: " + String.format("%d,%f,%s,%s,%s,%b,%d",
                                     System.currentTimeMillis(),
@@ -584,6 +574,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                                 dataUtils.addReason(new Reason("" + System.currentTimeMillis(), newFactor));
                         }
                         if (frontEndState == REASON_MANUAL) {
+                            // record present context
                             Bundle context = new Bundle();
                             context.putDouble("volume", finalVolume);
                             context.putInt("systemVolume", systemVolume);
@@ -592,28 +583,23 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                             context.putDouble("audio", SoundManager.SYSTEM_VOLUME);
                             context.putString("app", appManager.getPresentApp());
                             context.putString("device", deviceManager.getPresentDeviceID());
+                            context.putDouble("noise", noiseManager.getPresentNoise());
+                            context.putString("position", positionManager.getPresentPosition());
+                            context.putStringArrayList("bleDevices", new ArrayList<>(CrowdManager.blItemList2StringList(crowdManager.getBleList())));
+                            context.putStringArrayList("filteredDevices", new ArrayList<>(CrowdManager.blItemList2StringList(crowdManager.getPhoneList())));
                             if (allFutures != null) {
                                 Log.e(TAG, "onExternalEvent: check manual detection");
                                 String finalKeyFactor = keyFactor;
+                                // update recently scan results
                                 allFutures.whenComplete((v, e) -> {
-                                    if (fts.size() == 3) {
-                                        try {
-                                            context.putDouble("noise", (double) fts.get(0).get());
-                                            context.putString("position", ((Position) fts.get(1).get()).getId());
-                                            List<List<CrowdManager.BluetoothItem>> listOfList = (List<List<CrowdManager.BluetoothItem>>) fts.get(2).get();
-                                            if (listOfList != null && listOfList.size() == 2) {
-                                                context.putStringArrayList("bleDevices", new ArrayList<>(CrowdManager.blItemList2StringList(listOfList.get(1))));
-                                                context.putStringArrayList("filteredDevices", new ArrayList<>(CrowdManager.blItemList2StringList(listOfList.get(0))));
-                                            }
-                                        } catch (Exception ex) {
-                                            ex.printStackTrace();
-                                        }
-                                    }
+                                    context.putDouble("noise", noiseManager.getPresentNoise());
+                                    context.putString("position", positionManager.getPresentPosition());
+                                    context.putStringArrayList("bleDevices", new ArrayList<>(CrowdManager.blItemList2StringList(crowdManager.getBleList())));
+                                    context.putStringArrayList("filteredDevices", new ArrayList<>(CrowdManager.blItemList2StringList(crowdManager.getPhoneList())));
                                     if (finalKeyFactor != null)
                                         dataUtils.addContextForReason(DataUtils.getReasonByName(dataUtils.getReasonList(), finalKeyFactor), context);
 //                                    record(System.currentTimeMillis(), incLogID(), TAG, "manual_detect", "reason: " + finalKeyFactor, Collector.gson.toJson(context));
                                     recordEvent(EventType.FrontEnd, "manual_detect", Collector.gson.toJson(context));
-                                    fts.clear();
                                     allFutures = null;
                                 });
                             } else {
