@@ -200,6 +200,15 @@ public class CrowdManager extends TriggerManager {
             }
             Log.e(TAG, "scanAndUpdate: get phone list " + phoneList);
             Log.e(TAG, "scanAndUpdate: get ble list " + bleList);
+
+            // record data to file
+            JSONObject json = new JSONObject();
+            JSONUtils.jsonPut(json, "phone_number", phoneList.size());
+            JSONUtils.jsonPut(json, "ble_number", bleList.size());
+            JSONUtils.jsonPut(json, "phone_devices", blItemList2StringList(phoneList));
+            JSONUtils.jsonPut(json, "ble_devices", blItemList2StringList(bleList));
+            volEventListener.recordEvent(VolEventListener.EventType.Crowd, "crowd_bt_scan_3times", json.toString());
+
             return Arrays.asList(phoneList, bleList);
         });
     }
@@ -253,29 +262,11 @@ public class CrowdManager extends TriggerManager {
             JSONObject json = new JSONObject();
             JSONUtils.jsonPut(json, "phone_number", phoneScanList.size());
             JSONUtils.jsonPut(json, "ble_number", bleScanList.size());
-            JSONUtils.jsonPut(json, "phone_devices", bluetoothItem2JSONArray(phoneScanList));
-            JSONUtils.jsonPut(json, "ble_devices", bluetoothItem2JSONArray(bleScanList));
+            JSONUtils.jsonPut(json, "phone_devices", blItemList2StringList(phoneScanList));
+            JSONUtils.jsonPut(json, "ble_devices", blItemList2StringList(bleScanList));
             volEventListener.recordEvent(VolEventListener.EventType.Crowd, "crowd_bt_scan", json.toString());
             return Arrays.asList(phoneScanList, bleScanList);
         });
-    }
-
-    @RequiresApi(api = Build.VERSION_CODES.N)
-    JSONArray bluetoothItem2JSONArray(List<BluetoothItem> bluetoothItemList) {
-        JSONArray jsonArray = new JSONArray();
-        bluetoothItemList.forEach(bluetoothItem -> {
-            JSONArray array = new JSONArray();
-            array.put(bluetoothItem.getAddress());
-            array.put(bluetoothItem.getName());
-            try {
-                array.put(bluetoothItem.getDistance());
-            } catch (JSONException e) {
-                e.printStackTrace();
-                array.put(-1);
-            }
-            jsonArray.put(array);
-        });
-        return jsonArray;
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
