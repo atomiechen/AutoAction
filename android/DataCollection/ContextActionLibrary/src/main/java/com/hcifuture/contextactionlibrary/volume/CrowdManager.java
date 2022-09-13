@@ -243,6 +243,7 @@ public class CrowdManager extends TriggerManager {
                             .getDevices()
                             .stream()
                             .map(SingleBluetoothData::getScanResult)
+                            .filter(Objects::nonNull)
                             .collect(Collectors.toList()));
             Log.e(TAG, "toScan: get phone list " + phoneScanList);
             return Arrays.asList(phoneScanList, bleScanList);
