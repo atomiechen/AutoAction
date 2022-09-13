@@ -65,7 +65,7 @@ public class AppManager extends TriggerManager {
         }
 
         public String getPackageName() {
-            return packageName;
+            return packageName == null ? "": packageName;
         }
     }
 
@@ -172,7 +172,7 @@ public class AppManager extends TriggerManager {
     public void onAccessibilityEvent(AccessibilityEvent event) {
         if (event.getPackageName() != null && event.getPackageName().toString().equals("com.hcifuture.scanner"))
             return;
-        if (event.getText() != null && event.getText().size() > 0) {
+        if (event.getText() != null && event.getText().size() > 0 && event.getText().get(0) != null) {
             String tmp_name = event.getText().get(0).toString();
             String packageName = "";
             if (event.getPackageName() != null)
@@ -242,6 +242,8 @@ public class AppManager extends TriggerManager {
             return false;
         if (event.getPackageName() == null || !event.getPackageName().toString().equals("com.tencent.mm"))
             return false;
+        if (event.getText() == null || event.getText().size() == 0 || event.getText().get(0) == null)
+            return false;
         String tmp = event.getText().get(0).toString();
         if (tmp.length() < 4) return false;
         return tmp.charAt(tmp.length() - 3) == ':';
@@ -261,14 +263,14 @@ public class AppManager extends TriggerManager {
         AppItem appItem = findByAppName(need_overlay_apps, name);
         if (appItem == null) return false;
 
-        return appItem.getPackageName().equals(packageName);
+        return appItem.getPackageName() != null && appItem.getPackageName().equals(packageName);
     }
 
     public boolean isNotNeedOverlayApp(String name, String packageName) {
         AppItem appItem = findByAppName(not_need_overlay_apps, name);
         if (appItem == null) return false;
 
-        return appItem.getPackageName().equals(packageName);
+        return appItem.getPackageName() != null && appItem.getPackageName().equals(packageName);
     }
 
     public String getPresentApp() {
