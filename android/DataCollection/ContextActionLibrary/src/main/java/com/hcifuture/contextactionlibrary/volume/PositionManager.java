@@ -221,6 +221,7 @@ public class PositionManager extends TriggerManager {
                     JSONObject json = new JSONObject();
                     JSONUtils.jsonPut(json, "change", false);
                     JSONUtils.jsonPut(json, "position", lastPosition.getId());
+                    JSONUtils.jsonPut(json, "position_gps", lastPosition.getLatitude()+","+lastPosition.getLongitude());
                     volEventListener.recordEvent(VolEventListener.EventType.Position, "periodic_scan", json.toString());
                 }
                 if (lastPosition == null || !lastPosition.sameAs(position)) {
@@ -255,7 +256,9 @@ public class PositionManager extends TriggerManager {
                     JSONObject json = new JSONObject();
                     JSONUtils.jsonPut(json, "change", true);
                     JSONUtils.jsonPut(json, "previous_position", lastPosition.getId());
+                    JSONUtils.jsonPut(json, "previous_position_gps", lastPosition.getLatitude()+","+lastPosition.getLongitude());
                     JSONUtils.jsonPut(json, "now_position", tmp.getId());
+                    JSONUtils.jsonPut(json, "now_position_gps", tmp.getLatitude()+","+tmp.getLongitude());
                     JSONUtils.jsonPut(json, "type", type);
                     volEventListener.recordEvent(VolEventListener.EventType.Position, "periodic_scan", json.toString());
                     lastPosition = tmp;
