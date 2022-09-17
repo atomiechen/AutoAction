@@ -236,6 +236,39 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     }
 
     @Override
+    public void pause() {
+        Log.e(TAG, "stop");
+        // do not perform record_all() in stop(),
+        // it may cause crashes when frequently called
+
+        soundManager.stop();
+        crowdManager.pause();
+        positionManager.stop();
+        deviceManager.stop();
+        noiseManager.stop();
+        appManager.stop();
+        timeManager.stop();
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.Q)
+    @Override
+    public void resume() {
+        record_all("resume");
+        appManager.start();
+        noiseManager.start();
+        deviceManager.start();
+        positionManager.start();
+        crowdManager.resume();
+        soundManager.start();
+        timeManager.start();
+
+        // get audio capture permission
+        if (!soundManager.hasCapturePermission()) {
+            notifyRequestRecordPermission();
+        }
+    }
+
+    @Override
     public void onIMUSensorEvent(SingleIMUData data) {
         motionManager.onIMUSensorEvent(data);
     }

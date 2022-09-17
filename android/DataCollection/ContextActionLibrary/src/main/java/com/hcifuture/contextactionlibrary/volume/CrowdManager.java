@@ -133,12 +133,7 @@ public class CrowdManager extends TriggerManager {
     @Override
     public void start() {
         bleManager.startAdvertising();
-        // detect phones periodically
-        Log.e(TAG, "schedule periodic phones detection");
-        scheduledPhoneDetection = scheduledExecutorService.scheduleAtFixedRate(() -> {
-            scanAndUpdate();
-        }, initialDelay, period, TimeUnit.MILLISECONDS);
-        futureList.add(scheduledPhoneDetection);
+        resume();
     }
 
 //    @RequiresApi(api = Build.VERSION_CODES.O)
@@ -154,10 +149,24 @@ public class CrowdManager extends TriggerManager {
 
     @Override
     public void stop() {
-//        bleManager.stopAdvertising();
+        pause();
+        bleManager.stopAdvertising();
+    }
+
+    public void pause() {
         if (scheduledPhoneDetection != null) {
             scheduledPhoneDetection.cancel(true);
         }
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    public void resume() {
+        // detect phones periodically
+        Log.e(TAG, "schedule periodic phones detection");
+        scheduledPhoneDetection = scheduledExecutorService.scheduleAtFixedRate(() -> {
+            scanAndUpdate();
+        }, initialDelay, period, TimeUnit.MILLISECONDS);
+        futureList.add(scheduledPhoneDetection);
     }
 
     public static List<String> blItemList2StringList(List<BluetoothItem> list) {
