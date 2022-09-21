@@ -598,8 +598,8 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                             ArrayList<String> factors = bundle.getStringArrayList("factors");
                             String newFactor = bundle.getString("newFactor");
                             keyFactor = bundle.getString("keyFactor");
-                            boolean behavior = bundle.getBoolean("behavior");
-                            if (!behavior) {
+                            int behavior = bundle.getInt("behavior");
+                            if (behavior == 0) {
                                 recordEvent(EventType.FrontEnd, "volume_adjust_without_choosing_reason", "");
                             }
                             Log.e(TAG, "onExternalEvent: from:" + from + ", finalVolume:" + finalVolume + ", newFactor:" + newFactor + ", keyFactor:" + keyFactor);
