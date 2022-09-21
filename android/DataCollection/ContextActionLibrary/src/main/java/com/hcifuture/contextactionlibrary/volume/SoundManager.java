@@ -328,13 +328,17 @@ public class SoundManager extends TriggerManager {
             recordingFt = null;
         }
         if (audioRecord != null) {
-            audioRecord.stop();
-            audioRecord.release();
-            audioRecord = null;
+            try {
+                audioRecord.stop();
+                audioRecord.release();
+                audioRecord = null;
+            } catch (Exception ignored) {}
         }
         if (mediaProjection != null) {
-            mediaProjection.stop();
-            mediaProjection = null;
+            try {
+                mediaProjection.stop();
+                mediaProjection = null;
+            } catch (Exception ignored) {}
         }
         isCollecting.set(false);
         Log.e(TAG, "stopAudioCapture: stop capture");
