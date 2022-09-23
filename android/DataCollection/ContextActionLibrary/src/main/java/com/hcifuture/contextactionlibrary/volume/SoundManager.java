@@ -15,6 +15,9 @@ import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.List;
@@ -26,6 +29,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import androidx.annotation.RequiresApi;
 
+import com.hcifuture.contextactionlibrary.contextaction.context.ConfigContext;
+import com.hcifuture.contextactionlibrary.utils.FileUtils;
 import com.hcifuture.contextactionlibrary.utils.JSONUtils;
 
 import org.json.JSONObject;
@@ -81,6 +86,7 @@ public class SoundManager extends TriggerManager {
     @Override
     public void start() {
         super.start();
+        Log.e(TAG, "start capture");
         startAudioCapture(0);
     }
 
@@ -225,9 +231,11 @@ public class SoundManager extends TriggerManager {
         return (short) ((bytes[start+1] & 0xff) << 8) | (bytes[start] & 0xff);
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.N)
     private void startLoopToSaveAudioFile(String mPcmFilePath) {
         audioCaptureThreadOn.set(true);
         int interval = 2000; // detect every 2s
+        int cycle_per_file = 80;
         futureList.add(recordingFt = scheduledExecutorService.schedule(() -> {
             FileOutputStream fos = null;
             double loudness_sum = 0;
@@ -240,6 +248,7 @@ public class SoundManager extends TriggerManager {
                 byte[] bytes = new byte[BUFFER_SIZE];
 
                 long last_time = System.currentTimeMillis();
+                int count = 0;
                 while (audioCaptureThreadOn.get()) {
                     // 这里是小尾端存储，2个字节为一次sample
                     int size = audioRecord.read(bytes, 0, bytes.length);
@@ -258,6 +267,19 @@ public class SoundManager extends TriggerManager {
                         }
                     }
                     long cur_time = System.currentTimeMillis();
+                    if (count == 0) {
+                        if (fos != null) {
+                            fos.close();
+                        }
+                        FileUtils.writeStringToFile("", new File(ConfigContext.VOLUME_SAVE_FOLDER + "System Audio/" + "SystemAudio.mp3"));
+                        fos = new FileOutputStream(ConfigContext.VOLUME_SAVE_FOLDER + "System Audio/" + "SystemAudio.mp3");
+                        writeMP3Header(fos, bytes.length * cycle_per_file);
+                        count = cycle_per_file;
+                    }
+                    if (fos != null) {
+                        fos.write(bytes, 0, bytes.length);
+                        count--;
+                    }
                     if (cur_time - last_time >= interval) {
                         // （未使用）RMS dBFS，均方根计算dBFS
                         double rms = Math.sqrt(loudness_sum / sum_cnt);
@@ -292,10 +314,6 @@ public class SoundManager extends TriggerManager {
                         db_sum = 0;
                         db_cnt = 0;
                         last_time = cur_time;
-                    }
-                    if (fos != null) {
-                        fos.write(bytes, 0, bytes.length);
-                        fos.flush();
                     }
                 }
             } catch (Exception e) {
@@ -342,5 +360,95 @@ public class SoundManager extends TriggerManager {
         }
         isCollecting.set(false);
         Log.e(TAG, "stopAudioCapture: stop capture");
+    }
+
+    public void writeMP3Header(FileOutputStream fos, int length) throws IOException {
+//        Log.e(TAG, "write mp3 header");
+        //计算长度
+        int PCMSize = length;
+
+        //填入参数，比特率等等。这里用的是16位单声道 8000 hz
+        WaveHeader header = new WaveHeader();
+        //长度字段 = 内容的大小（PCMSize) + 头部字段的大小(不包括前面4字节的标识符RIFF以及fileLength本身的4字节)
+        header.fileLength = PCMSize + (44 - 8);
+        header.FmtHdrLeth = 16;
+        header.BitsPerSample = 16;
+        header.Channels = 2;
+        header.FormatTag = 0x0001;
+        header.SamplesPerSec = 44100;
+        header.BlockAlign = (short) (header.Channels * header.BitsPerSample / 8);
+        header.AvgBytesPerSec = header.BlockAlign * header.SamplesPerSec;
+        header.DataHdrLeth = PCMSize;
+
+        byte[] h = header.getHeader();
+
+        assert h.length == 44; //WAV标准，头部应该是44字节
+        //write header
+        fos.write(h, 0, h.length);
+//        //write data stream
+//        fos.write(bytes, 0, byteLength);
+//        fos.close();
+    }
+
+    public static class WaveHeader {
+
+        public final char fileID[] = {'R', 'I', 'F', 'F'};
+        public int fileLength;
+        public char wavTag[] = {'W', 'A', 'V', 'E'};;
+        public char FmtHdrID[] = {'f', 'm', 't', ' '};
+        public int FmtHdrLeth;
+        public short FormatTag;
+        public short Channels;
+        public int SamplesPerSec;
+        public int AvgBytesPerSec;
+        public short BlockAlign;
+        public short BitsPerSample;
+        public char DataHdrID[] = {'d','a','t','a'};
+        public int DataHdrLeth;
+
+        public byte[] getHeader() throws IOException {
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            WriteChar(bos, fileID);
+            WriteInt(bos, fileLength);
+            WriteChar(bos, wavTag);
+            WriteChar(bos, FmtHdrID);
+            WriteInt(bos,FmtHdrLeth);
+            WriteShort(bos,FormatTag);
+            WriteShort(bos,Channels);
+            WriteInt(bos,SamplesPerSec);
+            WriteInt(bos,AvgBytesPerSec);
+            WriteShort(bos,BlockAlign);
+            WriteShort(bos,BitsPerSample);
+            WriteChar(bos,DataHdrID);
+            WriteInt(bos,DataHdrLeth);
+            bos.flush();
+            byte[] r = bos.toByteArray();
+            bos.close();
+            return r;
+        }
+
+        private void WriteShort(ByteArrayOutputStream bos, int s) throws IOException {
+            byte[] mybyte = new byte[2];
+            mybyte[1] =(byte)( (s << 16) >> 24 );
+            mybyte[0] =(byte)( (s << 24) >> 24 );
+            bos.write(mybyte);
+        }
+
+
+        private void WriteInt(ByteArrayOutputStream bos, int n) throws IOException {
+            byte[] buf = new byte[4];
+            buf[3] =(byte)( n >> 24 );
+            buf[2] =(byte)( (n << 8) >> 24 );
+            buf[1] =(byte)( (n << 16) >> 24 );
+            buf[0] =(byte)( (n << 24) >> 24 );
+            bos.write(buf);
+        }
+
+        private void WriteChar(ByteArrayOutputStream bos, char[] id) {
+            for (int i=0; i<id.length; i++) {
+                char c = id[i];
+                bos.write(c);
+            }
+        }
     }
 }
