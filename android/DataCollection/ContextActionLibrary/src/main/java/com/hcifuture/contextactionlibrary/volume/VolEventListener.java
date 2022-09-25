@@ -13,7 +13,8 @@ public interface VolEventListener {
         Audio,
         Time,
         Crowd,
-        FrontEnd
+        FrontEnd,
+        Step
     }
 
     void onVolEvent(EventType eventType, Bundle bundle);

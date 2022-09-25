@@ -5,6 +5,7 @@ import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
+import android.hardware.Sensor;
 import android.hardware.display.DisplayManager;
 import android.net.Uri;
 import android.net.wifi.WifiManager;
@@ -28,6 +29,7 @@ import com.hcifuture.contextactionlibrary.sensor.collector.async.WifiCollector;
 import com.hcifuture.contextactionlibrary.sensor.data.NonIMUData;
 import com.hcifuture.contextactionlibrary.sensor.data.SingleIMUData;
 import com.hcifuture.contextactionlibrary.sensor.uploader.Uploader;
+import com.hcifuture.contextactionlibrary.status.Heart;
 import com.hcifuture.contextactionlibrary.utils.FileUtils;
 import com.hcifuture.contextactionlibrary.utils.JSONUtils;
 import com.hcifuture.contextactionlibrary.volume.AppManager;
@@ -47,8 +49,10 @@ import com.hcifuture.contextactionlibrary.volume.data.DataUtils;
 import com.hcifuture.contextactionlibrary.volume.data.Reason;
 import com.hcifuture.shared.communicate.config.ContextConfig;
 import com.hcifuture.contextactionlibrary.contextaction.event.BroadcastEvent;
+import com.hcifuture.shared.communicate.listener.ActionListener;
 import com.hcifuture.shared.communicate.listener.ContextListener;
 import com.hcifuture.shared.communicate.listener.RequestListener;
+import com.hcifuture.shared.communicate.result.ActionResult;
 import com.hcifuture.shared.communicate.result.ContextResult;
 
 import org.json.JSONArray;
@@ -284,7 +288,12 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
     @Override
     public void onNonIMUSensorEvent(NonIMUData data) {
-
+        if (data.getType() == Sensor.TYPE_STEP_COUNTER) {
+            int curCount = (int)data.getStepCounter();
+            JSONObject json = new JSONObject();
+            JSONUtils.jsonPut(json, "step_count", curCount);
+            recordEvent(EventType.Step, "get_step_counter", json.toString());
+        }
     }
 
     @Override
