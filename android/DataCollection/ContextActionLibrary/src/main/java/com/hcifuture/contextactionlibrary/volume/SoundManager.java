@@ -24,12 +24,16 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import androidx.annotation.RequiresApi;
 
@@ -44,6 +48,7 @@ public class SoundManager extends TriggerManager {
     static final String TAG = "SoundManager";
 
     private final double NORMALIZED_MAX_VOLUME = 100.0;
+    private final String AUDIO_DIR;
 
     private final AudioManager audioManager;
 
@@ -52,6 +57,10 @@ public class SoundManager extends TriggerManager {
     private AudioRecord audioRecord;
     private ScheduledFuture<?> recordingFt;
     private ScheduledFuture<?> countdownStopFt;
+
+    private final AtomicInteger mFileIDCounter = new AtomicInteger(0);
+    private String mCurrentFilename;
+    private int mCurrentFileID;
 
     private boolean hasCapturePermission = false;
     private int resultCode;
@@ -64,7 +73,7 @@ public class SoundManager extends TriggerManager {
     private final int BUFFER_SIZE = 2 * AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL_MASK, ENCODING);
     private final String mPcmFilePath;
     public static double SYSTEM_VOLUME;
-    private AacEncoder aacEncoder;
+    private final AacEncoder aacEncoder;
 
     private final Context mContext;
     private final ScheduledExecutorService scheduledExecutorService;
@@ -74,11 +83,14 @@ public class SoundManager extends TriggerManager {
 
     public static Integer latest_audioLevel;
 
+    @RequiresApi(api = Build.VERSION_CODES.N)
     public SoundManager(VolEventListener volEventListener, Context context, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList) {
         super(volEventListener);
         mContext = context;
         this.scheduledExecutorService = scheduledExecutorService;
         this.futureList = futureList;
+        // 放在Data/Click/下，Uploader会监听文件夹、自动重传
+        AUDIO_DIR = context.getExternalMediaDirs()[0].getAbsolutePath() + "/Data/Click/SystemAudio/";
 
         audioManager = (AudioManager) mContext.getSystemService(Context.AUDIO_SERVICE);
         MAX_VOLUME_MUSIC = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
@@ -146,6 +158,11 @@ public class SoundManager extends TriggerManager {
 
     public double int2percent(int vol) {
         return vol * NORMALIZED_MAX_VOLUME / MAX_VOLUME_MUSIC;
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.N)
+    private int incFileID() {
+        return mFileIDCounter.getAndIncrement();
     }
 
     public void saveAudioCaptureToken(int resultCode, Intent data) {
@@ -240,7 +257,7 @@ public class SoundManager extends TriggerManager {
     @RequiresApi(api = Build.VERSION_CODES.N)
     private void startLoopToSaveAudioFile(String mPcmFilePath) {
         audioCaptureThreadOn.set(true);
-        int file_interval = 15000; // save aac file every 15s
+        int file_interval = 30000; // save aac file every 30s
         int interval = 2000; // detect every 2s
         futureList.add(recordingFt = scheduledExecutorService.schedule(() -> {
             FileOutputStream fos = null;
@@ -255,6 +272,7 @@ public class SoundManager extends TriggerManager {
 
                 long last_time = System.currentTimeMillis();
                 long last_file_time = 0;
+                int maxValInFile = 0;
                 while (audioCaptureThreadOn.get()) {
                     // 这里是小尾端存储，2个字节为一次sample
                     int size = audioRecord.read(bytes, 0, bytes.length);
@@ -271,13 +289,32 @@ public class SoundManager extends TriggerManager {
                             db_sum += 20 * Math.log10(Math.abs(val));
                             db_cnt++;
                         }
+                        if (val > maxValInFile) {
+                            maxValInFile = val;
+                        }
                     }
                     long cur_time = System.currentTimeMillis();
                     if (cur_time - last_file_time >= file_interval) {
-                        if (fos != null)
+                        if (fos != null) {
                             fos.close();
-                        FileUtils.writeStringToFile("", new File(ConfigContext.VOLUME_SAVE_FOLDER + "System Audio/" + "SystemAudio.aac"));
-                        fos = new FileOutputStream(ConfigContext.VOLUME_SAVE_FOLDER + "System Audio/" + "SystemAudio.aac");
+                            if (maxValInFile == 0) {
+                                // no data in file, no need to upload
+                                FileUtils.deleteFile(new File(mCurrentFilename), "");
+                                // reset file ID
+                                mFileIDCounter.getAndDecrement();
+                            } else {
+                                // upload current file
+                                volEventListener.upload(mCurrentFilename, last_file_time, cur_time, "Volume_SystemAudio", "");
+                            }
+                            maxValInFile = 0;
+                        }
+                        // create a new file
+                        String dateTime = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
+                        // update file ID
+                        mCurrentFileID = mFileIDCounter.getAndIncrement();
+                        mCurrentFilename = AUDIO_DIR + "SystemAudio_" + dateTime + "_" + mCurrentFileID + ".aac";
+                        FileUtils.makeFile(new File(mCurrentFilename));
+                        fos = new FileOutputStream(mCurrentFilename);
                         last_file_time = cur_time;
                     }
                     if (fos != null)
@@ -364,7 +401,7 @@ public class SoundManager extends TriggerManager {
         Log.e(TAG, "stopAudioCapture: stop capture");
     }
 
-    public class AacEncoder {
+    public static class AacEncoder {
 
         private MediaCodec mediaCodec;
         private String mediaType = "OMX.google.aac.encoder";

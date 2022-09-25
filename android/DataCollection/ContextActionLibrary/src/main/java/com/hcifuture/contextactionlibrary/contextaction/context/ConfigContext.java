@@ -17,14 +17,17 @@ import android.view.KeyEvent;
 import android.view.accessibility.AccessibilityEvent;
 
 import com.google.gson.reflect.TypeToken;
+import com.hcifuture.contextactionlibrary.contextaction.collect.BaseCollector;
 import com.hcifuture.contextactionlibrary.sensor.collector.Collector;
 import com.hcifuture.contextactionlibrary.sensor.collector.CollectorManager;
+import com.hcifuture.contextactionlibrary.sensor.collector.CollectorResult;
 import com.hcifuture.contextactionlibrary.sensor.collector.async.AudioCollector;
 import com.hcifuture.contextactionlibrary.sensor.collector.async.BluetoothCollector;
 import com.hcifuture.contextactionlibrary.sensor.collector.async.GPSCollector;
 import com.hcifuture.contextactionlibrary.sensor.collector.async.WifiCollector;
 import com.hcifuture.contextactionlibrary.sensor.data.NonIMUData;
 import com.hcifuture.contextactionlibrary.sensor.data.SingleIMUData;
+import com.hcifuture.contextactionlibrary.sensor.uploader.Uploader;
 import com.hcifuture.contextactionlibrary.utils.FileUtils;
 import com.hcifuture.contextactionlibrary.utils.JSONUtils;
 import com.hcifuture.contextactionlibrary.volume.AppManager;
@@ -140,6 +143,8 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     private CompletableFuture<Double> detectedNoiseFt = null;
     private CompletableFuture<Void> allFutures = null;
 
+    private Uploader uploader;
+
     public ConfigContext(Context context, ContextConfig config, RequestListener requestListener, List<ContextListener> contextListener, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, CollectorManager collectorManager) {
         super(context, config, requestListener, contextListener, scheduledExecutorService, futureList);
 
@@ -200,6 +205,10 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
         last_record_all = 0;
 
+    }
+
+    public void setUploader(Uploader uploader) {
+        this.uploader = uploader;
     }
 
     @RequiresApi(api = Build.VERSION_CODES.Q)
@@ -963,5 +972,19 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     @Override
     public void recordEvent(EventType type, String action, String other) {
         record(System.currentTimeMillis(), incLogID(), type.toString(), action, "", other);
+    }
+
+    @Override
+    public boolean upload(String filename, long startTimestamp, long endTimestamp, String name, String commit) {
+        if (uploader != null) {
+            CollectorResult collectorResult = new CollectorResult();
+            collectorResult.setSavePath(filename);
+            collectorResult.setStartTimestamp(startTimestamp);
+            collectorResult.setEndTimestamp(endTimestamp);
+            BaseCollector.upload(uploader, collectorResult, name, commit);
+            return true;
+        } else {
+            return false;
+        }
     }
 }

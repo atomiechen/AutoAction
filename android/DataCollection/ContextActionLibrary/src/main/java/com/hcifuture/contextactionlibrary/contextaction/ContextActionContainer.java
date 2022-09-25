@@ -659,6 +659,11 @@ public class ContextActionContainer implements ActionListener, ContextListener {
                                         (initialDelay == null) ? 5000 : initialDelay.longValue(),
                                         (name == null) ? "Volume" : name
                                 );
+                                for (BaseContext context: contexts) {
+                                    if (context instanceof ConfigContext) {
+                                        ((ConfigContext) context).setUploader(uploader);
+                                    }
+                                }
                                 break;
                             default:
                                 break;
