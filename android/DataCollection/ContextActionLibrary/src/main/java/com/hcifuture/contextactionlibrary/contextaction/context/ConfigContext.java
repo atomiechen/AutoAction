@@ -239,7 +239,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         // do not perform record_all() in stop(),
         // it may cause crashes when frequently called
 
-        soundManager.stop();
+//        soundManager.stop();
         crowdManager.stop();
         positionManager.stop();
         deviceManager.stop();
@@ -254,7 +254,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         // do not perform record_all() in stop(),
         // it may cause crashes when frequently called
 
-        soundManager.stop();
+//        soundManager.stop();
         crowdManager.pause();
         positionManager.stop();
         deviceManager.stop();
@@ -476,6 +476,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                 int keycode = extras.getInt("code");
                 int keyAction = extras.getInt("action");
                 JSONUtils.jsonPut(json, "keycodeString", KeyEvent.keyCodeToString(keycode));
+                Log.e(TAG, KeyEvent.keyCodeToString(keycode));
 
 //                detectKeyGesture(keycode, keyAction);
 //                detectKeyVolume(keycode);
