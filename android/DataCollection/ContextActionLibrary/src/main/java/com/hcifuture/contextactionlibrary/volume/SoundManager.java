@@ -453,14 +453,6 @@ public class SoundManager extends TriggerManager {
             bufferInfo = new MediaCodec.BufferInfo();
         }
 
-
-        /**
-         * 关闭释放资源
-         *
-         * @author：gj
-         * @date: 2017/4/25
-         * @time: 16:19
-         **/
         public void close() {
             try {
                 mediaCodec.stop();
@@ -472,14 +464,6 @@ public class SoundManager extends TriggerManager {
             }
         }
 
-
-        /**
-         * 开始编码
-         *
-         * @author：gj
-         * @date: 2017/4/25
-         * @time: 16:19
-         **/
         public byte[] offerEncoder(byte[] input) throws Exception {
             Log.e("offerEncoder", input.length + " is coming");
 
