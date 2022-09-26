@@ -153,6 +153,7 @@ public class CrowdManager extends TriggerManager {
         bleManager.stopAdvertising();
     }
 
+    @Override
     public void pause() {
         if (scheduledPhoneDetection != null) {
             scheduledPhoneDetection.cancel(true);
@@ -160,6 +161,7 @@ public class CrowdManager extends TriggerManager {
     }
 
     @RequiresApi(api = Build.VERSION_CODES.O)
+    @Override
     public void resume() {
         // detect phones periodically
         Log.e(TAG, "schedule periodic phones detection");
