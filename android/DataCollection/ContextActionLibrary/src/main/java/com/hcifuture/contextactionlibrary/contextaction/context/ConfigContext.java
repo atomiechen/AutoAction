@@ -239,7 +239,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         // do not perform record_all() in stop(),
         // it may cause crashes when frequently called
 
-//        soundManager.stop();
+        soundManager.stop();
         crowdManager.stop();
         positionManager.stop();
         deviceManager.stop();
@@ -250,30 +250,30 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
     @Override
     public void pause() {
-        Log.e(TAG, "stop");
-        // do not perform record_all() in stop(),
+        Log.e(TAG, "pause");
+        // do not perform record_all() in pause(),
         // it may cause crashes when frequently called
 
-//        soundManager.stop();
+        soundManager.pause();
         crowdManager.pause();
-        positionManager.stop();
-        deviceManager.stop();
-        noiseManager.stop();
-        appManager.stop();
-        timeManager.stop();
+        positionManager.pause();
+        deviceManager.pause();
+        noiseManager.pause();
+        appManager.pause();
+        timeManager.pause();
     }
 
     @RequiresApi(api = Build.VERSION_CODES.Q)
     @Override
     public void resume() {
         record_all("resume");
-        appManager.start();
-        noiseManager.start();
-        deviceManager.start();
-        positionManager.start();
+        appManager.resume();
+        noiseManager.resume();
+        deviceManager.resume();
+        positionManager.resume();
         crowdManager.resume();
-        soundManager.start();
-        timeManager.start();
+        soundManager.resume();
+        timeManager.resume();
 
         // get audio capture permission
         if (!soundManager.hasCapturePermission()) {

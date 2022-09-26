@@ -20,7 +20,6 @@ import android.util.Log;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -37,7 +36,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import androidx.annotation.RequiresApi;
 
-import com.hcifuture.contextactionlibrary.contextaction.context.ConfigContext;
 import com.hcifuture.contextactionlibrary.utils.FileUtils;
 import com.hcifuture.contextactionlibrary.utils.JSONUtils;
 
@@ -61,12 +59,14 @@ public class SoundManager extends TriggerManager {
     private final AtomicInteger mFileIDCounter = new AtomicInteger(0);
     private String mCurrentFilename;
     private int mCurrentFileID;
+    private final int intervalFile = 30000; // save aac file every 30s
+    private final int intervalDetection = 2000; // detect db every 2s
 
     private boolean hasCapturePermission = false;
     private int resultCode;
     private Intent data;
-    private AtomicBoolean isCollecting = new AtomicBoolean(false);
-    private AtomicBoolean audioCaptureThreadOn = new AtomicBoolean(false);
+    private final AtomicBoolean isCollecting = new AtomicBoolean(false);
+    private final AtomicBoolean audioCaptureThreadOn = new AtomicBoolean(false);
     private final int SAMPLE_RATE = 44100;
     private final int CHANNEL_MASK = AudioFormat.CHANNEL_IN_STEREO;
     private final int ENCODING = AudioFormat.ENCODING_PCM_16BIT;
@@ -117,6 +117,16 @@ public class SoundManager extends TriggerManager {
         super.stop();
     }
 
+    @Override
+    public void pause() {
+
+    }
+
+    @Override
+    public void resume() {
+
+    }
+
     public boolean isAudioOn() {
         return audioManager.isMusicActive();
     }
@@ -158,11 +168,6 @@ public class SoundManager extends TriggerManager {
 
     public double int2percent(int vol) {
         return vol * NORMALIZED_MAX_VOLUME / MAX_VOLUME_MUSIC;
-    }
-
-    @RequiresApi(api = Build.VERSION_CODES.N)
-    private int incFileID() {
-        return mFileIDCounter.getAndIncrement();
     }
 
     public void saveAudioCaptureToken(int resultCode, Intent data) {
@@ -257,14 +262,13 @@ public class SoundManager extends TriggerManager {
     @RequiresApi(api = Build.VERSION_CODES.N)
     private void startLoopToSaveAudioFile(String mPcmFilePath) {
         audioCaptureThreadOn.set(true);
-        int file_interval = 30000; // save aac file every 30s
-        int interval = 2000; // detect every 2s
         futureList.add(recordingFt = scheduledExecutorService.schedule(() -> {
             FileOutputStream fos = null;
             double loudness_sum = 0;
             int sum_cnt = 0;
             double db_sum = 0;
             int db_cnt = 0;
+            final double BASE = 1.0; // 32768
             try {
 //                Log.i(TAG, "文件地址: " + mPcmFilePath);
 //                fos = new FileOutputStream(mPcmFilePath);
@@ -286,7 +290,7 @@ public class SoundManager extends TriggerManager {
                         loudness_sum += val * val;
                         sum_cnt++;
                         if (val != 0) {
-                            db_sum += 20 * Math.log10(Math.abs(val));
+                            db_sum += 20 * Math.log10(Math.abs(val) / BASE);
                             db_cnt++;
                         }
                         if (val > maxValInFile) {
@@ -294,7 +298,7 @@ public class SoundManager extends TriggerManager {
                         }
                     }
                     long cur_time = System.currentTimeMillis();
-                    if (cur_time - last_file_time >= file_interval) {
+                    if (cur_time - last_file_time >= intervalFile) {
                         if (fos != null) {
                             fos.close();
                             if (maxValInFile == 0) {
@@ -319,10 +323,10 @@ public class SoundManager extends TriggerManager {
                     }
                     if (fos != null)
                         fos.write(aacEncoder.offerEncoder(bytes));
-                    if (cur_time - last_time >= interval) {
+                    if (cur_time - last_time >= intervalDetection) {
                         // （未使用）RMS dBFS，均方根计算dBFS
                         double rms = Math.sqrt(loudness_sum / sum_cnt);
-                        double newDB_rms = Math.max(0, 20 * Math.log10(rms));
+                        double newDB_rms = Math.max(0, 20 * Math.log10(rms / BASE));
                         // （使用）直接对db值进行平均
                         double newDB = 0;
                         if (db_cnt != 0) {
@@ -465,7 +469,7 @@ public class SoundManager extends TriggerManager {
         }
 
         public byte[] offerEncoder(byte[] input) throws Exception {
-            Log.e("offerEncoder", input.length + " is coming");
+//            Log.e("offerEncoder", input.length + " is coming");
 
             int inputBufferIndex = mediaCodec.dequeueInputBuffer(-1);//其中需要注意的有dequeueInputBuffer（-1），参数表示需要得到的毫秒数，-1表示一直等，0表示不需要等，传0的话程序不会等待，但是有可能会丢帧。
             if (inputBufferIndex >= 0) {

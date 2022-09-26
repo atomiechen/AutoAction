@@ -16,4 +16,10 @@ public abstract class TriggerManager {
 
     public void start() {}
     public void stop() {}
+    public void pause() {
+        stop();
+    }
+    public void resume() {
+        start();
+    }
 }
