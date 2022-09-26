@@ -1,10 +1,30 @@
 package com.hcifuture.contextactionlibrary.volume;
 
+import android.content.Context;
 import android.hardware.Sensor;
 import android.hardware.SensorManager;
+import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 
+import com.hcifuture.contextactionlibrary.sensor.collector.async.IMUCollector;
 import com.hcifuture.contextactionlibrary.sensor.data.SingleIMUData;
+import com.hcifuture.contextactionlibrary.sensor.trigger.TriggerConfig;
+import com.hcifuture.contextactionlibrary.utils.FileSaver;
+import com.hcifuture.contextactionlibrary.utils.FileUtils;
+
+import java.io.File;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.List;
+import java.util.Locale;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import androidx.annotation.RequiresApi;
 
 public class MotionManager extends TriggerManager {
 
@@ -22,8 +42,80 @@ public class MotionManager extends TriggerManager {
 
     private boolean isFaceDown = false;
 
-    public MotionManager(VolEventListener volEventListener) {
+    private final ScheduledExecutorService scheduledExecutorService;
+    private final List<ScheduledFuture<?>> futureList;
+    private final IMUCollector imuCollector;
+
+    private ScheduledFuture<?> scheduledIMU;
+    private final String FILE_DIR;
+    private final AtomicInteger mFileIDCounter = new AtomicInteger(0);
+    private String mCurrentFilename;
+    private int mCurrentFileID;
+    private final int intervalFile = 30000; // save IMU file every 30s
+
+    public MotionManager(VolEventListener volEventListener, Context context, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, IMUCollector imuCollector) {
         super(volEventListener);
+        this.scheduledExecutorService = scheduledExecutorService;
+        this.futureList = futureList;
+        this.imuCollector = imuCollector;
+
+        // 放在Data/Click/下，Uploader会监听文件夹、自动重传
+        FILE_DIR = context.getExternalMediaDirs()[0].getAbsolutePath() + "/Data/Click/IMU_Continuous/";
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.N)
+    @Override
+    public void start() {
+        super.start();
+        scheduledIMU = scheduledExecutorService.schedule(() -> {
+            // periodically record IMU data
+            while (true) {
+                try {
+                    Thread.sleep(intervalFile);
+
+                    // update file ID
+                    mCurrentFileID = mFileIDCounter.getAndIncrement();
+                    String dateTime = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
+                    mCurrentFilename = FILE_DIR + "IMU_" + dateTime + "_" + mCurrentFileID + ".bin";
+                    Log.e(TAG, "recording to " + mCurrentFilename);
+
+                    long start_file_time = System.currentTimeMillis();
+
+                    imuCollector.getData(new TriggerConfig().setImuGetAll(true)).thenCompose(v -> {
+                        v.setEndTimestamp(System.currentTimeMillis());
+                        return FileSaver.getInstance().writeIMUDataToFile(v, new File(mCurrentFilename));
+                    }).thenAccept(v -> {
+                        // upload current file
+                        volEventListener.upload(mCurrentFilename, start_file_time, v.getEndTimestamp(), "Volume_IMU", "");
+                    }).get();
+                } catch (ExecutionException e) {
+                    e.printStackTrace();
+                    // error happens, reset file ID
+                    mFileIDCounter.getAndDecrement();
+                    // remove file
+                    FileUtils.deleteFile(new File(mCurrentFilename), "");
+                }
+            }
+        }, 0, TimeUnit.MILLISECONDS);
+        futureList.add(scheduledIMU);
+    }
+
+    @Override
+    public void stop() {
+        if (scheduledIMU != null) {
+            scheduledIMU.cancel(true);
+        }
+        super.stop();
+    }
+
+    @Override
+    public void pause() {
+
+    }
+
+    @Override
+    public void resume() {
+
     }
 
     public void onIMUSensorEvent(SingleIMUData data) {

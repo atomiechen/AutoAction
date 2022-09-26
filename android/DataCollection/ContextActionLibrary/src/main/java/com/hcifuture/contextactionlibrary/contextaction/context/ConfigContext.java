@@ -25,6 +25,7 @@ import com.hcifuture.contextactionlibrary.sensor.collector.CollectorResult;
 import com.hcifuture.contextactionlibrary.sensor.collector.async.AudioCollector;
 import com.hcifuture.contextactionlibrary.sensor.collector.async.BluetoothCollector;
 import com.hcifuture.contextactionlibrary.sensor.collector.async.GPSCollector;
+import com.hcifuture.contextactionlibrary.sensor.collector.async.IMUCollector;
 import com.hcifuture.contextactionlibrary.sensor.collector.async.WifiCollector;
 import com.hcifuture.contextactionlibrary.sensor.data.NonIMUData;
 import com.hcifuture.contextactionlibrary.sensor.data.SingleIMUData;
@@ -174,7 +175,8 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                 (GPSCollector) collectorManager.getCollector(CollectorManager.CollectorType.GPS),
                 (WifiCollector) collectorManager.getCollector(CollectorManager.CollectorType.Wifi));
 
-        motionManager = new MotionManager(this);
+        motionManager = new MotionManager(this, mContext, scheduledExecutorService, futureList,
+                (IMUCollector) collectorManager.getCollector(CollectorManager.CollectorType.IMU));
 
         timeManager = new TimeManager(this, scheduledExecutorService, futureList);
 
@@ -226,6 +228,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         crowdManager.start();
         soundManager.start();
         timeManager.start();
+        motionManager.start();
 
         // get audio capture permission
         if (!soundManager.hasCapturePermission()) {
@@ -239,6 +242,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         // do not perform record_all() in stop(),
         // it may cause crashes when frequently called
 
+        motionManager.stop();
         soundManager.stop();
         crowdManager.stop();
         positionManager.stop();
@@ -254,6 +258,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         // do not perform record_all() in pause(),
         // it may cause crashes when frequently called
 
+        motionManager.pause();
         soundManager.pause();
         crowdManager.pause();
         positionManager.pause();
@@ -274,6 +279,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         crowdManager.resume();
         soundManager.resume();
         timeManager.resume();
+        motionManager.resume();
 
         // get audio capture permission
         if (!soundManager.hasCapturePermission()) {
