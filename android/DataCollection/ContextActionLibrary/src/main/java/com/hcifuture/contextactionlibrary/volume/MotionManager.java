@@ -12,6 +12,9 @@ import com.hcifuture.contextactionlibrary.sensor.data.SingleIMUData;
 import com.hcifuture.contextactionlibrary.sensor.trigger.TriggerConfig;
 import com.hcifuture.contextactionlibrary.utils.FileSaver;
 import com.hcifuture.contextactionlibrary.utils.FileUtils;
+import com.hcifuture.contextactionlibrary.utils.JSONUtils;
+
+import org.json.JSONObject;
 
 import java.io.File;
 import java.text.SimpleDateFormat;
@@ -41,6 +44,7 @@ public class MotionManager extends TriggerManager {
     private int gyroStaticCount = 0;
 
     private boolean isFaceDown = false;
+    private boolean isFaceUp = false;
 
     private final ScheduledExecutorService scheduledExecutorService;
     private final List<ScheduledFuture<?>> futureList;
@@ -160,9 +164,16 @@ public class MotionManager extends TriggerManager {
         getContext();
     }
 
-    private boolean checkIsHorizontal() {
+    private boolean checkIsHorizontalDown() {
         for (int i = 0; i < ORIENTATION_CHECK_NUMBER; i++)
             if (Math.abs(orientationMark[i][1]) > 0.1 || Math.abs(orientationMark[i][2]) < 3.0)
+                return false;
+        return true;
+    }
+
+    private boolean checkIsHorizontalUp() {
+        for (int i = 0; i < ORIENTATION_CHECK_NUMBER; i++)
+            if (Math.abs(orientationMark[i][1]) > 0.1 || Math.abs(orientationMark[i][2]) > 0.1)
                 return false;
         return true;
     }
@@ -182,21 +193,50 @@ public class MotionManager extends TriggerManager {
 //                + " gyroStaticCount=" + gyroStaticCount);
 
         // Honor V40 Lite has no linear acceleration
-        if (gyroStaticCount > 20 && checkIsHorizontal()) {
-//        if (linearStaticCount > 10 && gyroStaticCount > 20 && checkIsHorizontal()) {
-            if (isFaceDown)
-                return;
-            isFaceDown = true;
-            Bundle bundle = new Bundle();
-            bundle.putString("motion", "faceDown");
-            volEventListener.onVolEvent(VolEventListener.EventType.Motion, bundle);
-        } else {
-            if (!isFaceDown)
+//        if (linearStaticCount > 10 && gyroStaticCount > 20) {
+        boolean isGesture = false;
+        if (gyroStaticCount > 20) {
+            if (checkIsHorizontalDown()) {
+                isGesture = true;
+                if (isFaceDown)
+                    return;
+                isFaceDown = true;
+                isFaceUp = false;
+                Bundle bundle = new Bundle();
+                bundle.putString("motion", "faceDown");
+                volEventListener.onVolEvent(VolEventListener.EventType.Motion, bundle);
+
+                JSONObject json = new JSONObject();
+                JSONUtils.jsonPut(json, "gesture", "faceDown");
+                volEventListener.recordEvent(VolEventListener.EventType.Motion, "motion_change", json.toString());
+            } else if (checkIsHorizontalUp()) {
+                isGesture = true;
+                if (isFaceUp)
+                    return;
+                isFaceUp = true;
+                isFaceDown = false;
+                Bundle bundle = new Bundle();
+                bundle.putString("motion", "faceUp");
+                volEventListener.onVolEvent(VolEventListener.EventType.Motion, bundle);
+
+                JSONObject json = new JSONObject();
+                JSONUtils.jsonPut(json, "gesture", "faceUp");
+                volEventListener.recordEvent(VolEventListener.EventType.Motion, "motion_change", json.toString());
+            }
+        }
+
+        if (!isGesture) {
+            if (!isFaceDown && !isFaceUp)
                 return;
             isFaceDown = false;
+            isFaceUp = false;
             Bundle bundle = new Bundle();
-            bundle.putString("motion", "notFaceDown");
+            bundle.putString("motion", "noGesture");
             volEventListener.onVolEvent(VolEventListener.EventType.Motion, bundle);
+
+            JSONObject json = new JSONObject();
+            JSONUtils.jsonPut(json, "gesture", "noGesture");
+            volEventListener.recordEvent(VolEventListener.EventType.Motion, "motion_change", json.toString());
         }
     }
 }
