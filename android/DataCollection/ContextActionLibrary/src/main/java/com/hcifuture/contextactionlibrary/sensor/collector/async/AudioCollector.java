@@ -24,6 +24,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Stream;
 
 public class AudioCollector extends AsynchronousCollector {
     private static final String TAG = "AudioCollector";
@@ -39,7 +40,7 @@ public class AudioCollector extends AsynchronousCollector {
       Error code:
         0: No error
         1: Invalid audio length
-        2: Null audio filename
+        2: Null audio filename (deprecated)
         3: Concurrent task of audio recording
         4: Unknown audio recording exception
         5: Unknown exception when stopping recording
@@ -68,19 +69,26 @@ public class AudioCollector extends AsynchronousCollector {
         clearDummyOutputFile();
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.O)
+    @RequiresApi(api = Build.VERSION_CODES.N)
     @Override
     public CompletableFuture<CollectorResult> getData(TriggerConfig config) {
         Heart.getInstance().newSensorGetEvent(getName(), System.currentTimeMillis());
         CompletableFuture<CollectorResult> ft = new CompletableFuture<>();
         CollectorResult result = new CollectorResult();
-        File saveFile = new File(config.getAudioFilename());
+        String filename;
+        // if audio filename not specified, use dummy output file
+        if (config.getAudioFilename() == null) {
+            filename = getDummyOutputFilePath();
+        } else {
+            filename = config.getAudioFilename();
+        }
+        File saveFile = new File(filename);
         result.setSavePath(saveFile.getAbsolutePath());
 
         if (config.getAudioLength() <= 0) {
             ft.completeExceptionally(new CollectorException(1, "Invalid audio length: " + config.getAudioLength()));
-        } else if (config.getAudioFilename() == null) {
-            ft.completeExceptionally(new CollectorException(2, "Null audio filename"));
+//        } else if (config.getAudioFilename() == null) {
+//            ft.completeExceptionally(new CollectorException(2, "Null audio filename"));
         } else if (isCollecting.compareAndSet(false, true)) {
             try {
                 // check mic availability
@@ -96,6 +104,8 @@ public class AudioCollector extends AsynchronousCollector {
                 } else {
                     FileUtils.makeDir(saveFile.getParent());
                     startRecording(saveFile);
+                    // first call returns 0
+                    mMediaRecorder.getMaxAmplitude();
                     futureList.add(scheduledExecutorService.schedule(() -> {
                         try {
                             stopRecording();
@@ -111,6 +121,8 @@ public class AudioCollector extends AsynchronousCollector {
             } catch (Exception e) {
                 e.printStackTrace();
                 stopRecording();
+                // remove file
+                FileUtils.deleteFile(saveFile, "");
                 isCollecting.set(false);
                 ft.completeExceptionally(new CollectorException(4, e));
             }
@@ -194,8 +206,15 @@ public class AudioCollector extends AsynchronousCollector {
         }
     }
 
+    // 录制长度为length的音频，通过future返回以period为间隔周期采样的最大幅度
     @RequiresApi(api = Build.VERSION_CODES.N)
-    private CompletableFuture<List<Integer>> getMaxAmplitudeSequence(long length, long period) {
+    public CompletableFuture<List<Integer>> getMaxAmplitudeSequence(long length, long period) {
+        return getMaxAmplitudeSequence(length, period, getDummyOutputFilePath());
+    }
+
+    // 录制长度为length的音频到文件filename，并通过future返回以period为间隔周期采样的最大幅度
+    @RequiresApi(api = Build.VERSION_CODES.N)
+    public CompletableFuture<List<Integer>> getMaxAmplitudeSequence(long length, long period, String filename) {
         CompletableFuture<List<Integer>> ft = new CompletableFuture<>();
         if (isCollecting.compareAndSet(false, true)) {
             try {
@@ -211,39 +230,18 @@ public class AudioCollector extends AsynchronousCollector {
                     ft.completeExceptionally(new CollectorException(6, "Mic not available: " + micMode));
                 } else {
                     try {
-                        long start_time = System.currentTimeMillis();
-
-//                        final MediaRecorder mediaRecorder_comm = startNewMediaRecorder(MediaRecorder.AudioSource.VOICE_COMMUNICATION, getDummyOutputFilePath()+"comm");
-//                        Log.e(TAG, String.format("getMaxAmplitudeSequence: MediaRecorder comm started, length: %dms period: %dms", length, period));
-//                        // first call returns 0
-//                        mediaRecorder_comm.getMaxAmplitude();
-
-                        mMediaRecorder = startNewMediaRecorder(MediaRecorder.AudioSource.MIC, getDummyOutputFilePath()+"mic");
+                        FileUtils.makeDir(new File(filename).getParent());
+                        mMediaRecorder = startNewMediaRecorder(MediaRecorder.AudioSource.MIC, filename);
                         Log.e(TAG, String.format("getMaxAmplitudeSequence: MediaRecorder mic started, length: %dms period: %dms", length, period));
                         // first call returns 0
                         mMediaRecorder.getMaxAmplitude();
 
                         List<Integer> sampledNoise_mic = new ArrayList<>();
-//                        List<Integer> sampledNoise_comm = new ArrayList<>();
                         repeatedSampleFt = scheduledExecutorService.scheduleAtFixedRate(() -> {
                             try {
                                 // Returns the maximum absolute amplitude that was sampled since the last call to this method
                                 int maxAmplitude = mMediaRecorder.getMaxAmplitude();
                                 sampledNoise_mic.add(maxAmplitude);
-//                                int maxAmplitude_comm = mediaRecorder_comm.getMaxAmplitude();
-//                                sampledNoise_comm.add(maxAmplitude_comm);
-                                if (System.currentTimeMillis() - start_time + period > length) {
-                                    stopMediaRecorder(mMediaRecorder);
-//                                    stopMediaRecorder(mediaRecorder_comm);
-
-                                    Log.e(TAG, "getMaxAmplitudeSequence: mic  " + sampledNoise_mic);
-//                                    Log.e(TAG, "getMaxAmplitudeSequence: comm " + sampledNoise_comm);
-
-//                                    sampledNoise_mic.addAll(sampledNoise_comm);
-                                    repeatedSampleFt.cancel(false);
-                                    isCollecting.set(false);
-                                    ft.complete(sampledNoise_mic);
-                                }
                             } catch (Exception e) {
                                 e.printStackTrace();
                                 stopMediaRecorder(mMediaRecorder);
@@ -253,6 +251,16 @@ public class AudioCollector extends AsynchronousCollector {
                             }
                         }, period, period, TimeUnit.MILLISECONDS);
                         futureList.add(repeatedSampleFt);
+
+                        futureList.add(scheduledExecutorService.schedule(() -> {
+                            stopMediaRecorder(mMediaRecorder);
+                            if (repeatedSampleFt != null) {
+                                repeatedSampleFt.cancel(true);
+                            }
+                            Log.e(TAG, "getMaxAmplitudeSequence: mic  " + sampledNoise_mic);
+                            isCollecting.set(false);
+                            ft.complete(sampledNoise_mic);
+                        }, length, TimeUnit.MILLISECONDS));
 
                     } catch (Exception e) {
                         stopMediaRecorder(mMediaRecorder);
@@ -272,77 +280,12 @@ public class AudioCollector extends AsynchronousCollector {
         return ft;
     }
 
-    private double getAvgNoiseFromSeq(List<Integer> seq) {
-        double BASE = 1.0;
-        double sum = 0.0;
-        double sum_squared = 0.0;
-        int count = 0;
-
-        int idx = 0;
-        double db;
-        int next_idx;
-        double next_db;
-        int maxAmplitude = 0;
-        int current_maxAmplitude;
-
-        // 找到第一个非零值
-        while (idx < seq.size() && (maxAmplitude = seq.get(idx)) == 0) {
-            idx++;
+    public int getMaxAmplitude() {
+        try {
+            // Returns the maximum absolute amplitude that was sampled since the last call to this method
+            return mMediaRecorder.getMaxAmplitude();
+        } catch (Exception e) {
+            return -1;
         }
-        if (idx >= seq.size()) {
-            // 没有非零值
-            throw new CollectorException(8, "No MaxAmplitude > 0");
-        }
-        db = 20 * Math.log10(maxAmplitude / BASE);
-        current_maxAmplitude = maxAmplitude;
-        next_idx = idx + 1;
-//            Log.e(TAG, "getNoiseLevel: " + String.format("idx: %d maxAmplitude: %d db: %f", idx, maxAmplitude, db));
-        // 采样为0时使用两边非零值线性插值
-        while (true) {
-            while (next_idx < seq.size() && (maxAmplitude = seq.get(next_idx)) == 0) {
-                next_idx++;
-            }
-            if (next_idx >= seq.size()) {
-                sum += db;
-                sum_squared += current_maxAmplitude * current_maxAmplitude;
-                count += 1;
-                break;
-            }
-            next_db = 20 * Math.log10(maxAmplitude / BASE);
-            sum += db + (db + next_db) * 0.5 * (next_idx - idx - 1);
-            double interp = (current_maxAmplitude + maxAmplitude) * 0.5;
-            sum_squared += current_maxAmplitude * current_maxAmplitude + interp * interp * (next_idx - idx - 1);
-            count += next_idx - idx;
-
-            idx = next_idx++;
-            db = next_db;
-            current_maxAmplitude = maxAmplitude;
-
-//                Log.e(TAG, "getNoiseLevel: " + String.format("idx: %d maxAmplitude: %d db: %f", idx, maxAmplitude, db));
-        }
-
-        double rms = Math.sqrt(sum_squared / count);
-        double average_noise_rms = 20 * Math.log10(rms / BASE);
-        double average_noise = (count > 0)? (sum / count) : 0.0;
-
-        Log.e(TAG, String.format("getNoiseLevel: %d sampled, average %fdb", count, average_noise));
-        return average_noise;
-    }
-
-    // get current noise level
-    @RequiresApi(api = Build.VERSION_CODES.N)
-    public CompletableFuture<Double> getNoiseLevel(long length, long period) {
-        return getMaxAmplitudeSequence(length, period).thenApply(seq -> {
-//            int num = combinedSeq.size() / 2;
-//            List<Integer> seq_mic = combinedSeq.subList(0, num);
-//            List<Integer> seq_comm = combinedSeq.subList(num, combinedSeq.size());
-//            Log.e(TAG, "getNoiseLevel: seq number " + num + " combined: " + combinedSeq.size());
-
-//            double db_mic = getAvgNoiseFromSeq(seq_mic);
-//            double db_comm = getAvgNoiseFromSeq(seq_comm);
-//            return Arrays.asList(db_mic, db_comm);
-
-            return getAvgNoiseFromSeq(seq);
-        });
     }
 }

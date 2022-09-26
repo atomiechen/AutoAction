@@ -158,7 +158,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
         volumeManager = new VolumeManager();
 
-        noiseManager = new NoiseManager(this, scheduledExecutorService, futureList,
+        noiseManager = new NoiseManager(this, mContext, scheduledExecutorService, futureList,
                 (AudioCollector) collectorManager.getCollector(CollectorManager.CollectorType.Audio));
 
         deviceManager = new DeviceManager(this, mContext, scheduledExecutorService, futureList);
@@ -546,7 +546,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                             // detect current context
                             if (allFutures == null) {
                                 allFutures = CompletableFuture.allOf(
-                                        noiseManager.detectNoise(5000, 10),
+//                                        noiseManager.detectNoise(5000, 10),
                                         positionManager.scanAndUpdate(),
                                         crowdManager.scanAndUpdate()
                                 );
@@ -818,55 +818,6 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                 contextResult.setTimestamp(timestamp);
                 contextResult.getExtras().putInt("logID", logID);
                 listener.onContext(contextResult);
-            }
-        }
-    }
-
-    private void detectKeyVolume(int keycode) {
-        switch (keycode) {
-            case KeyEvent.KEYCODE_VOLUME_DOWN:
-            case KeyEvent.KEYCODE_VOLUME_MUTE:
-            case KeyEvent.KEYCODE_VOLUME_UP:
-                // detect current noise
-                if (detectedNoiseFt == null) {
-                    detectedNoiseFt = noiseManager.detectNoise(5000, 10);
-                }
-                Log.e(TAG, "Local Context Data: " + String.format("%d,%f,%s,%s,%s,%b,%d",
-                        System.currentTimeMillis(),
-                        noiseManager.getPresentNoise(),
-                        deviceManager.getPresentDeviceID(),
-                        appManager.getPresentApp(),
-                        positionManager.getPresentPosition(),
-                        soundManager.isAudioOn(),
-                        soundManager.getAudioMode()
-                ));
-                List<CrowdManager.BluetoothItem> bluetoothItemList = crowdManager.getBleList();
-                for (CrowdManager.BluetoothItem bluetoothItem: bluetoothItemList) {
-                    Log.e(TAG, bluetoothItem.toString());
-                }
-                Log.e(TAG, "KeyEvent End");
-                tryPopUpFrontend(REASON_MANUAL, 0);
-        }
-    }
-
-    private void detectKeyGesture(int keycode, int keyAction) {
-        if (keycode == KeyEvent.KEYCODE_VOLUME_DOWN && keyAction == KeyEvent.ACTION_DOWN && soundManager.getVolume() == 0) {
-            if (currentMode != MODE_QUIET) {
-                long curKeyDownTime = System.currentTimeMillis();
-                if (keyDownCount == 0) {
-                    keyDownCount = 1;
-                    lastKeyDownTime = curKeyDownTime;
-                } else if (keyDownCount == 1) {
-                    if (curKeyDownTime - lastKeyDownTime <= 500) {  // 500ms
-                        // trigger quiet mode
-                        keyDownCount = 0;
-                        currentMode = MODE_QUIET;
-                        changeToQuietMode(20);
-                    } else {
-                        // duration too long
-                        lastKeyDownTime = curKeyDownTime;
-                    }
-                }
             }
         }
     }
