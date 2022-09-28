@@ -88,13 +88,14 @@ public class MotionManager extends TriggerManager {
                     long offset_in_nano = start_file_time * 1000000 - SystemClock.elapsedRealtimeNanos();
 
                     imuCollector.getData(new TriggerConfig().setImuGetAll(true)).thenCompose(v -> {
-                        v.setEndTimestamp(System.currentTimeMillis());
+                        long end_file_time = System.currentTimeMillis();
+                        long offset_in_nano2 = end_file_time * 1000000 - SystemClock.elapsedRealtimeNanos();
+                        v.setEndTimestamp(end_file_time);
+                        v.getExtras().putLong("offset_in_nano", (offset_in_nano + offset_in_nano2) / 2);
                         return FileSaver.getInstance().writeIMUDataToFile(v, new File(mCurrentFilename));
                     }).thenAccept(v -> {
-                        Bundle extras = new Bundle();
-                        extras.putLong("offset_in_nano", offset_in_nano);
                         // upload current file
-                        volEventListener.upload(mCurrentFilename, start_file_time, v.getEndTimestamp(), "Volume_IMU", "", extras);
+                        volEventListener.upload(mCurrentFilename, start_file_time, v.getEndTimestamp(), "Volume_IMU", "", v.getExtras());
                     }).get();
                 } catch (ExecutionException e) {
                     e.printStackTrace();
