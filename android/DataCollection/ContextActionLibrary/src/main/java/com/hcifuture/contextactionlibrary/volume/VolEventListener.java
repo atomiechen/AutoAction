@@ -20,4 +20,5 @@ public interface VolEventListener {
     void onVolEvent(EventType eventType, Bundle bundle);
     void recordEvent(EventType type, String action, String other);
     boolean upload(String filename, long startTimestamp, long endTimestamp, String name, String commit);
+    boolean upload(String filename, long startTimestamp, long endTimestamp, String name, String commit, Bundle extras);
 }

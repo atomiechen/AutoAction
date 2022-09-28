@@ -943,11 +943,17 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
     @Override
     public boolean upload(String filename, long startTimestamp, long endTimestamp, String name, String commit) {
+        return upload(filename, startTimestamp, endTimestamp, name, commit, null);
+    }
+
+    @Override
+    public boolean upload(String filename, long startTimestamp, long endTimestamp, String name, String commit, Bundle extras) {
         if (uploader != null) {
             CollectorResult collectorResult = new CollectorResult();
             collectorResult.setSavePath(filename);
             collectorResult.setStartTimestamp(startTimestamp);
             collectorResult.setEndTimestamp(endTimestamp);
+            collectorResult.setExtras(extras);
             BaseCollector.upload(uploader, collectorResult, name, commit);
             return true;
         } else {

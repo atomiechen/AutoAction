@@ -5,6 +5,7 @@ import android.hardware.Sensor;
 import android.hardware.SensorManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.util.Log;
 
 import com.hcifuture.contextactionlibrary.sensor.collector.async.IMUCollector;
@@ -84,13 +85,16 @@ public class MotionManager extends TriggerManager {
                     Log.e(TAG, "recording to " + mCurrentFilename);
 
                     long start_file_time = System.currentTimeMillis();
+                    long offset_in_nano = start_file_time * 1000000 - SystemClock.elapsedRealtimeNanos();
 
                     imuCollector.getData(new TriggerConfig().setImuGetAll(true)).thenCompose(v -> {
                         v.setEndTimestamp(System.currentTimeMillis());
                         return FileSaver.getInstance().writeIMUDataToFile(v, new File(mCurrentFilename));
                     }).thenAccept(v -> {
+                        Bundle extras = new Bundle();
+                        extras.putLong("offset_in_nano", offset_in_nano);
                         // upload current file
-                        volEventListener.upload(mCurrentFilename, start_file_time, v.getEndTimestamp(), "Volume_IMU", "");
+                        volEventListener.upload(mCurrentFilename, start_file_time, v.getEndTimestamp(), "Volume_IMU", "", extras);
                     }).get();
                 } catch (ExecutionException e) {
                     e.printStackTrace();
