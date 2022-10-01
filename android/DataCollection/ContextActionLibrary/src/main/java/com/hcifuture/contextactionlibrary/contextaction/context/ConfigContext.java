@@ -294,12 +294,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
     @Override
     public void onNonIMUSensorEvent(NonIMUData data) {
-        if (data.getType() == Sensor.TYPE_STEP_COUNTER) {
-            int curCount = (int)data.getStepCounter();
-            JSONObject json = new JSONObject();
-            JSONUtils.jsonPut(json, "step_count", curCount);
-            recordEvent(EventType.Step, "get_step_counter", json.toString());
-        }
+        motionManager.onNonIMUSensorEvent(data);
     }
 
     @Override

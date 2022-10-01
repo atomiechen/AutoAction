@@ -9,6 +9,8 @@ import android.os.SystemClock;
 import android.util.Log;
 
 import com.hcifuture.contextactionlibrary.sensor.collector.async.IMUCollector;
+import com.hcifuture.contextactionlibrary.sensor.data.IMUData;
+import com.hcifuture.contextactionlibrary.sensor.data.NonIMUData;
 import com.hcifuture.contextactionlibrary.sensor.data.SingleIMUData;
 import com.hcifuture.contextactionlibrary.sensor.trigger.TriggerConfig;
 import com.hcifuture.contextactionlibrary.utils.FileSaver;
@@ -22,6 +24,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -58,6 +61,11 @@ public class MotionManager extends TriggerManager {
     private int mCurrentFileID;
     private final int intervalFile = 30000; // save IMU file every 30s
 
+    private final Object calOffsetLock = new Object();
+    private long offsetInNano;
+    private int samplePoints = 0;
+    private int stableCount = 0;
+
     public MotionManager(VolEventListener volEventListener, Context context, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, IMUCollector imuCollector) {
         super(volEventListener);
         this.scheduledExecutorService = scheduledExecutorService;
@@ -85,17 +93,23 @@ public class MotionManager extends TriggerManager {
                     Log.e(TAG, "recording to " + mCurrentFilename);
 
                     long start_file_time = System.currentTimeMillis();
-                    long offset_in_nano = start_file_time * 1000000 - SystemClock.elapsedRealtimeNanos();
 
                     imuCollector.getData(new TriggerConfig().setImuGetAll(true)).thenCompose(v -> {
                         long end_file_time = System.currentTimeMillis();
-                        long offset_in_nano2 = end_file_time * 1000000 - SystemClock.elapsedRealtimeNanos();
-                        v.setEndTimestamp(end_file_time);
-                        v.getExtras().putLong("offset_in_nano", (offset_in_nano + offset_in_nano2) / 2);
-                        return FileSaver.getInstance().writeIMUDataToFile(v, new File(mCurrentFilename));
-                    }).thenAccept(v -> {
-                        // upload current file
-                        volEventListener.upload(mCurrentFilename, start_file_time, v.getEndTimestamp(), "Volume_IMU", "", v.getExtras());
+                        v.getExtras().putLong("offset_in_nano", getOffsetInNano());
+                        // check if empty file
+                        if (((IMUData) v.getData()).getData().size() > 0) {
+                            return FileSaver.getInstance().writeIMUDataToFile(v, new File(mCurrentFilename)).thenAccept(v1 -> {
+                                // upload current file
+                                volEventListener.upload(mCurrentFilename, start_file_time, end_file_time, "Volume_IMU", "", v.getExtras());
+                            });
+                        } else {
+                            // empty file, reset file ID
+                            mFileIDCounter.getAndDecrement();
+                            // remove file
+                            FileUtils.deleteFile(new File(mCurrentFilename), "");
+                            return CompletableFuture.completedFuture(null);
+                        }
                     }).get();
                 } catch (ExecutionException e) {
                     e.printStackTrace();
@@ -147,6 +161,17 @@ public class MotionManager extends TriggerManager {
             default:
                 break;
         }
+        sampleOffset();
+    }
+
+    public void onNonIMUSensorEvent(NonIMUData data) {
+        if (data.getType() == Sensor.TYPE_STEP_COUNTER) {
+            int curCount = (int)data.getStepCounter();
+            JSONObject json = new JSONObject();
+            JSONUtils.jsonPut(json, "step_count", curCount);
+            volEventListener.recordEvent(VolEventListener.EventType.Step, "get_step_counter", json.toString());
+        }
+        sampleOffset();
     }
 
     private void checkIsStatic(SingleIMUData data) {
@@ -242,6 +267,28 @@ public class MotionManager extends TriggerManager {
             JSONObject json = new JSONObject();
             JSONUtils.jsonPut(json, "gesture", "noGesture");
             volEventListener.recordEvent(VolEventListener.EventType.Motion, "motion_change", json.toString());
+        }
+    }
+
+    public long getOffsetInNano() {
+        return offsetInNano;
+    }
+
+    private void sampleOffset() {
+        if (stableCount < 20) {
+            long offset = System.currentTimeMillis() * 1000000 - SystemClock.elapsedRealtimeNanos();
+            synchronized (calOffsetLock) {
+                samplePoints++;
+                long diff = (offset - offsetInNano) / samplePoints;
+                if (diff != 0) {
+                    offsetInNano += diff;
+                    stableCount = 0;
+                    Log.e(TAG, "sampleOffset: diff offset = " + diff + " sample points = " + samplePoints);
+                } else {
+                    stableCount++;
+                    Log.e(TAG, "sampleOffset: stable offset = " + offsetInNano + " count = " + stableCount);
+                }
+            }
         }
     }
 }
