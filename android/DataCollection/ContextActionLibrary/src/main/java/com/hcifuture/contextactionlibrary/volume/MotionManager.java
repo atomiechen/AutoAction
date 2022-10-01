@@ -62,7 +62,7 @@ public class MotionManager extends TriggerManager {
     private final int intervalFile = 30000; // save IMU file every 30s
 
     private final Object calOffsetLock = new Object();
-    private long offsetInNano;
+    private long offsetInNano = 0;
     private int samplePoints = 0;
     private int stableCount = 0;
 
@@ -169,6 +169,7 @@ public class MotionManager extends TriggerManager {
             int curCount = (int)data.getStepCounter();
             JSONObject json = new JSONObject();
             JSONUtils.jsonPut(json, "step_count", curCount);
+            JSONUtils.jsonPut(json, "sensor_timestamp", data.getTimestamp());
             volEventListener.recordEvent(VolEventListener.EventType.Step, "get_step_counter", json.toString());
         }
         sampleOffset();
@@ -278,15 +279,25 @@ public class MotionManager extends TriggerManager {
         if (stableCount < 20) {
             long offset = System.currentTimeMillis() * 1000000 - SystemClock.elapsedRealtimeNanos();
             synchronized (calOffsetLock) {
-                samplePoints++;
-                long diff = (offset - offsetInNano) / samplePoints;
-                if (diff != 0) {
-                    offsetInNano += diff;
+                long diff_abs = offset - offsetInNano;
+                if (diff_abs > 100000000) {
+                    // if diff too large (> 100ms), reset counter
+                    Log.e(TAG, "sampleOffset: reset counter because diff_abs = " + diff_abs);
+                    offsetInNano = offset;
+                    samplePoints = 1;
                     stableCount = 0;
-                    Log.e(TAG, "sampleOffset: diff offset = " + diff + " sample points = " + samplePoints);
                 } else {
-                    stableCount++;
-                    Log.e(TAG, "sampleOffset: stable offset = " + offsetInNano + " count = " + stableCount);
+                    samplePoints++;
+                    long diff = diff_abs / samplePoints;
+                    if (diff != 0) {
+                        // update offset according to diff
+                        offsetInNano += diff;
+                        stableCount = 0;
+//                        Log.e(TAG, "sampleOffset: diff offset = " + diff + " sample points = " + samplePoints);
+                    } else {
+                        stableCount++;
+                        Log.e(TAG, "sampleOffset: stable offset = " + offsetInNano + " count = " + stableCount + " sample points = " + samplePoints);
+                    }
                 }
             }
         }
