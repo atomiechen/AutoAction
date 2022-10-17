@@ -23,6 +23,7 @@ public class AppManager extends TriggerManager {
     private String appName;
     public static Integer latest_id = -1;
     private String last_appName;
+    private String last_packageName;
     private boolean overlay_has_showed_for_other_reason;
     private String last_valid_widget;
     private boolean wechat_chatting_video_on;
@@ -32,6 +33,7 @@ public class AppManager extends TriggerManager {
         super(volEventListener);
         appName = "";
         last_appName = "";
+        last_packageName = "";
         last_valid_widget = "";
         wechat_chatting_video_on = false;
         overlay_has_showed_for_other_reason = true;
@@ -175,8 +177,16 @@ public class AppManager extends TriggerManager {
         if (event.getText() != null && event.getText().size() > 0 && event.getText().get(0) != null) {
             String tmp_name = event.getText().get(0).toString();
             String packageName = "";
-            if (event.getPackageName() != null)
+            if (event.getPackageName() != null) {
                 packageName = event.getPackageName().toString();
+                if (last_packageName != null && !packageName.equals(last_packageName)) {
+                    JSONObject json = new JSONObject();
+                    JSONUtils.jsonPut(json, "last_package", last_packageName);
+                    JSONUtils.jsonPut(json, "new_package", packageName);
+                    volEventListener.recordEvent(VolEventListener.EventType.App, "package_change", json.toString());
+                    last_packageName = packageName;
+                }
+            }
             if (isNeedOverlayApp(tmp_name, packageName) || isNotNeedOverlayApp(tmp_name, packageName)) {
                 appName = tmp_name;
                 if (findByAppName(need_overlay_apps, appName) != null)
