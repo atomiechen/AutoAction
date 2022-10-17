@@ -4,6 +4,7 @@ import android.content.Context;
 import android.media.AudioManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 
 import androidx.annotation.RequiresApi;
 
@@ -23,6 +24,7 @@ import java.io.File;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +32,7 @@ import java.util.stream.Collectors;
 
 @RequiresApi(api = Build.VERSION_CODES.N)
 public class DataUtils {
+    public final String TAG = "DataUtils";
     private Context mContext;
     private List<Reason> reasonList;
     private Map<Reason, List<Dataset.Sample>> map;
@@ -54,8 +57,11 @@ public class DataUtils {
         return reasonList;
     }
 
-    public List<String> getReasonStringList() {
-        return reasonList.stream().map(Reason::getName).collect(Collectors.toList());
+    public List<String> getReasonStringList(int num) {
+        int list_length = Math.min(reasonList.size(), num);
+        List<String> temp = reasonList.subList(reasonList.size() - list_length, reasonList.size()).stream().map(Reason::getName).collect(Collectors.toList());
+        Collections.reverse(temp);
+        return temp;
     }
 
     public void setReasonList(List<Reason> reasonList) {
@@ -121,6 +127,19 @@ public class DataUtils {
             }
         }
         return null;
+    }
+
+    public void updateReasonList(String name) {
+        if (name != null && reasonList != null) {
+            for (int i = 0; i < reasonList.size(); i++) {
+                if (reasonList.get(i).getName().equals(name)) {
+                    Reason reason = new Reason(reasonList.get(i).getId(), name);
+                    reasonList.remove(i);
+                    addReason(reason);
+                    break;
+                }
+            }
+        }
     }
 
     public static List<Dataset.Sample> getSamplesForReason(Reason reason) {

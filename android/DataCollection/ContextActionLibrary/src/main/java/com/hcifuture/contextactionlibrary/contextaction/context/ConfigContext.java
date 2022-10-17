@@ -568,7 +568,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                             }
                             Bundle bundle1 = new Bundle();
                             bundle1.putInt("event", CONTEXT_EVENT_REASONS);
-                            bundle1.putStringArrayList("factors", new ArrayList<>(dataUtils.getReasonStringList()));
+                            bundle1.putStringArrayList("factors", new ArrayList<>(dataUtils.getReasonStringList(10)));
                             notifyFrontend(CONTEXT_VOLUME, bundle1);
                         }
                     } else {
@@ -618,6 +618,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                             ArrayList<String> factors = bundle.getStringArrayList("factors");
                             String newFactor = bundle.getString("newFactor");
                             keyFactor = bundle.getString("keyFactor");
+                            dataUtils.updateReasonList(keyFactor);
                             int behavior = bundle.getInt("behavior");
                             if (behavior == 0) {
                                 recordEvent(EventType.FrontEnd, "volume_adjust_without_choosing_reason", "");
