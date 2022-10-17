@@ -130,15 +130,15 @@ public class MotionManager extends TriggerManager {
         super.stop();
     }
 
-    @Override
-    public void pause() {
-
-    }
-
-    @Override
-    public void resume() {
-
-    }
+//    @Override
+//    public void pause() {
+//
+//    }
+//
+//    @Override
+//    public void resume() {
+//
+//    }
 
     public void onIMUSensorEvent(SingleIMUData data) {
         switch (data.getType()) {
@@ -293,7 +293,7 @@ public class MotionManager extends TriggerManager {
 //                    Log.e(TAG, "sampleOffset: diff offset = " + diff + " sample points = " + samplePoints);
             } else {
                 stableCount++;
-                Log.e(TAG, "sampleOffset: stable offset = " + offsetInNano + " count = " + stableCount + " sample points = " + samplePoints);
+//                Log.e(TAG, "sampleOffset: stable offset = " + offsetInNano + " count = " + stableCount + " sample points = " + samplePoints);
             }
         }
     }
