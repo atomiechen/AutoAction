@@ -101,6 +101,12 @@ public class MotionManager extends TriggerManager {
                             return FileSaver.getInstance().writeIMUDataToFile(v, new File(mCurrentFilename)).thenAccept(v1 -> {
                                 // upload current file
                                 volEventListener.upload(mCurrentFilename, start_file_time, end_file_time, "Volume_IMU", "", v.getExtras());
+                                JSONObject json = new JSONObject();
+                                JSONUtils.jsonPut(json, "imu_filename", mCurrentFilename);
+                                JSONUtils.jsonPut(json, "imu_file_start_time", start_file_time);
+                                JSONUtils.jsonPut(json, "imu_file_end_time", end_file_time);
+                                JSONUtils.jsonPut(json, "imu_file_offset_in_nano", v.getExtras().getLong("offset_in_nano"));
+                                volEventListener.recordEvent(VolEventListener.EventType.IMU, "imu_upload", json.toString());
                             });
                         } else {
                             // empty file, reset file ID

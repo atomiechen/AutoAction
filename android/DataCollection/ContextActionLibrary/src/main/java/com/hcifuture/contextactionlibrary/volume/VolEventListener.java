@@ -14,7 +14,8 @@ public interface VolEventListener {
         Time,
         Crowd,
         FrontEnd,
-        Step
+        Step,
+        IMU
     }
 
     void onVolEvent(EventType eventType, Bundle bundle);
