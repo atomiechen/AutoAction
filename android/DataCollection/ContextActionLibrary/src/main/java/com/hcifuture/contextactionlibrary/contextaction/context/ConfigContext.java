@@ -636,6 +636,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                             context.putLong("time", System.currentTimeMillis());
                             context.putDouble("audio", SoundManager.SYSTEM_VOLUME);
                             context.putString("app", appManager.getPresentApp());
+                            context.putString("package", appManager.getPresentPackage());
                             context.putString("device", deviceManager.getPresentDeviceID());
                             context.putDouble("noise", noiseManager.getPresentNoise());
                             context.putString("position", positionManager.getPresentPosition());
