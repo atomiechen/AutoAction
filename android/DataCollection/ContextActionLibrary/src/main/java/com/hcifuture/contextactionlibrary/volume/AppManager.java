@@ -286,6 +286,9 @@ public class AppManager extends TriggerManager {
     public String getPresentApp() {
         return appName;
     }
+    public String getPresentPackage() {
+        return last_packageName;
+    }
 
     public List<String> getAppList() {
         List<String> result = new ArrayList<>();
