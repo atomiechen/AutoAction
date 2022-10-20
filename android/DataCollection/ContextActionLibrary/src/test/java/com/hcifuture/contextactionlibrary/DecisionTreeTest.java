@@ -28,7 +28,7 @@ public class DecisionTreeTest {
         dataset.addSample(1, new Object[]{1,4,3});
 
         tree.train(dataset);
-        int prediction = tree.predict(new Object[]{3,3,5});
+        int prediction = tree.predict(new Object[]{1,3,5});
 
         // print dataset
         System.out.println(Model.gson.toJson(dataset));

@@ -15,7 +15,7 @@ public class DecisionTree extends Model {
     static class TreeNode {
         Map<Dataset.FeatureValue, TreeNode> branches;
         Dataset.Feature feature;
-        Integer label = null;
+        Integer label = Dataset.LABEL_INVALID;
     }
 
     TreeNode root = new TreeNode();
@@ -61,9 +61,8 @@ public class DecisionTree extends Model {
                 rootNode.branches.put(value, subNode);
                 genTree(subNode, newDataset);
             }
-        } else {
-            // Should not happen
-            rootNode.label = Dataset.LABEL_INVALID;
+            // determine this node's label if encountering unseen feature value
+            rootNode.label = getMajorityLabel(dataset);
         }
     }
 
@@ -221,12 +220,14 @@ public class DecisionTree extends Model {
         if (trained) {
             TreeNode currentNode = root;
             while (true) {
-                if (currentNode.branches == null) {
+                TreeNode newNode;
+                if (currentNode.branches == null || (newNode = currentNode.branches.get(sample.getValue(currentNode.feature))) == null) {
                     // leaf node
                     return currentNode.label;
+                } else {
+                    // go to child node
+                    currentNode = newNode;
                 }
-                // go to child node
-                currentNode = currentNode.branches.get(sample.getValue(currentNode.feature));
             }
         } else {
             return Dataset.LABEL_INVALID;
