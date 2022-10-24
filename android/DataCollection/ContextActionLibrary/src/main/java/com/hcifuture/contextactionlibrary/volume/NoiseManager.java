@@ -94,8 +94,7 @@ public class NoiseManager extends TriggerManager {
 
             while (true) {
                 try {
-                    // update file ID
-                    mCurrentFileID = mFileIDCounter.getAndIncrement();
+                    mCurrentFileID = mFileIDCounter.get();
                     String dateTime = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
                     mCurrentFilename = FILE_DIR + "Mic_" + dateTime + "_" + mCurrentFileID + ".aac";
                     long start_file_time = System.currentTimeMillis();
@@ -109,10 +108,10 @@ public class NoiseManager extends TriggerManager {
                     // upload current file
                     long cur_time = System.currentTimeMillis();
                     volEventListener.upload(mCurrentFilename, start_file_time, cur_time, "Volume_MicAudio", "");
+                    // update file ID
+                    mFileIDCounter.getAndIncrement();
                 } catch (ExecutionException e) {
                     e.printStackTrace();
-                    // error happens, reset file ID
-                    mFileIDCounter.getAndDecrement();
                     // wait 2s to try again
                     Thread.sleep(2000);
                 }
