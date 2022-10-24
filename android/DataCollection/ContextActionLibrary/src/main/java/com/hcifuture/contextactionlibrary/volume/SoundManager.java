@@ -304,18 +304,20 @@ public class SoundManager extends TriggerManager {
                             if (maxValInFile == 0) {
                                 // no data in file, no need to upload
                                 FileUtils.deleteFile(new File(mCurrentFilename), "");
-                                // reset file ID
-                                mFileIDCounter.getAndDecrement();
+//                                // reset file ID
+//                                mFileIDCounter.getAndDecrement();
                             } else {
                                 // upload current file
                                 volEventListener.upload(mCurrentFilename, last_file_time, cur_time, "Volume_SystemAudio", "");
+                                // update file ID
+                                mFileIDCounter.getAndIncrement();
                             }
                             maxValInFile = 0;
                         }
                         // create a new file
                         String dateTime = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
                         // update file ID
-                        mCurrentFileID = mFileIDCounter.getAndIncrement();
+                        mCurrentFileID = mFileIDCounter.get();
                         mCurrentFilename = AUDIO_DIR + "SystemAudio_" + dateTime + "_" + mCurrentFileID + ".aac";
                         FileUtils.makeFile(new File(mCurrentFilename));
                         fos = new FileOutputStream(mCurrentFilename);
@@ -387,6 +389,12 @@ public class SoundManager extends TriggerManager {
             audioCaptureThreadOn.set(false);
             while (!recordingFt.isDone()) {}
             recordingFt = null;
+        }
+        // remove last file
+        try {
+            FileUtils.deleteFile(new File(mCurrentFilename), "");
+        } catch (Exception e) {
+            e.printStackTrace();
         }
         if (audioRecord != null) {
             try {

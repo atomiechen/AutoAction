@@ -85,8 +85,7 @@ public class MotionManager extends TriggerManager {
                 try {
                     Thread.sleep(intervalFile);
 
-                    // update file ID
-                    mCurrentFileID = mFileIDCounter.getAndIncrement();
+                    mCurrentFileID = mFileIDCounter.get();
                     String dateTime = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
                     mCurrentFilename = FILE_DIR + "IMU_" + dateTime + "_" + mCurrentFileID + ".bin";
                     Log.e(TAG, "recording to " + mCurrentFilename);
@@ -107,19 +106,15 @@ public class MotionManager extends TriggerManager {
                                 JSONUtils.jsonPut(json, "imu_file_end_time", end_file_time);
                                 JSONUtils.jsonPut(json, "imu_file_offset_in_nano", v.getExtras().getLong("offset_in_nano"));
                                 volEventListener.recordEvent(VolEventListener.EventType.IMU, "imu_upload", json.toString());
+                                // update file ID
+                                mFileIDCounter.getAndIncrement();
                             });
                         } else {
-                            // empty file, reset file ID
-                            mFileIDCounter.getAndDecrement();
-                            // remove file
-                            FileUtils.deleteFile(new File(mCurrentFilename), "");
                             return CompletableFuture.completedFuture(null);
                         }
                     }).get();
                 } catch (ExecutionException e) {
                     e.printStackTrace();
-                    // error happens, reset file ID
-                    mFileIDCounter.getAndDecrement();
                     // remove file
                     FileUtils.deleteFile(new File(mCurrentFilename), "");
                 }
@@ -132,6 +127,13 @@ public class MotionManager extends TriggerManager {
     public void stop() {
         if (scheduledIMU != null) {
             scheduledIMU.cancel(true);
+            scheduledIMU = null;
+        }
+        // remove last file
+        try {
+            FileUtils.deleteFile(new File(mCurrentFilename), "");
+        } catch (Exception e) {
+            e.printStackTrace();
         }
         super.stop();
     }
