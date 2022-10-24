@@ -745,6 +745,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
     private void record(long timestamp, int logID, String type, String action, String tag, String other) {
         if (logCollector == null) {
+            Log.e(TAG, type + " " + action + " failed because of null log collector");
             return;
         }
 
