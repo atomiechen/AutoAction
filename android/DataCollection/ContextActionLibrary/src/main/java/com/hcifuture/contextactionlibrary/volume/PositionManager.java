@@ -49,6 +49,7 @@ public class PositionManager extends TriggerManager {
     private WifiCollector wifiCollector;
 
     private ScheduledFuture<?> scheduledPositionDetection;
+    private ScheduledFuture<?> scheduledPositionListLog;
     private long initialDelay = 0;
     private long period = 1000 * 15;  // detect position every 15s
     private List<Position> positions;
@@ -59,6 +60,7 @@ public class PositionManager extends TriggerManager {
     @RequiresApi(api = Build.VERSION_CODES.N)
     public PositionManager(VolEventListener volEventListener, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, GPSCollector gpsCollector, WifiCollector wifiCollector) {
         super(volEventListener);
+        this.volEventListener = volEventListener;
         this.scheduledExecutorService = scheduledExecutorService;
         this.futureList = futureList;
         this.gpsCollector = gpsCollector;
@@ -119,6 +121,19 @@ public class PositionManager extends TriggerManager {
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
+    public void writePositionsToLog() {
+        Log.e(TAG, "start to write positions to log");
+        String result = Collector.gson.toJson(positions);
+        Log.e(TAG, "Position List: " + result);
+        String result2 = Collector.gson.toJson(history);
+        Log.e(TAG, "History List: " + result);
+        JSONObject json = new JSONObject();
+        JSONUtils.jsonPut(json, "positions", result);
+        JSONUtils.jsonPut(json, "position_history", result2);
+        volEventListener.recordEvent(VolEventListener.EventType.Position, "position_list", json.toString());
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.N)
     public List<HistoryItem> getPositionHistoryFromFile() {
         Type type = new TypeToken<List<HistoryItem>>(){}.getType();
         List<HistoryItem> result = Collector.gson.fromJson(
@@ -176,12 +191,19 @@ public class PositionManager extends TriggerManager {
             scanAndUpdate();
         }, initialDelay, period, TimeUnit.MILLISECONDS);
         futureList.add(scheduledPositionDetection);
+        scheduledPositionListLog = scheduledExecutorService.scheduleAtFixedRate(() -> {
+            writePositionsToLog();
+        }, 5000, 4 * 3600 * 1000, TimeUnit.MILLISECONDS);
+        futureList.add(scheduledPositionListLog);
     }
 
     @Override
     public void stop() {
         if (scheduledPositionDetection != null) {
             scheduledPositionDetection.cancel(true);
+        }
+        if (scheduledPositionListLog != null) {
+            scheduledPositionListLog.cancel(true);
         }
     }
 
