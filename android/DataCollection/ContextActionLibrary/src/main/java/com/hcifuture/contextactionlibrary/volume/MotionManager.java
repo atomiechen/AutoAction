@@ -79,48 +79,50 @@ public class MotionManager extends TriggerManager {
     @Override
     public void start() {
         super.start();
-        scheduledIMU = scheduledExecutorService.schedule(() -> {
-            // periodically record IMU data
-            while (true) {
-                try {
-                    Thread.sleep(intervalFile);
+        if (scheduledIMU == null) {
+            scheduledIMU = scheduledExecutorService.schedule(() -> {
+                // periodically record IMU data
+                while (true) {
+                    try {
+                        Thread.sleep(intervalFile);
 
-                    mCurrentFileID = mFileIDCounter.get();
-                    String dateTime = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
-                    mCurrentFilename = FILE_DIR + "IMU_" + dateTime + "_" + mCurrentFileID + ".bin";
-                    Log.e(TAG, "recording to " + mCurrentFilename);
+                        mCurrentFileID = mFileIDCounter.get();
+                        String dateTime = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
+                        mCurrentFilename = FILE_DIR + "IMU_" + dateTime + "_" + mCurrentFileID + ".bin";
+                        Log.e(TAG, "recording to " + mCurrentFilename);
 
-                    long start_file_time = System.currentTimeMillis();
+                        long start_file_time = System.currentTimeMillis();
 
-                    imuCollector.getData(new TriggerConfig().setImuGetAll(true)).thenCompose(v -> {
-                        long end_file_time = System.currentTimeMillis();
-                        v.getExtras().putLong("offset_in_nano", getOffsetInNano());
-                        // check if empty file
-                        if (((IMUData) v.getData()).getData().size() > 0) {
-                            return FileSaver.getInstance().writeIMUDataToFile(v, new File(mCurrentFilename)).thenAccept(v1 -> {
-                                // upload current file
-                                volEventListener.upload(mCurrentFilename, start_file_time, end_file_time, "Volume_IMU", "", v.getExtras());
-                                JSONObject json = new JSONObject();
-                                JSONUtils.jsonPut(json, "imu_filename", mCurrentFilename);
-                                JSONUtils.jsonPut(json, "imu_file_start_time", start_file_time);
-                                JSONUtils.jsonPut(json, "imu_file_end_time", end_file_time);
-                                JSONUtils.jsonPut(json, "imu_file_offset_in_nano", v.getExtras().getLong("offset_in_nano"));
-                                volEventListener.recordEvent(VolEventListener.EventType.IMU, "imu_upload", json.toString());
-                                // update file ID
-                                mFileIDCounter.getAndIncrement();
-                            });
-                        } else {
-                            return CompletableFuture.completedFuture(null);
-                        }
-                    }).get();
-                } catch (ExecutionException e) {
-                    e.printStackTrace();
-                    // remove file
-                    FileUtils.deleteFile(new File(mCurrentFilename), "");
+                        imuCollector.getData(new TriggerConfig().setImuGetAll(true)).thenCompose(v -> {
+                            long end_file_time = System.currentTimeMillis();
+                            v.getExtras().putLong("offset_in_nano", getOffsetInNano());
+                            // check if empty file
+                            if (((IMUData) v.getData()).getData().size() > 0) {
+                                return FileSaver.getInstance().writeIMUDataToFile(v, new File(mCurrentFilename)).thenAccept(v1 -> {
+                                    // upload current file
+                                    volEventListener.upload(mCurrentFilename, start_file_time, end_file_time, "Volume_IMU", "", v.getExtras());
+                                    JSONObject json = new JSONObject();
+                                    JSONUtils.jsonPut(json, "imu_filename", mCurrentFilename);
+                                    JSONUtils.jsonPut(json, "imu_file_start_time", start_file_time);
+                                    JSONUtils.jsonPut(json, "imu_file_end_time", end_file_time);
+                                    JSONUtils.jsonPut(json, "imu_file_offset_in_nano", v.getExtras().getLong("offset_in_nano"));
+                                    volEventListener.recordEvent(VolEventListener.EventType.IMU, "imu_upload", json.toString());
+                                    // update file ID
+                                    mFileIDCounter.getAndIncrement();
+                                });
+                            } else {
+                                return CompletableFuture.completedFuture(null);
+                            }
+                        }).get();
+                    } catch (ExecutionException e) {
+                        e.printStackTrace();
+                        // remove file
+                        FileUtils.deleteFile(new File(mCurrentFilename), "");
+                    }
                 }
-            }
-        }, 0, TimeUnit.MILLISECONDS);
-        futureList.add(scheduledIMU);
+            }, 0, TimeUnit.MILLISECONDS);
+            futureList.add(scheduledIMU);
+        }
     }
 
     @Override

@@ -157,6 +157,7 @@ public class CrowdManager extends TriggerManager {
     public void pause() {
         if (scheduledPhoneDetection != null) {
             scheduledPhoneDetection.cancel(true);
+            scheduledPhoneDetection = null;
         }
     }
 
@@ -165,10 +166,12 @@ public class CrowdManager extends TriggerManager {
     public void resume() {
         // detect phones periodically
         Log.e(TAG, "schedule periodic phones detection");
-        scheduledPhoneDetection = scheduledExecutorService.scheduleAtFixedRate(() -> {
-            scanAndUpdate();
-        }, initialDelay, period, TimeUnit.MILLISECONDS);
-        futureList.add(scheduledPhoneDetection);
+        if (scheduledPhoneDetection == null) {
+            scheduledPhoneDetection = scheduledExecutorService.scheduleAtFixedRate(() -> {
+                scanAndUpdate();
+            }, initialDelay, period, TimeUnit.MILLISECONDS);
+            futureList.add(scheduledPhoneDetection);
+        }
     }
 
     public static List<String> blItemList2StringList(List<BluetoothItem> list) {

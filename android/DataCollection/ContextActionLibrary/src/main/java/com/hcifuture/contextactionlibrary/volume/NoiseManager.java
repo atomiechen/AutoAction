@@ -68,65 +68,72 @@ public class NoiseManager extends TriggerManager {
     public void start() {
         // periodically save audio files
         Log.e(TAG, "schedule periodic noise detection");
-        scheduledSaveFile = scheduledExecutorService.schedule(() -> {
-            // periodically sample max amplitude values every "samplePeriod"
-            // and detect noise every "intervalDetection"
-            List<Integer> sampledNoise_mic = new ArrayList<>();
-            AtomicLong start_time = new AtomicLong(System.currentTimeMillis());
-            scheduledNoiseDetection = scheduledExecutorService.scheduleAtFixedRate(() -> {
-                long cur_time = System.currentTimeMillis();
-                int maxAmplitude = audioCollector.getMaxAmplitude();
-                if (maxAmplitude >= 0) {
-                    sampledNoise_mic.add(maxAmplitude);
+        if (scheduledSaveFile == null) {
+            scheduledSaveFile = scheduledExecutorService.schedule(() -> {
+
+                if (scheduledNoiseDetection == null) {
+                    // periodically sample max amplitude values every "samplePeriod"
+                    // and detect noise every "intervalDetection"
+                    List<Integer> sampledNoise_mic = new ArrayList<>();
+                    AtomicLong start_time = new AtomicLong(System.currentTimeMillis());
+                    scheduledNoiseDetection = scheduledExecutorService.scheduleAtFixedRate(() -> {
+                        long cur_time = System.currentTimeMillis();
+                        int maxAmplitude = audioCollector.getMaxAmplitude();
+                        if (maxAmplitude >= 0) {
+                            sampledNoise_mic.add(maxAmplitude);
+                        }
+                        if (cur_time - start_time.get() >= intervalDetection) {
+                            try {
+                                double noise = getAvgNoiseFromSeq(sampledNoise_mic);
+                                updateNoise(noise, true);
+                            } catch (Exception e) {
+                            } finally {
+                                sampledNoise_mic.clear();
+                                start_time.set(cur_time);
+                            }
+                        }
+                    }, samplePeriod, samplePeriod, TimeUnit.MILLISECONDS);
+                    futureList.add(scheduledNoiseDetection);
                 }
-                if (cur_time - start_time.get() >= intervalDetection) {
+
+                while (true) {
                     try {
-                        double noise = getAvgNoiseFromSeq(sampledNoise_mic);
-                        updateNoise(noise, true);
-                    } catch (Exception e) {
-                    } finally {
-                        sampledNoise_mic.clear();
-                        start_time.set(cur_time);
+                        mCurrentFileID = mFileIDCounter.get();
+                        String dateTime = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
+                        mCurrentFilename = FILE_DIR + "Mic_" + dateTime + "_" + mCurrentFileID + ".aac";
+                        long start_file_time = System.currentTimeMillis();
+
+                        Log.e(TAG, "start recording to " + mCurrentFilename);
+
+                        // record audio to file
+                        audioCollector.getData(new TriggerConfig()
+                                .setAudioLength(intervalFile).setAudioFilename(mCurrentFilename)).get();
+
+                        // upload current file
+                        long cur_time = System.currentTimeMillis();
+                        volEventListener.upload(mCurrentFilename, start_file_time, cur_time, "Volume_MicAudio", "");
+                        // update file ID
+                        mFileIDCounter.getAndIncrement();
+                    } catch (ExecutionException e) {
+                        e.printStackTrace();
+                        // wait 2s to try again
+                        Thread.sleep(2000);
                     }
                 }
-            }, samplePeriod, samplePeriod, TimeUnit.MILLISECONDS);
-            futureList.add(scheduledNoiseDetection);
-
-            while (true) {
-                try {
-                    mCurrentFileID = mFileIDCounter.get();
-                    String dateTime = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
-                    mCurrentFilename = FILE_DIR + "Mic_" + dateTime + "_" + mCurrentFileID + ".aac";
-                    long start_file_time = System.currentTimeMillis();
-
-                    Log.e(TAG, "start recording to " + mCurrentFilename);
-
-                    // record audio to file
-                    audioCollector.getData(new TriggerConfig()
-                            .setAudioLength(intervalFile).setAudioFilename(mCurrentFilename)).get();
-
-                    // upload current file
-                    long cur_time = System.currentTimeMillis();
-                    volEventListener.upload(mCurrentFilename, start_file_time, cur_time, "Volume_MicAudio", "");
-                    // update file ID
-                    mFileIDCounter.getAndIncrement();
-                } catch (ExecutionException e) {
-                    e.printStackTrace();
-                    // wait 2s to try again
-                    Thread.sleep(2000);
-                }
-            }
-        }, initialDelay, TimeUnit.MILLISECONDS);
-        futureList.add(scheduledSaveFile);
+            }, initialDelay, TimeUnit.MILLISECONDS);
+            futureList.add(scheduledSaveFile);
+        }
     }
 
     @Override
     public void stop() {
         if (scheduledNoiseDetection != null) {
             scheduledNoiseDetection.cancel(true);
+            scheduledNoiseDetection = null;
         }
         if (scheduledSaveFile != null) {
             scheduledSaveFile.cancel(true);
+            scheduledSaveFile = null;
         }
     }
 

@@ -187,23 +187,29 @@ public class PositionManager extends TriggerManager {
     public void start() {
         // detect position periodically
         Log.e(TAG, "schedule periodic position detection");
-        scheduledPositionDetection = scheduledExecutorService.scheduleAtFixedRate(() -> {
-            scanAndUpdate();
-        }, initialDelay, period, TimeUnit.MILLISECONDS);
-        futureList.add(scheduledPositionDetection);
-        scheduledPositionListLog = scheduledExecutorService.scheduleAtFixedRate(() -> {
-            writePositionsToLog();
-        }, 5000, 4 * 3600 * 1000, TimeUnit.MILLISECONDS);
-        futureList.add(scheduledPositionListLog);
+        if (scheduledPositionDetection == null) {
+            scheduledPositionDetection = scheduledExecutorService.scheduleAtFixedRate(() -> {
+                scanAndUpdate();
+            }, initialDelay, period, TimeUnit.MILLISECONDS);
+            futureList.add(scheduledPositionDetection);
+        }
+        if (scheduledPositionListLog == null) {
+            scheduledPositionListLog = scheduledExecutorService.scheduleAtFixedRate(() -> {
+                writePositionsToLog();
+            }, 5000, 4 * 3600 * 1000, TimeUnit.MILLISECONDS);
+            futureList.add(scheduledPositionListLog);
+        }
     }
 
     @Override
     public void stop() {
         if (scheduledPositionDetection != null) {
             scheduledPositionDetection.cancel(true);
+            scheduledPositionDetection = null;
         }
         if (scheduledPositionListLog != null) {
             scheduledPositionListLog.cancel(true);
+            scheduledPositionListLog = null;
         }
     }
 

@@ -170,13 +170,18 @@ public class DeviceManager extends TriggerManager {
 
         setPresentDevice(genDevice(getCurrentRouteInfo()));
 
-        futureList.add(scheduledDeviceDetection = scheduledExecutorService.scheduleAtFixedRate(this::checkDevice, 3000, 60000, TimeUnit.MILLISECONDS));
+        if (scheduledDeviceDetection == null) {
+            futureList.add(scheduledDeviceDetection = scheduledExecutorService.scheduleAtFixedRate(this::checkDevice, 3000, 60000, TimeUnit.MILLISECONDS));
+        }
     }
 
     @Override
     public void stop() {
 //        audioManager.unregisterAudioDeviceCallback(audioDeviceCallback);
-        scheduledDeviceDetection.cancel(true);
+        if (scheduledDeviceDetection != null) {
+            scheduledDeviceDetection.cancel(true);
+            scheduledDeviceDetection = null;
+        }
         try {
             context.unregisterReceiver(broadcastReceiver);
         } catch (Exception e) {
