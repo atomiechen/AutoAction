@@ -17,6 +17,7 @@ import android.view.Display;
 import android.view.KeyEvent;
 import android.view.accessibility.AccessibilityEvent;
 
+import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.hcifuture.contextactionlibrary.contextaction.collect.BaseCollector;
 import com.hcifuture.contextactionlibrary.sensor.collector.Collector;
@@ -39,6 +40,7 @@ import com.hcifuture.contextactionlibrary.volume.DeviceManager;
 import com.hcifuture.contextactionlibrary.volume.MotionManager;
 import com.hcifuture.contextactionlibrary.volume.Position;
 import com.hcifuture.contextactionlibrary.volume.PositionManager;
+import com.hcifuture.contextactionlibrary.volume.SocketManager;
 import com.hcifuture.contextactionlibrary.volume.SoundManager;
 import com.hcifuture.contextactionlibrary.volume.TimeManager;
 import com.hcifuture.contextactionlibrary.volume.VolEventListener;
@@ -86,7 +88,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     public static String VOLUME_SAVE_FOLDER;
     public static String FILE_TMP_DATA = "tmp_data.csv";
     public static String FILE_CONTEXT_MAP = "context2fid.json";
-    
+
     public static String NEED_AUDIO = "context.config.need_audio";
     public static String NEED_NONIMU = "context.config.need_nonimu";
     public static String NEED_SCAN = "context.config.need_scan";
@@ -139,6 +141,8 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     private final MotionManager motionManager;
     private final TimeManager timeManager;
 
+    private final SocketManager socketManager;
+
     private final DataUtils dataUtils;
 
     private final VolumeManager volumeManager;
@@ -154,6 +158,22 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         super(context, config, requestListener, contextListener, scheduledExecutorService, futureList);
 
         VOLUME_SAVE_FOLDER = context.getExternalMediaDirs()[0].getAbsolutePath() + "/Data/Volume/";
+
+        socketManager = new SocketManager();
+        socketManager.connect();
+        socketManager.addMessageListener(new SocketManager.OnMessageReceivedListener() {
+            @Override
+            public void onMessageReceived(String message) {
+                if ("context_event".equals(message)) {
+                    // 获取当前情境数据的代码
+                    VolumeContext volumeContext = getPresentContext();
+                    // 将情境数据发送回服务器
+                    Gson gson = new Gson();
+                    String contextJson = gson.toJson(volumeContext);
+                    socketManager.sendMessage(contextJson);
+                }
+            }
+        });
 
         volumeRuleManager = new VolumeRuleManager();
 
@@ -221,6 +241,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     @Override
     public void start() {
         record_all("start");
+        socketManager.connect();
         appManager.start();
         noiseManager.start();
         deviceManager.start();
@@ -242,6 +263,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         // do not perform record_all() in stop(),
         // it may cause crashes when frequently called
 
+        socketManager.disconnect();
         motionManager.stop();
         soundManager.stop();
         crowdManager.stop();
@@ -258,6 +280,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         // do not perform record_all() in pause(),
         // it may cause crashes when frequently called
 
+        socketManager.disconnect();
         motionManager.pause();
         soundManager.pause();
         crowdManager.pause();
@@ -272,6 +295,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     @Override
     public void resume() {
         record_all("resume");
+        socketManager.connect();
         appManager.resume();
         noiseManager.resume();
         deviceManager.resume();
@@ -328,7 +352,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
             longitude = curPos.getLongitude();
             wifiIds = curPos.getWifiIds();
         }
-        
+
         double noise = noiseManager.getPresentNoise();
 //        try {
 //            // length: 300 is ok, 200 is not
@@ -563,7 +587,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                                     soundManager.getAudioMode()
                             ));
                             List<CrowdManager.BluetoothItem> bluetoothItemList = crowdManager.getBleList();
-                            for (CrowdManager.BluetoothItem bluetoothItem: bluetoothItemList) {
+                            for (CrowdManager.BluetoothItem bluetoothItem : bluetoothItemList) {
                                 Log.e(TAG, bluetoothItem.toString());
                             }
                             Bundle bundle1 = new Bundle();
@@ -666,7 +690,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                     }
                     break;
                 case EVENT_QUIETMODE:
-                    currentMode = bundle.getBoolean("quietMode")? MODE_QUIET : MODE_NORMAL;
+                    currentMode = bundle.getBoolean("quietMode") ? MODE_QUIET : MODE_NORMAL;
                     Log.e(TAG, "onExternalEvent: quiet mode changed to " + currentMode);
                     break;
                 case EVENT_CAPTURE_PERMISSION:
@@ -686,7 +710,8 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     }
 
     public void readContextMap() {
-        Type type = new TypeToken<Map<String, String>>(){}.getType();
+        Type type = new TypeToken<Map<String, String>>() {
+        }.getType();
         context2FID = Collector.gson.fromJson(
                 FileUtils.getFileContent(ConfigContext.VOLUME_SAVE_FOLDER + FILE_CONTEXT_MAP),
                 type
@@ -817,7 +842,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     private void notifyContext(String context, long timestamp, int logID, String reason) {
         if (contextListener != null) {
             Log.e("ConfigContext", "broadcast context: " + context);
-            for (ContextListener listener: contextListener) {
+            for (ContextListener listener : contextListener) {
                 ContextResult contextResult = new ContextResult(context, reason);
                 contextResult.setTimestamp(timestamp);
                 contextResult.getExtras().putInt("logID", logID);
@@ -867,7 +892,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
             // map noise to volume and adjust
 //            double adjustedVolume = fakeMapping(noise);
             double adjustedVolume = volumeManager.predict(getCurrentFID(), noise);
-            Log.e(TAG, "onVolEvent: noise = " + noise +  " adjust volume = " + adjustedVolume);
+            Log.e(TAG, "onVolEvent: noise = " + noise + " adjust volume = " + adjustedVolume);
             // do not adjust, if:
             // (1) new context (no data yet), adjustedVolume = -1
             // (2) the predicted volume is the same as current volume
@@ -925,7 +950,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
     private void notifyFrontend(String context, Bundle bundle) {
         if (contextListener != null) {
-            for (ContextListener listener: contextListener) {
+            for (ContextListener listener : contextListener) {
                 ContextResult contextResult = new ContextResult(context, "");
                 contextResult.setTimestamp(System.currentTimeMillis());
                 contextResult.setExtras(bundle);

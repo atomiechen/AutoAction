@@ -68,4 +68,7 @@ dependencies {
     api 'com.amap.api:search:latest.integration'
     implementation "com.google.guava:guava:31.0.1-android"
     implementation 'com.google.firebase:firebase-crashlytics-buildtools:2.9.0'
+    implementation ('io.socket:socket.io-client:2.0.0') {
+        exclude group: 'org.json', module: 'json'
+    }
 }
