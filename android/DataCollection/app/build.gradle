@@ -92,8 +92,4 @@ dependencies {
 //    api 'com.amap.api:3dmap:latest.integration'
     api 'com.amap.api:location:latest.integration'
     api 'com.amap.api:search:latest.integration'
-
-    implementation ('io.socket:socket.io-client:2.0.0') {
-        exclude group: 'org.json', module: 'json'
-    }
 }
