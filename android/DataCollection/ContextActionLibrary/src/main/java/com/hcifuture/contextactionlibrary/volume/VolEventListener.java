@@ -23,4 +23,7 @@ public interface VolEventListener {
     boolean upload(String filename, long startTimestamp, long endTimestamp, String name, String commit);
     boolean upload(String filename, long startTimestamp, long endTimestamp, String name, String commit, Bundle extras);
     String getCurrentContext();
+    String getUserId();
+    String getDeviceId();
+    String getServerUrl();
 }

@@ -422,17 +422,26 @@ public class Uploader {
     public String getUserId() {
         // get unique user ID
         RequestConfig request = new RequestConfig();
-//        request.putString("getDeviceId", "");
-//        String userId = (String) requestListener.onRequest(request).getObject("getDeviceId");
         request.putString("getUserId", "");
-        String userId = "userid_" + requestListener.onRequest(request).getObject("getUserId");
-        if (userId == null || "Unknown".equals(userId)) {
-//            userId = "Unknown_" + System.currentTimeMillis();
-            // use last known user ID
-            userId = "Unknown_" + mUserId;
+        String userId = (String) requestListener.onRequest(request).getObject("getUserId");
+        if (userId == null || "test_userid".equals(userId)) {
+            String deviceId = getDeviceId();
+            if (deviceId != null && !"Unknown".equals(deviceId) && !deviceId.isEmpty()) {
+                // use unique device ID
+                userId = "dev_" + deviceId;
+            } else {
+                // use last known user ID
+                userId = "unknown_" + mUserId;
+            }
         } else {
             mUserId = userId;
         }
-        return userId;
+        return "user_" + userId;
+    }
+
+    public String getDeviceId() {
+        RequestConfig request = new RequestConfig();
+        request.putString("getDeviceId", "");
+        return (String) requestListener.onRequest(request).getObject("getDeviceId");
     }
 }

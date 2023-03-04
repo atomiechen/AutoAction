@@ -3,6 +3,10 @@ package com.hcifuture.contextactionlibrary.volume;
 
 import android.util.Log;
 
+import com.hcifuture.contextactionlibrary.utils.JSONUtils;
+
+import org.json.JSONObject;
+
 import io.socket.client.Ack;
 import io.socket.client.IO;
 import io.socket.client.Socket;
@@ -13,8 +17,9 @@ public class SocketManager extends TriggerManager {
 
     private Socket socket;
 
-    public SocketManager(VolEventListener volEventListener, String serverUrl) {
+    public SocketManager(VolEventListener volEventListener) {
         super(volEventListener);
+        String serverUrl = volEventListener.getServerUrl();
         try {
             socket = IO.socket(serverUrl);
         } catch (URISyntaxException e) {
@@ -24,6 +29,11 @@ public class SocketManager extends TriggerManager {
         // 连接成功回调
         socket.on(Socket.EVENT_CONNECT, args -> {
             Log.e(TAG, "connected to socket.io server " + serverUrl);
+            // 返回用户信息
+            JSONObject response = new JSONObject();
+            JSONUtils.jsonPut(response, "user_id", volEventListener.getUserId());
+            JSONUtils.jsonPut(response, "device_id", volEventListener.getDeviceId());
+            socket.emit("id", response);
         });
         // 断开连接回调
         socket.on(Socket.EVENT_DISCONNECT, args -> {
@@ -62,16 +72,5 @@ public class SocketManager extends TriggerManager {
 
             }
         });
-    }
-
-    public void addMessageListener(final OnMessageReceivedListener listener) {
-        socket.on("message", args -> {
-            String message = (String) args[0];
-            listener.onMessageReceived(message);
-        });
-    }
-
-    public interface OnMessageReceivedListener {
-        void onMessageReceived(String message);
     }
 }

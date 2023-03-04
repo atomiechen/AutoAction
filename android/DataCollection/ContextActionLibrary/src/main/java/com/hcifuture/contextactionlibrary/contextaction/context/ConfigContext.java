@@ -160,12 +160,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
         VOLUME_SAVE_FOLDER = context.getExternalMediaDirs()[0].getAbsolutePath() + "/Data/Volume/";
 
-        // get socket server URL
-        RequestConfig request = new RequestConfig();
-        request.putString("getSocketUrl", "");
-        String serverUrl = requestListener.onRequest(request).getObject("getSocketUrl").toString();
-
-        socketManager = new SocketManager(this, serverUrl);
+        socketManager = new SocketManager(this);
 
         volumeRuleManager = new VolumeRuleManager();
 
@@ -980,5 +975,23 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     public String getCurrentContext() {
         // TODO
         return Collector.gson.toJson(getPresentContext());
+    }
+
+    @Override
+    public String getUserId() {
+        return uploader.getUserId();
+    }
+
+    @Override
+    public String getDeviceId() {
+        return uploader.getDeviceId();
+    }
+
+    @Override
+    public String getServerUrl() {
+        // get socket server URL
+        RequestConfig request = new RequestConfig();
+        request.putString("getSocketUrl", "");
+        return requestListener.onRequest(request).getObject("getSocketUrl").toString();
     }
 }
