@@ -52,6 +52,7 @@ import com.hcifuture.contextactionlibrary.volume.data.DataUtils;
 import com.hcifuture.contextactionlibrary.volume.data.Reason;
 import com.hcifuture.shared.communicate.config.ContextConfig;
 import com.hcifuture.contextactionlibrary.contextaction.event.BroadcastEvent;
+import com.hcifuture.shared.communicate.config.RequestConfig;
 import com.hcifuture.shared.communicate.listener.ActionListener;
 import com.hcifuture.shared.communicate.listener.ContextListener;
 import com.hcifuture.shared.communicate.listener.RequestListener;
@@ -159,8 +160,12 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
         VOLUME_SAVE_FOLDER = context.getExternalMediaDirs()[0].getAbsolutePath() + "/Data/Volume/";
 
-        socketManager = new SocketManager();
-        socketManager.connect();
+        // get socket server URL
+        RequestConfig request = new RequestConfig();
+        request.putString("getSocketUrl", "");
+        String serverUrl = requestListener.onRequest(request).getObject("getSocketUrl").toString();
+
+        socketManager = new SocketManager(serverUrl);
         socketManager.addMessageListener(new SocketManager.OnMessageReceivedListener() {
             @Override
             public void onMessageReceived(String message) {
@@ -263,7 +268,6 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         // do not perform record_all() in stop(),
         // it may cause crashes when frequently called
 
-        socketManager.disconnect();
         motionManager.stop();
         soundManager.stop();
         crowdManager.stop();
@@ -272,6 +276,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         noiseManager.stop();
         appManager.stop();
         timeManager.stop();
+        socketManager.disconnect();
     }
 
     @Override
@@ -280,7 +285,6 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         // do not perform record_all() in pause(),
         // it may cause crashes when frequently called
 
-        socketManager.disconnect();
         motionManager.pause();
         soundManager.pause();
         crowdManager.pause();
@@ -289,6 +293,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         noiseManager.pause();
         appManager.pause();
         timeManager.pause();
+        socketManager.disconnect();
     }
 
     @RequiresApi(api = Build.VERSION_CODES.Q)

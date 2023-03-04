@@ -1,20 +1,29 @@
 package com.hcifuture.contextactionlibrary.volume;
 
 
+import android.util.Log;
+
 import io.socket.client.IO;
 import io.socket.client.Socket;
 import io.socket.emitter.Emitter;
 import java.net.URISyntaxException;
 
 public class SocketManager {
-    private Socket socket;
-    private static final String SERVER_URL = "http://220.249.18.254:25603";
+    static String TAG = "SocketManager";
 
-    public SocketManager() {
+    private Socket socket;
+
+    public SocketManager(String serverUrl) {
         try {
-            socket = IO.socket(SERVER_URL);
+            socket = IO.socket(serverUrl);
             socket.on(Socket.EVENT_CONNECT, onConnect);
             socket.on(Socket.EVENT_DISCONNECT, onDisconnect);
+            socket.on("llm_query", args -> {
+                Log.e(TAG, "LLM query: " + (String) args[0]);
+            });
+            socket.on("llm_response", args -> {
+                Log.e(TAG, "LLM response: " + (String) args[0]);
+            });
         } catch (URISyntaxException e) {
             e.printStackTrace();
         }
@@ -46,6 +55,7 @@ public class SocketManager {
         @Override
         public void call(Object... args) {
             // 连接成功回调
+            Log.e(TAG, "connected to socket io server");
         }
     };
 
@@ -53,6 +63,7 @@ public class SocketManager {
         @Override
         public void call(Object... args) {
             // 断开连接回调
+            Log.e(TAG, "disconnected from socket io server");
         }
     };
 
