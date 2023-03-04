@@ -165,20 +165,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         request.putString("getSocketUrl", "");
         String serverUrl = requestListener.onRequest(request).getObject("getSocketUrl").toString();
 
-        socketManager = new SocketManager(serverUrl);
-        socketManager.addMessageListener(new SocketManager.OnMessageReceivedListener() {
-            @Override
-            public void onMessageReceived(String message) {
-                if ("context_event".equals(message)) {
-                    // 获取当前情境数据的代码
-                    VolumeContext volumeContext = getPresentContext();
-                    // 将情境数据发送回服务器
-                    Gson gson = new Gson();
-                    String contextJson = gson.toJson(volumeContext);
-                    socketManager.sendMessage(contextJson);
-                }
-            }
-        });
+        socketManager = new SocketManager(this, serverUrl);
 
         volumeRuleManager = new VolumeRuleManager();
 
@@ -987,5 +974,11 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         } else {
             return false;
         }
+    }
+
+    @Override
+    public String getCurrentContext() {
+        // TODO
+        return Collector.gson.toJson(getPresentContext());
     }
 }

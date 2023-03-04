@@ -3,30 +3,48 @@ package com.hcifuture.contextactionlibrary.volume;
 
 import android.util.Log;
 
+import io.socket.client.Ack;
 import io.socket.client.IO;
 import io.socket.client.Socket;
-import io.socket.emitter.Emitter;
 import java.net.URISyntaxException;
 
-public class SocketManager {
-    static String TAG = "SocketManager";
+public class SocketManager extends TriggerManager {
+    static final String TAG = "SocketManager";
 
     private Socket socket;
 
-    public SocketManager(String serverUrl) {
+    public SocketManager(VolEventListener volEventListener, String serverUrl) {
+        super(volEventListener);
         try {
             socket = IO.socket(serverUrl);
-            socket.on(Socket.EVENT_CONNECT, onConnect);
-            socket.on(Socket.EVENT_DISCONNECT, onDisconnect);
-            socket.on("llm_query", args -> {
-                Log.e(TAG, "LLM query: " + (String) args[0]);
-            });
-            socket.on("llm_response", args -> {
-                Log.e(TAG, "LLM response: " + (String) args[0]);
-            });
         } catch (URISyntaxException e) {
             e.printStackTrace();
         }
+
+        // 连接成功回调
+        socket.on(Socket.EVENT_CONNECT, args -> {
+            Log.e(TAG, "connected to socket.io server " + serverUrl);
+        });
+        // 断开连接回调
+        socket.on(Socket.EVENT_DISCONNECT, args -> {
+            Log.e(TAG, "disconnected from socket.io server " + serverUrl);
+        });
+
+        socket.on("llm_query", args -> {
+            Log.e(TAG, "LLM query: " + (String) args[0]);
+        });
+        socket.on("llm_response", args -> {
+            Log.e(TAG, "LLM response: " + (String) args[0]);
+        });
+
+        // 情境query
+        socket.on("context_query", args -> {
+            // 服务器需要acknowledge，此处返回该事件的response
+            if (args.length > 1 && args[1] instanceof Ack) {
+                String response = volEventListener.getCurrentContext();
+                ((Ack) args[1]).call(response);
+            }
+        });
     }
 
     public void connect() {
@@ -38,34 +56,20 @@ public class SocketManager {
     }
 
     public void sendMessage(String message) {
-        socket.emit("message", message);
-    }
-
-    public void addMessageListener(final OnMessageReceivedListener listener) {
-        socket.on("message", new Emitter.Listener() {
+        socket.emit("message", message, new Ack() {
             @Override
             public void call(Object... args) {
-                String message = (String) args[0];
-                listener.onMessageReceived(message);
+
             }
         });
     }
 
-    private Emitter.Listener onConnect = new Emitter.Listener() {
-        @Override
-        public void call(Object... args) {
-            // 连接成功回调
-            Log.e(TAG, "connected to socket io server");
-        }
-    };
-
-    private Emitter.Listener onDisconnect = new Emitter.Listener() {
-        @Override
-        public void call(Object... args) {
-            // 断开连接回调
-            Log.e(TAG, "disconnected from socket io server");
-        }
-    };
+    public void addMessageListener(final OnMessageReceivedListener listener) {
+        socket.on("message", args -> {
+            String message = (String) args[0];
+            listener.onMessageReceived(message);
+        });
+    }
 
     public interface OnMessageReceivedListener {
         void onMessageReceived(String message);
