@@ -8,18 +8,25 @@ import io.socket.client.IO;
 import io.socket.client.Socket;
 
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.HashMap;
 
 public class SocketManager extends TriggerManager {
     static final String TAG = "SocketManager";
 
-    private final Socket socket;
+    private Socket socket = null;
 
     public SocketManager(VolEventListener volEventListener) {
         super(volEventListener);
 
         // get server URL
-        URI serverUrl = URI.create(volEventListener.getServerUrl());
+        URI serverUrl;
+        try {
+            serverUrl = new URI(volEventListener.getServerUrl());
+        } catch (URISyntaxException e) {
+            e.printStackTrace();
+            return;
+        }
 
         // ref: https://socketio.github.io/socket.io-client-java/initialization.html
         // on connection, send id information as handshake auth
@@ -65,19 +72,14 @@ public class SocketManager extends TriggerManager {
     }
 
     public void connect() {
-        socket.connect();
+        if (socket != null) {
+            socket.connect();
+        }
     }
 
     public void disconnect() {
-        socket.disconnect();
-    }
-
-    public void sendMessage(String message) {
-        socket.emit("message", message, new Ack() {
-            @Override
-            public void call(Object... args) {
-
-            }
-        });
+        if (socket != null) {
+            socket.disconnect();
+        }
     }
 }
