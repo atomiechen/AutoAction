@@ -24,7 +24,7 @@ public class RequestUtils {
         } else {
             mUserId = userId;
         }
-        return "user_" + userId;
+        return userId;
     }
 
     static public String getDeviceId(RequestListener requestListener) {
