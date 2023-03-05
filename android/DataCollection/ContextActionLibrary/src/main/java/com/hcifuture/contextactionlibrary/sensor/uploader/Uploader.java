@@ -22,6 +22,7 @@ import com.google.gson.ToNumberStrategy;
 import com.google.gson.reflect.TypeToken;
 import com.hcifuture.contextactionlibrary.utils.FileUtils;
 import com.hcifuture.contextactionlibrary.utils.NetworkUtils;
+import com.hcifuture.contextactionlibrary.utils.RequestUtils;
 import com.hcifuture.shared.communicate.config.RequestConfig;
 import com.hcifuture.shared.communicate.listener.RequestListener;
 
@@ -93,8 +94,6 @@ public class Uploader {
     private boolean lastWifiStatus = false;
     private final BroadcastReceiver receiver;
     private final Handler handler;
-
-    private String mUserId = String.valueOf(System.currentTimeMillis());
 
     enum UploaderStatus {
         OK,
@@ -420,28 +419,6 @@ public class Uploader {
     }
 
     public String getUserId() {
-        // get unique user ID
-        RequestConfig request = new RequestConfig();
-        request.putString("getUserId", "");
-        String userId = (String) requestListener.onRequest(request).getObject("getUserId");
-        if (userId == null || "test_userid".equals(userId)) {
-            String deviceId = getDeviceId();
-            if (deviceId != null && !"Unknown".equals(deviceId) && !deviceId.isEmpty()) {
-                // use unique device ID
-                userId = "dev_" + deviceId;
-            } else {
-                // use last known user ID
-                userId = "unknown_" + mUserId;
-            }
-        } else {
-            mUserId = userId;
-        }
-        return "user_" + userId;
-    }
-
-    public String getDeviceId() {
-        RequestConfig request = new RequestConfig();
-        request.putString("getDeviceId", "");
-        return (String) requestListener.onRequest(request).getObject("getDeviceId");
+        return RequestUtils.getUserId(requestListener);
     }
 }

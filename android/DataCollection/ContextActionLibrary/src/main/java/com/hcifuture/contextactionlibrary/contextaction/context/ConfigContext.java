@@ -5,7 +5,6 @@ import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
-import android.hardware.Sensor;
 import android.hardware.display.DisplayManager;
 import android.net.Uri;
 import android.net.wifi.WifiManager;
@@ -17,7 +16,6 @@ import android.view.Display;
 import android.view.KeyEvent;
 import android.view.accessibility.AccessibilityEvent;
 
-import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.hcifuture.contextactionlibrary.contextaction.collect.BaseCollector;
 import com.hcifuture.contextactionlibrary.sensor.collector.Collector;
@@ -31,9 +29,9 @@ import com.hcifuture.contextactionlibrary.sensor.collector.async.WifiCollector;
 import com.hcifuture.contextactionlibrary.sensor.data.NonIMUData;
 import com.hcifuture.contextactionlibrary.sensor.data.SingleIMUData;
 import com.hcifuture.contextactionlibrary.sensor.uploader.Uploader;
-import com.hcifuture.contextactionlibrary.status.Heart;
 import com.hcifuture.contextactionlibrary.utils.FileUtils;
 import com.hcifuture.contextactionlibrary.utils.JSONUtils;
+import com.hcifuture.contextactionlibrary.utils.RequestUtils;
 import com.hcifuture.contextactionlibrary.volume.AppManager;
 import com.hcifuture.contextactionlibrary.volume.CrowdManager;
 import com.hcifuture.contextactionlibrary.volume.DeviceManager;
@@ -52,11 +50,8 @@ import com.hcifuture.contextactionlibrary.volume.data.DataUtils;
 import com.hcifuture.contextactionlibrary.volume.data.Reason;
 import com.hcifuture.shared.communicate.config.ContextConfig;
 import com.hcifuture.contextactionlibrary.contextaction.event.BroadcastEvent;
-import com.hcifuture.shared.communicate.config.RequestConfig;
-import com.hcifuture.shared.communicate.listener.ActionListener;
 import com.hcifuture.shared.communicate.listener.ContextListener;
 import com.hcifuture.shared.communicate.listener.RequestListener;
-import com.hcifuture.shared.communicate.result.ActionResult;
 import com.hcifuture.shared.communicate.result.ContextResult;
 
 import org.json.JSONArray;
@@ -979,19 +974,16 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
     @Override
     public String getUserId() {
-        return uploader.getUserId();
+        return RequestUtils.getUserId(requestListener);
     }
 
     @Override
     public String getDeviceId() {
-        return uploader.getDeviceId();
+        return RequestUtils.getDeviceId(requestListener);
     }
 
     @Override
     public String getServerUrl() {
-        // get socket server URL
-        RequestConfig request = new RequestConfig();
-        request.putString("getSocketUrl", "");
-        return requestListener.onRequest(request).getObject("getSocketUrl").toString();
+        return RequestUtils.getServerUrl(requestListener);
     }
 }
