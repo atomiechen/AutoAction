@@ -36,6 +36,7 @@ import com.hcifuture.contextactionlibrary.volume.AppManager;
 import com.hcifuture.contextactionlibrary.volume.CrowdManager;
 import com.hcifuture.contextactionlibrary.volume.DeviceManager;
 import com.hcifuture.contextactionlibrary.volume.MotionManager;
+import com.hcifuture.contextactionlibrary.volume.MyNotificationListener;
 import com.hcifuture.contextactionlibrary.volume.Position;
 import com.hcifuture.contextactionlibrary.volume.PositionManager;
 import com.hcifuture.contextactionlibrary.volume.SocketManager;
@@ -69,7 +70,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -112,6 +112,8 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     public static int MODE_NORMAL = 0;
     public static int MODE_QUIET = 1;
 
+    static final String EXTERNAL_TYPE_NOTIFICATION = "event.notification";
+
     // key gesture
     private int keyDownCount = 0;
     private long lastKeyDownTime = 0;
@@ -136,6 +138,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     private final SoundManager soundManager;
     private final MotionManager motionManager;
     private final TimeManager timeManager;
+    private final MyNotificationListener myNotificationListener;
 
     private final SocketManager socketManager;
 
@@ -156,6 +159,8 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         VOLUME_SAVE_FOLDER = context.getExternalMediaDirs()[0].getAbsolutePath() + "/Data/Volume/";
 
         socketManager = new SocketManager(this);
+
+        myNotificationListener = new MyNotificationListener(this);
 
         volumeRuleManager = new VolumeRuleManager();
 
@@ -232,6 +237,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         soundManager.start();
         timeManager.start();
         motionManager.start();
+        myNotificationListener.start();
 
         // get audio capture permission
         if (!soundManager.hasCapturePermission()) {
@@ -245,6 +251,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         // do not perform record_all() in stop(),
         // it may cause crashes when frequently called
 
+        myNotificationListener.stop();
         motionManager.stop();
         soundManager.stop();
         crowdManager.stop();
@@ -262,6 +269,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         // do not perform record_all() in pause(),
         // it may cause crashes when frequently called
 
+        myNotificationListener.pause();
         motionManager.pause();
         soundManager.pause();
         crowdManager.pause();
@@ -286,6 +294,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         soundManager.resume();
         timeManager.resume();
         motionManager.resume();
+        myNotificationListener.resume();
 
         // get audio capture permission
         if (!soundManager.hasCapturePermission()) {
@@ -538,7 +547,27 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     @RequiresApi(api = Build.VERSION_CODES.Q)
     @Override
     public void onExternalEvent(Bundle bundle) {
-        if (bundle.containsKey("type") && EXTERNAL_TYPE.equals(bundle.getString("type"))) {
+        if (!bundle.containsKey("type"))
+            return;
+        String type = bundle.getString("type");
+        if (EXTERNAL_TYPE_NOTIFICATION.equals(type)) {
+            String event = bundle.getString("event");
+            Log.e(TAG, "onExternalEvent: " + event);
+            if ("onNotificationPosted".equals(event)) {
+                myNotificationListener.onNotificationPosted(
+                        bundle.getParcelable("sbn"),
+                        bundle.getParcelable("rankingMap"));
+            } else if ("onNotificationRemoved".equals(event)) {
+                myNotificationListener.onNotificationRemoved(
+                        bundle.getParcelable("sbn"),
+                        bundle.getParcelable("rankingMap"),
+                        bundle.getInt("reason"));
+            } else if ("onNotificationRankingUpdate".equals(event)) {
+                myNotificationListener.onNotificationRankingUpdate(
+                        bundle.getParcelable("rankingMap"));
+            }
+        }
+        else if (EXTERNAL_TYPE.equals(type)) {
             int event = bundle.getInt("event");
             switch (event) {
                 case EVENT_POPUP:
