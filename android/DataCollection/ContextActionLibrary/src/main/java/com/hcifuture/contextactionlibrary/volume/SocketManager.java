@@ -71,13 +71,15 @@ public class SocketManager extends TriggerManager {
         });
     }
 
-    public void connect() {
+    @Override
+    public void start() {
         if (socket != null) {
             socket.connect();
         }
     }
 
-    public void disconnect() {
+    @Override
+    public void stop() {
         if (socket != null) {
             socket.disconnect();
         }

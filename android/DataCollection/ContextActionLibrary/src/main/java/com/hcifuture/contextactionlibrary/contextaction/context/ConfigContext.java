@@ -228,7 +228,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     @Override
     public void start() {
         record_all("start");
-        socketManager.connect();
+        socketManager.start();
         appManager.start();
         noiseManager.start();
         deviceManager.start();
@@ -260,7 +260,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         noiseManager.stop();
         appManager.stop();
         timeManager.stop();
-        socketManager.disconnect();
+        socketManager.stop();
     }
 
     @Override
@@ -278,14 +278,14 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         noiseManager.pause();
         appManager.pause();
         timeManager.pause();
-        socketManager.disconnect();
+        socketManager.pause();
     }
 
     @RequiresApi(api = Build.VERSION_CODES.Q)
     @Override
     public void resume() {
         record_all("resume");
-        socketManager.connect();
+        socketManager.resume();
         appManager.resume();
         noiseManager.resume();
         deviceManager.resume();
