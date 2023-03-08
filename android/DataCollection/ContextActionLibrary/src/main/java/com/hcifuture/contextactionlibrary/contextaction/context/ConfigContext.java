@@ -363,15 +363,6 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         return null;
     }
 
-//    public List<Double> getVolumes(VolumeContext volumeContext) {
-//        List<ContextRule> volumeRules = contextRuleManager.getRecommendation(volumeContext);
-//        List<Double> _volumes = new ArrayList<>();
-//        for (ContextRule volumeRule: volumeRules) {
-//            _volumes.add(volumeRule.getVolume());
-//        }
-//        return _volumes;
-//    }
-
     @RequiresApi(api = Build.VERSION_CODES.Q)
     @Override
     public void onBroadcastEvent(BroadcastEvent event) {
@@ -739,29 +730,6 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         return "@" + deviceManager.getPresentDeviceID() + "@" + appManager.getPresentApp() + "@" + positionManager.getPresentPosition();
     }
 
-    private void addData(double volume, int frontEndState, int behavior, String tag, boolean force) {
-        appendLine(String.format("%d,%f,%f,%s,%s,%s,%b,%d,%d,%d,%s,%d",
-                System.currentTimeMillis(),
-                noiseManager.getPresentNoise(),
-                volume,
-                deviceManager.getPresentDeviceID(),
-                appManager.getPresentApp(),
-                positionManager.getPresentPosition(),
-                soundManager.isAudioOn(),
-                soundManager.getAudioMode(),
-                frontEndState,
-                behavior,
-                tag,
-                currentMode
-        ), FILE_TMP_DATA);
-        if (force || soundManager.isAudioOn() && currentMode == MODE_NORMAL) {
-            // only record when audio is on and in normal mode
-            double presentNoise = noiseManager.getPresentNoise();
-            Log.e(TAG, "Add record: [FID]" + getCurrentFID() + " [Noise]" + presentNoise + " [Volume]" + volume);
-            volumeManager.addRecord(getCurrentFID(), presentNoise, volume);
-        }
-    }
-
     private void appendLine(String line, String filename) {
         FileUtils.writeStringToFile(line, new File(VOLUME_SAVE_FOLDER + filename), true);
     }
@@ -902,17 +870,6 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         }
     }
 
-    public double fakeMapping(double noise) {
-        double result = noise / 150 * 100;
-        if (result > 100) {
-            result = 100;
-        }
-        if (result < 0) {
-            result = 0;
-        }
-        return result;
-    }
-
     public void tryPopUpFrontend(int reason, double adjustedVolume) {
         if (frontEndState == TYPE_OFF) {
             VolumeContext volumeContext = getPresentContext();
@@ -929,17 +886,6 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         } else {
             Log.e(TAG, "tryPopUpFrontend: not pop up because already on");
         }
-    }
-
-    private void changeToQuietMode(double volume) {
-        // pop up the panel
-        tryPopUpFrontend(REASON_MANUAL, 0);
-        // then adjust volume
-        Bundle bundle = new Bundle();
-        bundle.putDouble("vol", volume);
-        bundle.putBoolean("quietMode", currentMode == MODE_QUIET);
-        notifyFrontend("on quiet-mode changed volume adjust", bundle);
-        Log.e(TAG, "changeToQuietMode signaled");
     }
 
     private void notifyRequestRecordPermission() {
