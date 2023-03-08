@@ -46,7 +46,6 @@ public class NoiseManager extends TriggerManager {
     private boolean hasFirstDetection = false;
     private long lastTimestamp = 0;
     private final double threshold = 20;
-    public static Integer latest_noiseLevel;
 
     private final String FILE_DIR;
     private final AtomicInteger mFileIDCounter = new AtomicInteger(0);
@@ -137,15 +136,15 @@ public class NoiseManager extends TriggerManager {
         }
     }
 
-    public Integer getNoiseLevel(double db) {
-        if (db <= 0)
-            return 0;
-        else if (db <= 35)
-            return 1;
-        else if (db <= 60)
-            return 2;
+    public String getNoiseLevel() {
+        if (lastNoise <= 0)
+            return "error";
+        else if (lastNoise <= 35)
+            return "quiet";
+        else if (lastNoise <= 60)
+            return "moderate";
         else
-            return 3;
+            return "noisy";
     }
 
     public CompletableFuture<Double> detectNoise(long length, long period) {
@@ -200,7 +199,6 @@ public class NoiseManager extends TriggerManager {
     private void setPresentNoise(double noise) {
         lastNoise = noise;
         lastTimestamp = System.currentTimeMillis();
-        latest_noiseLevel = getNoiseLevel(noise);
     }
 
     private CompletableFuture<List<Integer>> getMaxAmplitudeSequence(long length, long period) {

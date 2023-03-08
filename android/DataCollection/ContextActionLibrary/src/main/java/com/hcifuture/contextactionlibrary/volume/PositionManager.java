@@ -1,30 +1,23 @@
 package com.hcifuture.contextactionlibrary.volume;
 
-import android.annotation.SuppressLint;
-import android.bluetooth.BluetoothClass;
-import android.bluetooth.BluetoothDevice;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 
 import androidx.annotation.RequiresApi;
 
-import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.hcifuture.contextactionlibrary.contextaction.context.ConfigContext;
 import com.hcifuture.contextactionlibrary.sensor.collector.Collector;
 import com.hcifuture.contextactionlibrary.sensor.collector.CollectorResult;
-import com.hcifuture.contextactionlibrary.sensor.collector.async.BluetoothCollector;
 import com.hcifuture.contextactionlibrary.sensor.collector.async.GPSCollector;
+import com.hcifuture.contextactionlibrary.sensor.collector.async.LocationCollector;
 import com.hcifuture.contextactionlibrary.sensor.collector.async.WifiCollector;
-import com.hcifuture.contextactionlibrary.sensor.collector.sync.LogCollector;
-import com.hcifuture.contextactionlibrary.sensor.data.BluetoothData;
 import com.hcifuture.contextactionlibrary.sensor.data.GPSData;
-import com.hcifuture.contextactionlibrary.sensor.data.SingleBluetoothData;
+import com.hcifuture.contextactionlibrary.sensor.data.LocationData;
 import com.hcifuture.contextactionlibrary.sensor.data.SingleWifiData;
 import com.hcifuture.contextactionlibrary.sensor.data.WifiData;
 import com.hcifuture.contextactionlibrary.sensor.trigger.TriggerConfig;
-import com.hcifuture.contextactionlibrary.sensor.uploader.TaskMetaBean;
 import com.hcifuture.contextactionlibrary.utils.FileUtils;
 import com.hcifuture.contextactionlibrary.utils.JSONUtils;
 
@@ -35,11 +28,9 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 public class PositionManager extends TriggerManager {
     private static final String TAG = "PositionManager";
@@ -57,8 +48,11 @@ public class PositionManager extends TriggerManager {
     private Position lastPosition;
     public static Integer latest_position;
 
+    private LocationCollector locationCollector;
+    private String latest_poiname;
+
     @RequiresApi(api = Build.VERSION_CODES.N)
-    public PositionManager(VolEventListener volEventListener, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, GPSCollector gpsCollector, WifiCollector wifiCollector) {
+    public PositionManager(VolEventListener volEventListener, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, LocationCollector locationCollector, GPSCollector gpsCollector, WifiCollector wifiCollector) {
         super(volEventListener);
         this.volEventListener = volEventListener;
         this.scheduledExecutorService = scheduledExecutorService;
@@ -68,6 +62,9 @@ public class PositionManager extends TriggerManager {
         positions = getPositionsFromFile();
         history = getPositionHistoryFromFile();
         lastPosition = history.size() > 0? findById(history.get(history.size() - 1).getId()) : null;
+
+        this.locationCollector = locationCollector;
+        latest_poiname = "";
     }
 
     public static class HistoryItem {
@@ -168,6 +165,10 @@ public class PositionManager extends TriggerManager {
         }
     }
 
+    public String getLatestPoiname() {
+        return latest_poiname;
+    }
+
     public List<HistoryItem> getHistory() {
         return history;
     }
@@ -189,16 +190,16 @@ public class PositionManager extends TriggerManager {
         Log.e(TAG, "schedule periodic position detection");
         if (scheduledPositionDetection == null) {
             scheduledPositionDetection = scheduledExecutorService.scheduleAtFixedRate(() -> {
-                scanAndUpdate();
+                scanAmap();
             }, initialDelay, period, TimeUnit.MILLISECONDS);
             futureList.add(scheduledPositionDetection);
         }
-        if (scheduledPositionListLog == null) {
-            scheduledPositionListLog = scheduledExecutorService.scheduleAtFixedRate(() -> {
-                writePositionsToLog();
-            }, 5000, 4 * 3600 * 1000, TimeUnit.MILLISECONDS);
-            futureList.add(scheduledPositionListLog);
-        }
+//        if (scheduledPositionListLog == null) {
+//            scheduledPositionListLog = scheduledExecutorService.scheduleAtFixedRate(() -> {
+//                writePositionsToLog();
+//            }, 5000, 4 * 3600 * 1000, TimeUnit.MILLISECONDS);
+//            futureList.add(scheduledPositionListLog);
+//        }
     }
 
     @Override
@@ -207,15 +208,28 @@ public class PositionManager extends TriggerManager {
             scheduledPositionDetection.cancel(true);
             scheduledPositionDetection = null;
         }
-        if (scheduledPositionListLog != null) {
-            scheduledPositionListLog.cancel(true);
-            scheduledPositionListLog = null;
-        }
+//        if (scheduledPositionListLog != null) {
+//            scheduledPositionListLog.cancel(true);
+//            scheduledPositionListLog = null;
+//        }
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    public void scanAmap() {
+        locationCollector.getData(new TriggerConfig()).thenApply(v -> {
+            try {
+                LocationData locationData = (LocationData) v.getData();
+                latest_poiname = locationData.getPoiName();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            return latest_poiname;
+        });
     }
 
     @RequiresApi(api = Build.VERSION_CODES.O)
     public CompletableFuture<Position> scanAndUpdate() {
-//        CompletableFuture<Position> ft = new CompletableFuture<>();
+        CompletableFuture<Position> ft = new CompletableFuture<>();
 
         Log.e(TAG, "start to detect position");
         List<CompletableFuture<CollectorResult>> fts = new ArrayList<>();

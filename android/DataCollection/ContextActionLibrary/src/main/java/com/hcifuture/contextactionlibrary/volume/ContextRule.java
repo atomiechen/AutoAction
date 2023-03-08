@@ -35,11 +35,11 @@ public class ContextRule {
 
     // Methods
     public boolean checkTrigger(VolumeContext context) {
-        for (String s : context.getEvents()) {
-            if (this.triggers.contains(s)) {
-                return true;
-            }
-        }
+//        for (String s : context.getEvents()) {
+//            if (this.triggers.contains(s)) {
+//                return true;
+//            }
+//        }
         return false;
     }
 

@@ -25,6 +25,7 @@ import com.hcifuture.contextactionlibrary.sensor.collector.async.AudioCollector;
 import com.hcifuture.contextactionlibrary.sensor.collector.async.BluetoothCollector;
 import com.hcifuture.contextactionlibrary.sensor.collector.async.GPSCollector;
 import com.hcifuture.contextactionlibrary.sensor.collector.async.IMUCollector;
+import com.hcifuture.contextactionlibrary.sensor.collector.async.LocationCollector;
 import com.hcifuture.contextactionlibrary.sensor.collector.async.WifiCollector;
 import com.hcifuture.contextactionlibrary.sensor.data.NonIMUData;
 import com.hcifuture.contextactionlibrary.sensor.data.SingleIMUData;
@@ -37,6 +38,7 @@ import com.hcifuture.contextactionlibrary.volume.CrowdManager;
 import com.hcifuture.contextactionlibrary.volume.DeviceManager;
 import com.hcifuture.contextactionlibrary.volume.MotionManager;
 import com.hcifuture.contextactionlibrary.volume.MyNotificationListener;
+import com.hcifuture.contextactionlibrary.volume.NetworkManager;
 import com.hcifuture.contextactionlibrary.volume.PositionManager;
 import com.hcifuture.contextactionlibrary.volume.SocketManager;
 import com.hcifuture.contextactionlibrary.volume.SoundManager;
@@ -136,6 +138,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     private final SoundManager soundManager;
     private final MotionManager motionManager;
     private final TimeManager timeManager;
+    private final NetworkManager networkManager;
     private final MyNotificationListener myNotificationListener;
 
     private final SocketManager socketManager;
@@ -158,8 +161,6 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
         socketManager = new SocketManager(this);
 
-        myNotificationListener = new MyNotificationListener(this);
-
         contextRuleManager = new ContextRuleManager();
 
         volumeManager = new VolumeManager();
@@ -173,17 +174,22 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
         appManager = new AppManager(this, mContext);
 
+        myNotificationListener = new MyNotificationListener(this, appManager);
+
         crowdManager = new CrowdManager(this, scheduledExecutorService, futureList,
                 (BluetoothCollector) collectorManager.getCollector(CollectorManager.CollectorType.Bluetooth), mContext);
 
         positionManager = new PositionManager(this, scheduledExecutorService, futureList,
+                (LocationCollector) collectorManager.getCollector(CollectorManager.CollectorType.Location),
                 (GPSCollector) collectorManager.getCollector(CollectorManager.CollectorType.GPS),
                 (WifiCollector) collectorManager.getCollector(CollectorManager.CollectorType.Wifi));
 
         motionManager = new MotionManager(this, mContext, scheduledExecutorService, futureList,
                 (IMUCollector) collectorManager.getCollector(CollectorManager.CollectorType.IMU));
 
-        timeManager = new TimeManager(this, scheduledExecutorService, futureList);
+        timeManager = new TimeManager();
+
+        networkManager =  new NetworkManager(mContext);
 
         dataUtils = new DataUtils(mContext);
 
@@ -233,7 +239,6 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         positionManager.start();
         crowdManager.start();
         soundManager.start();
-        timeManager.start();
         motionManager.start();
         myNotificationListener.start();
 
@@ -257,7 +262,6 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         deviceManager.stop();
         noiseManager.stop();
         appManager.stop();
-        timeManager.stop();
         socketManager.stop();
     }
 
@@ -275,7 +279,6 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         deviceManager.pause();
         noiseManager.pause();
         appManager.pause();
-        timeManager.pause();
         socketManager.pause();
     }
 
@@ -290,7 +293,6 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         positionManager.resume();
         crowdManager.resume();
         soundManager.resume();
-        timeManager.resume();
         motionManager.resume();
         myNotificationListener.resume();
 
@@ -330,21 +332,27 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     }
 
     public VolumeContext getPresentContext() {
-        String gps_position = "pos";
-        String activity = "activity";
-        String wifi_name = "wifi";
-//        double environment_sound = noiseManager.getPresentNoise();
-        String environment_sound = "noisy";
-        String playback_device = deviceManager.getPresentDeviceID();
-        String app = appName;
-        String network = "no network";
-        String sender = "Bob";
-        String source_app = "WeChat";
-        String title = "...";
-        String content = "...";
-        String type = "app message";
-        return new VolumeContext(gps_position, activity, wifi_name, environment_sound,
-                playback_device, app, network, sender, source_app, title, content, type);
+        // context
+        String context_time = timeManager.getTimeString();
+        String context_week = timeManager.getWeekString();
+        String context_gps_position = positionManager.getLatestPoiname();
+        String context_activity = motionManager.getStepLevel();
+        String context_wifi_name = networkManager.getWifiName();
+        String context_environment_sound = noiseManager.getNoiseLevel();
+        String context_playback_device = deviceManager.getDeviceType();
+        String context_app = appManager.getPresentApp();
+        String context_network = networkManager.getNetworkType();
+
+        // message
+        MyNotificationListener.Message message = myNotificationListener.getLatestMessage();
+        String message_sender =  message.sender;
+        String message_source_app = message.source_app;
+        String message_title = message.title;
+        String message_content = message.content;
+        String message_type = message.type;
+
+        return new VolumeContext(context_time, context_week, context_gps_position, context_activity, context_wifi_name,
+                context_environment_sound, context_playback_device, context_app, context_network, message_sender, message_source_app, message_title, message_content, message_type);
     }
 
     public Bundle getRules(VolumeContext volumeContext, int type) {
@@ -856,7 +864,6 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                 double lastTriggerNoise = bundle.getDouble("lastTriggerNoise");
                 Log.e(TAG, "onVolEvent: " + eventType + " " + noise + " " + lastTriggerNoise);
                 break;
-            // TODO: adjust mapping function
             case Device:
                 String deviceID = bundle.getString("deviceID");
                 Log.e(TAG, "onVolEvent: " + eventType + " " + deviceID);
@@ -875,7 +882,6 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                 popup = false;
                 Log.e(TAG, "onVolEvent: " + motion);
                 break;
-            // TODO
             case Bluetooth:
             case Audio:
             case Time:
@@ -980,7 +986,6 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
     @Override
     public String getCurrentContext() {
-        // TODO
         return Collector.gson.toJson(getPresentContext());
     }
 
