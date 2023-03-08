@@ -66,6 +66,7 @@ public class SocketManager extends TriggerManager {
             int lastIndex = args.length - 1;
             if (args.length > 0 && args[lastIndex] instanceof Ack) {
                 String response = volEventListener.getCurrentContext();
+                Log.i(TAG, response);
                 ((Ack) args[lastIndex]).call(response);
             }
         });

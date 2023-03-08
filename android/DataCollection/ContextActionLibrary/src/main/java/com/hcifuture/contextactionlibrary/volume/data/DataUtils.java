@@ -223,9 +223,9 @@ public class DataUtils {
         List<Object> valueList = new ArrayList<>();
         for (Dataset.Feature feature: features) {
             switch (feature.name) {
-                case "Noise":
-                    valueList.add(NoiseManager.latest_noiseLevel);
-                    break;
+//                case "Noise":
+//                    valueList.add(NoiseManager.latest_noiseLevel);
+//                    break;
                 case "Device":
                     valueList.add(DeviceManager.latest_device);
                     break;
@@ -241,9 +241,9 @@ public class DataUtils {
                 case "Audio":
                     valueList.add(SoundManager.latest_audioLevel);
                     break;
-                case "Time":
-                    valueList.add(TimeManager.latest_formalizedTime);
-                    break;
+//                case "Time":
+//                    valueList.add(TimeManager.latest_formalizedTime);
+//                    break;
                 case "Volume":
                     AudioManager audioManager = (AudioManager) mContext.getSystemService(Context.AUDIO_SERVICE);
                     double volume = ((double) audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)) / audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);

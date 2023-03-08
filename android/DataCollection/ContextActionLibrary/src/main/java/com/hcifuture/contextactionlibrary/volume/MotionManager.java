@@ -2,6 +2,8 @@ package com.hcifuture.contextactionlibrary.volume;
 
 import android.content.Context;
 import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -65,14 +67,28 @@ public class MotionManager extends TriggerManager {
     private int samplePoints = 0;
     private int stableCount = 0;
 
+    // Step Count
+    private ScheduledFuture<?> scheduledStep;
+    private SensorManager sensorManager;
+    private Sensor stepSensor;
+    private SensorEventListener sensorEventListener;
+    private int step_latest;
+    private int step_10s_ago;
+    private int step_10s;
+
     public MotionManager(VolEventListener volEventListener, Context context, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, IMUCollector imuCollector) {
         super(volEventListener);
         this.scheduledExecutorService = scheduledExecutorService;
         this.futureList = futureList;
         this.imuCollector = imuCollector;
 
+        sensorManager = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
+        stepSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR);
+
         // 放在Data/Click/下，Uploader会监听文件夹、自动重传
         FILE_DIR = context.getExternalMediaDirs()[0].getAbsolutePath() + "/Data/Click/IMU_Continuous/";
+
+        initializeStepCount();
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
@@ -305,6 +321,45 @@ public class MotionManager extends TriggerManager {
                 stableCount++;
 //                Log.e(TAG, "sampleOffset: stable offset = " + offsetInNano + " count = " + stableCount + " sample points = " + samplePoints);
             }
+        }
+    }
+
+    private void initializeStepCount() {
+        step_latest = 0;
+        step_10s_ago = 0;
+        step_10s = 0;
+        sensorEventListener = new SensorEventListener() {
+            @Override
+            public void onSensorChanged(SensorEvent event) {
+                if (event.sensor.getType() == Sensor.TYPE_STEP_DETECTOR) {
+                    step_latest += Math.round(event.values[0]);
+                }
+            }
+
+            @Override
+            public void onAccuracyChanged(Sensor sensor, int accuracy) {
+
+            }
+        };
+        sensorManager.registerListener(sensorEventListener, stepSensor, SensorManager.SENSOR_DELAY_FASTEST);
+
+        scheduledStep = scheduledExecutorService.scheduleAtFixedRate(() -> {
+            step_10s = step_latest;
+            step_latest = 0;
+        }, 0, 10 * 1000, TimeUnit.MILLISECONDS);
+
+        futureList.add(scheduledStep);
+    }
+
+    public String getStepLevel() {
+        if (step_10s < 0) {
+            return "error";
+        } else if (step_10s == 0) {
+            return "still";
+        } else if (step_10s < 21) {
+            return "walking";
+        } else {
+            return "running";
         }
     }
 }
