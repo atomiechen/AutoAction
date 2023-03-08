@@ -2,133 +2,79 @@ package com.hcifuture.contextactionlibrary.volume;
 
 import android.os.Bundle;
 
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.List;
+import com.hcifuture.contextactionlibrary.utils.TimeUtils;
 
 public class VolumeContext {
-    int soundVolume;
-    // Noise
-    double noise;
-    int manAround;
-    int share;
-    int time;
-    int startTime;
-    int endTime;
-    // Place
-    double latitude;
-    double longitude;
-    List<String> wifiId;
-    // App
-    String app;
-    // Device
-    String device;
-    int activity;
+    private String context_time;
+    private String context_week;
+    private String context_gps_position;
+    private String context_activity;
+    private String context_wifi_name;
+    private double context_environment_sound;
+    private String context_playback_device;
+    private String context_app;
+    private String context_network;
+    private String message_sender;
+    private String message_source_app;
+    private String message_title;
+    private String message_content;
+    private String message_type;
 
-    public double getLatitude() {
-        return latitude;
+    public VolumeContext(String context_gps_position, String context_activity, String context_wifi_name,
+                         double context_environment_sound, String context_playback_device, String context_app, String context_network,
+                         String message_sender, String message_source_app, String message_title, String message_content, String message_type) {
+        this.context_time = TimeUtils.getCurrentTimePeriod();
+        this.context_week = TimeUtils.getCurrentDayOfWeek();
+        this.context_gps_position = context_gps_position;
+        this.context_activity = context_activity;
+        this.context_wifi_name = context_wifi_name;
+        this.context_environment_sound = context_environment_sound;
+        this.context_playback_device = context_playback_device;
+        this.context_app = context_app;
+        this.context_network = context_network;
+        this.message_sender = message_sender;
+        this.message_source_app = message_source_app;
+        this.message_title = message_title;
+        this.message_content = message_content;
+        this.message_type = message_type;
     }
 
-    public void setLatitude(double latitude) {
-        this.latitude = latitude;
+    public Bundle toBundle() {
+        Bundle result = new Bundle();
+//        if (soundVolume >= 0) result.putInt("soundVolume", soundVolume);
+//        if (device != null) result.putString("device", device);
+//        if (device != null) {
+//            if (device.endsWith("speaker")) result.putString("device", "扬声器");
+//            else if (device.endsWith("earpiece") || device.endsWith("headset") || device.contains("bt") || device.contains("sco") || device.endsWith("headphone"))
+//                result.putString("device", "耳机");
+//            else result.putString("device", "未知类型");
+//        }
+//        if (time >= 0) {
+//            result.putInt("time", time);
+//            result.putInt("startTime", startTime);
+//            result.putInt("endTime", endTime);
+//        }
+//        if (app != null) result.putString("app", app);
+//        if (activity >= 0) result.putInt("activity", activity);
+//        if (noise >= 0) {
+//            if (noise < 50) result.putInt("noise", 0);
+//            else if (noise > 70) result.putInt("noise", 2);
+//            else result.putInt("noise", 1);
+//        }
+//        if (manAround >= 0) {
+//            if (manAround == 1) result.putBoolean("manAround", true);
+//            else if (manAround == 0) result.putBoolean("manAround", false);
+//        }
+//        if (share >= 0) {
+//            if (share == 1) result.putBoolean("share", true);
+//            else if (share == 0) result.putBoolean("share", false);
+//        }
+//        if (!(wifiId == null && (latitude < -90 || longitude < -180))) {
+//            String place = VolumeRuleManager.findPlace(this);
+//            result.putString("place", place);
+//        }
+        return result;
     }
-
-    public double getLongitude() {
-        return longitude;
-    }
-
-    public void setLongitude(double longitude) {
-        this.longitude = longitude;
-    }
-
-    public List<String> getWifiId() {
-        return wifiId;
-    }
-
-    public void setWifiId(List<String> wifiId) {
-        this.wifiId = wifiId;
-    }
-
-    public double getNoise() {
-        return noise;
-    }
-
-    public void setNoise(double noise) {
-        this.noise = noise;
-    }
-
-    public String getApp() {
-        return app;
-    }
-
-    public void setApp(String app) {
-        this.app = app;
-    }
-
-    public VolumeContext(int soundVolume, double noise, String device, int manAround, int share, double latitude, double longitude,
-                         List<String> wifiId, int time, String app, int activity) {
-        this(soundVolume, noise, device, manAround, share, latitude, longitude, wifiId, time, -1, -1, app, activity);
-        if (time == 4) {
-            Calendar calendar = Calendar.getInstance();
-            startTime = calendar.get(Calendar.HOUR_OF_DAY) * 100 + calendar.get(Calendar.MINUTE);
-            endTime = startTime + 100;
-        } else if (time == 3) {
-            startTime = 1800;
-            endTime = 2400;
-        } else if (time == 2) {
-            startTime = 1400;
-            endTime = 1800;
-        } else if (time == 1) {
-            startTime = 1100;
-            endTime = 1400;
-        } else if (time == 0) {
-            startTime = 0;
-            endTime = 1100;
-        }
-    }
-
-    public VolumeContext(double noise, String device, double latitude, double longitude,
-                         List<String> wifiId, int time, int startTime, int endTime, String app) {
-        this.latitude = latitude;
-        this.longitude = longitude;
-        this.wifiId = wifiId;
-
-        this.noise = noise;
-
-        this.app = app;
-
-        this.device = device;
-
-        this.time = time;
-        this.startTime = startTime;
-        this.endTime = endTime;
-        // 其他变量均设为“任意”
-        this.soundVolume = -1;
-        this.manAround = -1;
-        this.share = -1;
-        this.activity = -1;
-    }
-
-    public VolumeContext(int soundVolume, double noise, String device, int manAround, int share, double latitude, double longitude,
-                         List<String> wifiId, int time, int startTime, int endTime, String app, int activity) {
-        this.latitude = latitude;
-        this.longitude = longitude;
-        this.wifiId = wifiId;
-        this.noise = noise;
-        this.app = app;
-        this.device = device;
-        this.soundVolume = soundVolume;
-        this.manAround = manAround;
-        this.share = share;
-        this.activity = activity;
-        this.time = time;
-        this.startTime = startTime;
-        this.endTime = endTime;
-    }
-
-
 //    @Override
 //    public String toString() {
 //        DateFormat df = new SimpleDateFormat("HH:mm:ss");
@@ -142,40 +88,117 @@ public class VolumeContext {
 //                '}';
 //    }
 
-    public Bundle toBundle() {
-        Bundle result = new Bundle();
-        if (soundVolume >= 0) result.putInt("soundVolume", soundVolume);
-//        if (device != null) result.putString("device", device);
-        if (device != null) {
-            if (device.endsWith("speaker")) result.putString("device", "扬声器");
-            else if (device.endsWith("earpiece") || device.endsWith("headset") || device.contains("bt") || device.contains("sco") || device.endsWith("headphone"))
-                result.putString("device", "耳机");
-            else result.putString("device", "未知类型");
-        }
-        if (time >= 0) {
-            result.putInt("time", time);
-            result.putInt("startTime", startTime);
-            result.putInt("endTime", endTime);
-        }
-        if (app != null) result.putString("app", app);
-        if (activity >= 0) result.putInt("activity", activity);
-        if (noise >= 0) {
-            if (noise < 50) result.putInt("noise", 0);
-            else if (noise > 70) result.putInt("noise", 2);
-            else result.putInt("noise", 1);
-        }
-        if (manAround >= 0) {
-            if (manAround == 1) result.putBoolean("manAround", true);
-            else if (manAround == 0) result.putBoolean("manAround", false);
-        }
-        if (share >= 0) {
-            if (share == 1) result.putBoolean("share", true);
-            else if (share == 0) result.putBoolean("share", false);
-        }
-        if (!(wifiId == null && (latitude < -90 || longitude < -180))) {
-            String place = VolumeRuleManager.findPlace(this);
-            result.putString("place", place);
-        }
-        return result;
+    // Getters and setters for all member variables
+
+    public String getContextTime() {
+        return context_time;
+    }
+
+    public void setContextTime(String context_time) {
+        this.context_time = context_time;
+    }
+
+    public String getContextWeek() {
+        return context_week;
+    }
+
+    public void setContextWeek(String context_week) {
+        this.context_week = context_week;
+    }
+
+    public String getContextGpsPosition() {
+        return context_gps_position;
+    }
+
+    public void setContextGpsPosition(String context_gps_position) {
+        this.context_gps_position = context_gps_position;
+    }
+
+    public String getContextActivity() {
+        return context_activity;
+    }
+
+    public void setContextActivity(String context_activity) {
+        this.context_activity = context_activity;
+    }
+
+    public String getContextWifiName() {
+        return context_wifi_name;
+    }
+
+    public void setContextWifiName(String context_wifi_name) {
+        this.context_wifi_name = context_wifi_name;
+    }
+
+    public double getContextEnvironmentSound() {
+        return context_environment_sound;
+    }
+
+    public void setContextEnvironmentSound(double context_environment_sound) {
+        this.context_environment_sound = context_environment_sound;
+    }
+
+    public String getContextPlaybackDevice() {
+        return context_playback_device;
+    }
+
+    public void setContextPlaybackDevice(String context_playback_device) {
+        this.context_playback_device = context_playback_device;
+    }
+
+    public String getContextApp() {
+        return context_app;
+    }
+
+    public void setContextApp(String context_app) {
+        this.context_app = context_app;
+    }
+
+    public String getContextNetwork() {
+        return context_network;
+    }
+
+    public void setContextNetwork(String context_network) {
+        this.context_network = context_network;
+    }
+
+    public String getMessageSender() {
+        return message_sender;
+    }
+
+    public void setMessageSender(String messageSender) {
+        this.message_sender = messageSender;
+    }
+
+    public String getMessageSourceApp() {
+        return message_source_app;
+    }
+
+    public void setMessageSourceApp(String messageSourceApp) {
+        this.message_source_app = messageSourceApp;
+    }
+
+    public String getMessageTitle() {
+        return message_title;
+    }
+
+    public void setMessageTitle(String message_title) {
+        this.message_title = message_title;
+    }
+
+    public String getMessageContent() {
+        return message_content;
+    }
+
+    public void setMessageContent(String message_content) {
+        this.message_content = message_content;
+    }
+
+    public String getMessageType() {
+        return message_type;
+    }
+
+    public void setMessageType(String message_type) {
+        this.message_type = message_type;
     }
 }

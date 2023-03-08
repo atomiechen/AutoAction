@@ -32,6 +32,7 @@ import com.hcifuture.contextactionlibrary.sensor.uploader.Uploader;
 import com.hcifuture.contextactionlibrary.utils.FileUtils;
 import com.hcifuture.contextactionlibrary.utils.JSONUtils;
 import com.hcifuture.contextactionlibrary.utils.RequestUtils;
+import com.hcifuture.contextactionlibrary.utils.TimeUtils;
 import com.hcifuture.contextactionlibrary.volume.AppManager;
 import com.hcifuture.contextactionlibrary.volume.CrowdManager;
 import com.hcifuture.contextactionlibrary.volume.DeviceManager;
@@ -332,37 +333,20 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     }
 
     public VolumeContext getPresentContext() {
-        Calendar c = Calendar.getInstance();
-        int time = c.get(Calendar.HOUR_OF_DAY) * 100 + c.get(Calendar.MINUTE);
-        double latitude = -200;
-        double longitude = -200;
-        List<String> wifiIds = new ArrayList<>();
-        Position curPos = positionManager.findById(positionManager.getPresentPosition());
-        if (curPos != null) {
-            latitude = curPos.getLatitude();
-            longitude = curPos.getLongitude();
-            wifiIds = curPos.getWifiIds();
-        }
-
-        double noise = noiseManager.getPresentNoise();
-//        try {
-//            // length: 300 is ok, 200 is not
-//            noise = audioCollector.getNoiseLevel(300, 10).get(500, TimeUnit.MILLISECONDS);
-//        } catch (ExecutionException | InterruptedException | TimeoutException e) {
-//            e.printStackTrace();
-//            Log.e(TAG, "getPresentContext: error happens");
-//            noise = audioCollector.lastest_noise;
-//        }
-        Log.e(TAG, "getPresentContext: noise = " + noise);
+        String gps_position = "pos";
+        String activity = "activity";
+        String wifi_name = "wifi";
+        double environment_sound = noiseManager.getPresentNoise();
+        String playback_device = deviceManager.getPresentDeviceID();
         String app = appName;
-        String device = deviceManager.getPresentDeviceID();
-        Log.e("noise", "" + noise);
-        Log.e("device", device);
-        Log.e("latitude", "" + latitude);
-        Log.e("longitude", "" + longitude);
-        Log.e("time", "" + time);
-        Log.e("app", app);
-        return new VolumeContext(-1, noise, device, -1, -1, latitude, longitude, wifiIds, 4, time, time, app, -1);
+        String network = "no network";
+        String sender = "Bob";
+        String source_app = "WeChat";
+        String title = "...";
+        String content = "...";
+        String type = "app message";
+        return new VolumeContext(gps_position, activity, wifi_name, environment_sound,
+                playback_device, app, network, sender, source_app, title, content, type);
     }
 
     public Bundle getRules(VolumeContext volumeContext, int type) {
