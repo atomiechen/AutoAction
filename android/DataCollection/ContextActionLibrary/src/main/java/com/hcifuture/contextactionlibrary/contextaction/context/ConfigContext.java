@@ -32,13 +32,11 @@ import com.hcifuture.contextactionlibrary.sensor.uploader.Uploader;
 import com.hcifuture.contextactionlibrary.utils.FileUtils;
 import com.hcifuture.contextactionlibrary.utils.JSONUtils;
 import com.hcifuture.contextactionlibrary.utils.RequestUtils;
-import com.hcifuture.contextactionlibrary.utils.TimeUtils;
 import com.hcifuture.contextactionlibrary.volume.AppManager;
 import com.hcifuture.contextactionlibrary.volume.CrowdManager;
 import com.hcifuture.contextactionlibrary.volume.DeviceManager;
 import com.hcifuture.contextactionlibrary.volume.MotionManager;
 import com.hcifuture.contextactionlibrary.volume.MyNotificationListener;
-import com.hcifuture.contextactionlibrary.volume.Position;
 import com.hcifuture.contextactionlibrary.volume.PositionManager;
 import com.hcifuture.contextactionlibrary.volume.SocketManager;
 import com.hcifuture.contextactionlibrary.volume.SoundManager;
@@ -47,7 +45,7 @@ import com.hcifuture.contextactionlibrary.volume.VolEventListener;
 import com.hcifuture.contextactionlibrary.volume.VolumeContext;
 import com.hcifuture.contextactionlibrary.volume.NoiseManager;
 import com.hcifuture.contextactionlibrary.volume.VolumeManager;
-import com.hcifuture.contextactionlibrary.volume.VolumeRuleManager;
+import com.hcifuture.contextactionlibrary.volume.ContextRuleManager;
 import com.hcifuture.contextactionlibrary.volume.data.DataUtils;
 import com.hcifuture.contextactionlibrary.volume.data.Reason;
 import com.hcifuture.shared.communicate.config.ContextConfig;
@@ -66,7 +64,6 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -124,7 +121,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     private final HashMap<String, Integer> volume;
 
     private long last_record_all;
-    private VolumeRuleManager volumeRuleManager;
+    private ContextRuleManager contextRuleManager;
 
     private final AtomicInteger mLogID = new AtomicInteger(0);
 
@@ -163,7 +160,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
         myNotificationListener = new MyNotificationListener(this);
 
-        volumeRuleManager = new VolumeRuleManager();
+        contextRuleManager = new ContextRuleManager();
 
         volumeManager = new VolumeManager();
 
@@ -350,16 +347,16 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     }
 
     public Bundle getRules(VolumeContext volumeContext, int type) {
-        Bundle result = volumeRuleManager.getRecommendation(volumeContext);
+        Bundle result = contextRuleManager.getRecommendation(volumeContext);
         if (result != null)
             result.putInt("type", type);
         return result;
     }
 
 //    public List<Double> getVolumes(VolumeContext volumeContext) {
-//        List<VolumeRule> volumeRules = volumeRuleManager.getRecommendation(volumeContext);
+//        List<ContextRule> volumeRules = contextRuleManager.getRecommendation(volumeContext);
 //        List<Double> _volumes = new ArrayList<>();
-//        for (VolumeRule volumeRule: volumeRules) {
+//        for (ContextRule volumeRule: volumeRules) {
 //            _volumes.add(volumeRule.getVolume());
 //        }
 //        return _volumes;

@@ -2,27 +2,22 @@ package com.hcifuture.contextactionlibrary.volume;
 
 import android.os.Build;
 import android.os.Bundle;
-import android.util.Log;
 
 import androidx.annotation.RequiresApi;
-
-import org.checkerframework.checker.units.qual.A;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
-public class VolumeRuleManager {
+public class ContextRuleManager {
 
-    List<VolumeRule> mRuleList;  // 暂时用列表存放，之后应建立持久化存储乃至数据库
+    List<ContextRule> mRuleList;  // 暂时用列表存放，之后应建立持久化存储乃至数据库
     public static List<Location> locations;
 
-    public VolumeRuleManager() {
-        mRuleList = new ArrayList<VolumeRule>();
+    public ContextRuleManager() {
+        mRuleList = new ArrayList<ContextRule>();
         locations = new ArrayList<>();
         fillLocations();
 //        fillContextList(); // 手动生成一些数据，用于测试
@@ -57,7 +52,7 @@ public class VolumeRuleManager {
     }
 
 //    @RequiresApi(api = Build.VERSION_CODES.N)
-//    public List<Integer> getVolumes(VolumeRule.Type type, VolumeContext volumeContext) {  // 先用方差代替
+//    public List<Integer> getVolumes(ContextRule.Type type, VolumeContext volumeContext) {  // 先用方差代替
 //
 //        switch (type) {
 //            case TIME:
@@ -83,13 +78,13 @@ public class VolumeRuleManager {
 
     @RequiresApi(api = Build.VERSION_CODES.N)
     public Bundle getRecommendation(VolumeContext volumeContext){
-        ArrayList<VolumeRule> rules = getRules(volumeContext);
-        rules.sort(Comparator.comparing(VolumeRule::getPriority).reversed());
-//        ArrayList<VolumeRule> rules = new ArrayList<>(_rules.stream().sorted(Comparator.comparing(VolumeRule::getPriority).reversed())
+        ArrayList<ContextRule> rules = getRules(volumeContext);
+        rules.sort(Comparator.comparing(ContextRule::getPriority).reversed());
+//        ArrayList<ContextRule> rules = new ArrayList<>(_rules.stream().sorted(Comparator.comparing(ContextRule::getPriority).reversed())
 //                .collect(Collectors.toList()));
         ArrayList<Bundle> rules_bundle = new ArrayList<>();
         ArrayList<String> rules_string = new ArrayList<>();
-        for (VolumeRule rule: rules) {
+        for (ContextRule rule: rules) {
             rules_bundle.add(rule.toBundle());
             rules_string.add(rule.toString());
         }
@@ -103,12 +98,12 @@ public class VolumeRuleManager {
         return result;
     }
 
-    public ArrayList<VolumeRule> getRules(VolumeContext volumeContext) {
+    public ArrayList<ContextRule> getRules(VolumeContext volumeContext) {
         //naive version
         List<String> keys = Arrays.asList("noise", "device", "place", "time", "app");
-        ArrayList<VolumeRule> result = new ArrayList<>();
+        ArrayList<ContextRule> result = new ArrayList<>();
         Bundle context = volumeContext.toBundle();
-        for (VolumeRule rule: mRuleList) {
+        for (ContextRule rule: mRuleList) {
             Bundle mRule = rule.toBundle();
             boolean bundles_value_equal = true;
             for (String key: keys) {
@@ -161,7 +156,7 @@ public class VolumeRuleManager {
     }
 
     public Bundle getContext(VolumeContext volumeContext) {
-        return new VolumeRule(volumeContext, 0).toBundle();
+        return new ContextRule(volumeContext, 0).toBundle();
     }
 
     public Bundle getValueRange() {
@@ -198,7 +193,7 @@ public class VolumeRuleManager {
         if (mRuleList == null) {
             mRuleList = new ArrayList<>();
         }
-        mRuleList.add(new VolumeRule(volumeContext, volume));
+        mRuleList.add(new ContextRule(volumeContext, volume));
     }
 
     public static String findPlace(VolumeContext volumeContext) {

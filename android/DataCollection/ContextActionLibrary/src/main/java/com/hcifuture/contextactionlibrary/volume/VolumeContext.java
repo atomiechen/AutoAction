@@ -70,7 +70,7 @@ public class VolumeContext {
 //            else if (share == 0) result.putBoolean("share", false);
 //        }
 //        if (!(wifiId == null && (latitude < -90 || longitude < -180))) {
-//            String place = VolumeRuleManager.findPlace(this);
+//            String place = ContextRuleManager.findPlace(this);
 //            result.putString("place", place);
 //        }
         return result;

@@ -7,17 +7,17 @@ public class TimeUtils {
     public static String getCurrentTimePeriod() {
         Calendar calendar = Calendar.getInstance();
         int hourOfDay = calendar.get(Calendar.HOUR_OF_DAY);
-        if (hourOfDay >= 0 && hourOfDay < 5) {
+        if (hourOfDay < 5) {
             return "midnight";
-        } else if (hourOfDay >= 5 && hourOfDay < 9) {
+        } else if (hourOfDay < 9) {
             return "early morning";
-        } else if (hourOfDay >= 9 && hourOfDay < 12) {
+        } else if (hourOfDay < 12) {
             return "morning";
-        } else if (hourOfDay >= 12 && hourOfDay < 14) {
+        } else if (hourOfDay < 14) {
             return "noon";
-        } else if (hourOfDay >= 14 && hourOfDay < 18) {
+        } else if (hourOfDay < 18) {
             return "afternoon";
-        } else if (hourOfDay >= 18 && hourOfDay < 22) {
+        } else if (hourOfDay < 22) {
             return "evening";
         } else {
             return "night";
