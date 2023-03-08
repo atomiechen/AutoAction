@@ -20,6 +20,8 @@ public class VolumeContext {
     private String message_content;
     private String message_type;
 
+    private String[] events;
+
     public VolumeContext(String context_gps_position, String context_activity, String context_wifi_name,
                          double context_environment_sound, String context_playback_device, String context_app, String context_network,
                          String message_sender, String message_source_app, String message_title, String message_content, String message_type) {
@@ -201,4 +203,13 @@ public class VolumeContext {
     public void setMessageType(String message_type) {
         this.message_type = message_type;
     }
+
+    public void setEvents(String[] events) {
+        this.events = events;
+    }
+
+    public String[] getEvents() {
+        return events;
+    }
+
 }
