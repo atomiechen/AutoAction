@@ -10,7 +10,7 @@ public class VolumeContext {
     private String context_gps_position;
     private String context_activity;
     private String context_wifi_name;
-    private double context_environment_sound;
+    private String context_environment_sound;
     private String context_playback_device;
     private String context_app;
     private String context_network;
@@ -23,7 +23,7 @@ public class VolumeContext {
     private String[] events;
 
     public VolumeContext(String context_gps_position, String context_activity, String context_wifi_name,
-                         double context_environment_sound, String context_playback_device, String context_app, String context_network,
+                         String context_environment_sound, String context_playback_device, String context_app, String context_network,
                          String message_sender, String message_source_app, String message_title, String message_content, String message_type) {
         this.context_time = TimeUtils.getCurrentTimePeriod();
         this.context_week = TimeUtils.getCurrentDayOfWeek();
@@ -132,11 +132,11 @@ public class VolumeContext {
         this.context_wifi_name = context_wifi_name;
     }
 
-    public double getContextEnvironmentSound() {
+    public String getContextEnvironmentSound() {
         return context_environment_sound;
     }
 
-    public void setContextEnvironmentSound(double context_environment_sound) {
+    public void setContextEnvironmentSound(String context_environment_sound) {
         this.context_environment_sound = context_environment_sound;
     }
 

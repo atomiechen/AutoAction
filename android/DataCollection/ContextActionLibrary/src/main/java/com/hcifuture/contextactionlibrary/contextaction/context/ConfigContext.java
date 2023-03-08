@@ -333,7 +333,8 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         String gps_position = "pos";
         String activity = "activity";
         String wifi_name = "wifi";
-        double environment_sound = noiseManager.getPresentNoise();
+//        double environment_sound = noiseManager.getPresentNoise();
+        String environment_sound = "noisy";
         String playback_device = deviceManager.getPresentDeviceID();
         String app = appName;
         String network = "no network";
@@ -347,10 +348,11 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     }
 
     public Bundle getRules(VolumeContext volumeContext, int type) {
-        Bundle result = contextRuleManager.getRecommendation(volumeContext);
-        if (result != null)
-            result.putInt("type", type);
-        return result;
+//        Bundle result = contextRuleManager.getRecommendation(volumeContext);
+//        if (result != null)
+//            result.putInt("type", type);
+//        return result;
+        return null;
     }
 
 //    public List<Double> getVolumes(VolumeContext volumeContext) {

@@ -8,8 +8,7 @@ public class Condition {
     private final ArrayList<String> context_gps_position;
     private final ArrayList<String> context_activity;
     private final ArrayList<String> context_wifi_name;
-    private final double noise_upperbound;
-    private final double noise_lowerbound;
+    private final ArrayList<String> context_environment_sound;
     private final ArrayList<String> context_playback_device;
     private final ArrayList<String> context_app;
     private final ArrayList<String> context_network;
@@ -21,8 +20,8 @@ public class Condition {
 
     // Constructor
     public Condition(ArrayList<String> context_time, ArrayList<String> context_week, ArrayList<String> context_gps_position,
-                     ArrayList<String> context_activity, ArrayList<String> context_wifi_name, double noise_upperbound,
-                     double noise_lowerbound, ArrayList<String> context_playback_device, ArrayList<String> context_app,
+                     ArrayList<String> context_activity, ArrayList<String> context_wifi_name, ArrayList<String> noise,
+                     ArrayList<String> context_playback_device, ArrayList<String> context_app,
                      ArrayList<String> context_network, ArrayList<String> message_sender, ArrayList<String> message_source_app,
                      ArrayList<String> message_title, ArrayList<String> message_content, ArrayList<String> message_type) {
         this.context_time = context_time;
@@ -30,8 +29,7 @@ public class Condition {
         this.context_gps_position = context_gps_position;
         this.context_activity = context_activity;
         this.context_wifi_name = context_wifi_name;
-        this.noise_upperbound = noise_upperbound;
-        this.noise_lowerbound = noise_lowerbound;
+        this.context_environment_sound = noise;
         this.context_playback_device = context_playback_device;
         this.context_app = context_app;
         this.context_network = context_network;
@@ -76,8 +74,8 @@ public class Condition {
 
         // Check noise_upperbound and noise_lowerbound
         boolean noiseCheck = true;
-        if (noise_upperbound != 0 && noise_lowerbound != 0) {
-            noiseCheck = (context.getContextEnvironmentSound() >= noise_lowerbound && context.getContextEnvironmentSound() <= noise_upperbound);
+        if (!context_environment_sound.isEmpty()) {
+            noiseCheck = context_environment_sound.contains(context.getContextEnvironmentSound());
         }
 
         // Check context_playback_device
