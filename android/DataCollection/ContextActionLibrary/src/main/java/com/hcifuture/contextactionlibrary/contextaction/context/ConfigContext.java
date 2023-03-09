@@ -33,6 +33,7 @@ import com.hcifuture.contextactionlibrary.sensor.uploader.Uploader;
 import com.hcifuture.contextactionlibrary.utils.FileUtils;
 import com.hcifuture.contextactionlibrary.utils.JSONUtils;
 import com.hcifuture.contextactionlibrary.utils.RequestUtils;
+import com.hcifuture.contextactionlibrary.volume.ActivityManager;
 import com.hcifuture.contextactionlibrary.volume.AppManager;
 import com.hcifuture.contextactionlibrary.volume.CrowdManager;
 import com.hcifuture.contextactionlibrary.volume.DeviceManager;
@@ -137,6 +138,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     private final DeviceManager deviceManager;
     private final SoundManager soundManager;
     private final MotionManager motionManager;
+    private final ActivityManager activityManager;
     private final TimeManager timeManager;
     private final NetworkManager networkManager;
     private final MyNotificationListener myNotificationListener;
@@ -186,6 +188,8 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
         motionManager = new MotionManager(this, mContext, scheduledExecutorService, futureList,
                 (IMUCollector) collectorManager.getCollector(CollectorManager.CollectorType.IMU));
+
+        activityManager = new ActivityManager(this);
 
         timeManager = new TimeManager();
 
@@ -240,6 +244,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         crowdManager.start();
         soundManager.start();
         motionManager.start();
+        activityManager.start();
         myNotificationListener.start();
 
         // get audio capture permission
@@ -255,6 +260,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         // it may cause crashes when frequently called
 
         myNotificationListener.stop();
+        activityManager.stop();
         motionManager.stop();
         soundManager.stop();
         crowdManager.stop();
@@ -272,6 +278,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         // it may cause crashes when frequently called
 
         myNotificationListener.pause();
+        activityManager.pause();
         motionManager.pause();
         soundManager.pause();
         crowdManager.pause();
@@ -294,6 +301,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         crowdManager.resume();
         soundManager.resume();
         motionManager.resume();
+        activityManager.resume();
         myNotificationListener.resume();
 
         // get audio capture permission
@@ -305,6 +313,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     @Override
     public void onIMUSensorEvent(SingleIMUData data) {
         motionManager.onIMUSensorEvent(data);
+        activityManager.onIMUSensorEvent(data);
     }
 
     @Override
