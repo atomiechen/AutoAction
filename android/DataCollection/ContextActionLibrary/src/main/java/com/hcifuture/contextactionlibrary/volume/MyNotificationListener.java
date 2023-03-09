@@ -14,7 +14,7 @@ public class MyNotificationListener extends TriggerManager {
     private AppManager appManager;
     private Message latest_message;
 
-    public class Message {
+    public static class Message {
         public String sender;
         public String source_app;
         public String title;

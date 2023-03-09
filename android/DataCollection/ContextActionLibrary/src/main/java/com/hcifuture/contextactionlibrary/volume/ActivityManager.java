@@ -101,7 +101,7 @@ public class ActivityManager extends TriggerManager {
         Log.i(TAG, curActivity);
     }
 
-    String getActivity() {
+    public String getActivity() {
         return prevActivity;
     }
 }
