@@ -102,6 +102,17 @@ public class ActivityManager extends TriggerManager {
     }
 
     public String getActivity() {
-        return prevActivity;
+        if (prevActivity.equals(ACTION_STATIC))
+            return "still";
+        else if (prevActivity.equals(ACTION_WALKING))
+            return "walking";
+        else if (prevActivity.equals(ACTION_RUNNING))
+            return "running";
+        else if (prevActivity.equals(ACTION_CYCLING))
+            return "cycling";
+        else if (prevActivity.equals(ACTION_OTHERS))
+            return "others";
+        else
+            return "error";
     }
 }
