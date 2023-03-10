@@ -156,6 +156,9 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
     private Uploader uploader;
 
+    private VolumeContext last_context;
+    private VolumeContext current_context;
+
     public ConfigContext(Context context, ContextConfig config, RequestListener requestListener, List<ContextListener> contextListener, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, CollectorManager collectorManager) {
         super(context, config, requestListener, contextListener, scheduledExecutorService, futureList);
 
@@ -941,7 +944,8 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
     @Override
     public String getCurrentContext() {
-        return Collector.gson.toJson(getPresentContext());
+//        return Collector.gson.toJson(getPresentContext());
+        return Collector.gson.toJson(current_context);
     }
 
     @Override

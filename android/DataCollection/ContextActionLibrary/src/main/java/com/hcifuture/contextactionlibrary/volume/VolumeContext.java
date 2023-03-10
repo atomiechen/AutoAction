@@ -20,7 +20,17 @@ public class VolumeContext {
     private String message_content;
     private String message_type;
 
-    private String[] events;
+    private ArrayList<m_Event> events;
+
+    public static class m_Event {
+        long timestamp;
+        String event;
+
+        public m_Event(long time, String event) {
+            this.timestamp = time;
+            this.event = event;
+        }
+    }
 
     public VolumeContext(String time, String week, String gps_position, String activity, String wifi_name, String environment_sound, String playback_device, String app,
                          String network, String message_sender, String message_source_app, String message_title, String message_content, String message_type) {
@@ -38,6 +48,10 @@ public class VolumeContext {
         this.message_title = message_title;
         this.message_content = message_content;
         this.message_type = message_type;
+    }
+
+    public static VolumeContext fillEvent(VolumeContext old, VolumeContext present) {
+        return present;
     }
 
     public String getContextTime() {
@@ -152,11 +166,4 @@ public class VolumeContext {
         this.message_type = message_type;
     }
 
-    public void setEvents(String[] events) {
-        this.events = events;
-    }
-
-    public String[] getEvents() {
-        return events;
-    }
 }
