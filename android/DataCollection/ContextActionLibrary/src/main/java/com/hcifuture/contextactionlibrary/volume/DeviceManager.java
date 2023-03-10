@@ -168,7 +168,8 @@ public class DeviceManager extends TriggerManager {
         mediaRouter.addCallback(MediaRouter.ROUTE_TYPE_LIVE_AUDIO, routerCallback, MediaRouter.CALLBACK_FLAG_UNFILTERED_EVENTS);
         context.registerReceiver(broadcastReceiver, intentFilter, null, ContextActionContainer.handler);
 
-        setPresentDevice(genDevice(getCurrentRouteInfo()));
+//        setPresentDevice(genDevice(getCurrentRouteInfo()));
+        checkDevice();
 
         if (scheduledDeviceDetection == null) {
             futureList.add(scheduledDeviceDetection = scheduledExecutorService.scheduleAtFixedRate(this::checkDevice, 3000, 60000, TimeUnit.MILLISECONDS));
@@ -191,6 +192,23 @@ public class DeviceManager extends TriggerManager {
             mediaRouter.removeCallback(routerCallback);
         } catch (Exception e) {
             e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void pause() {
+        if (scheduledDeviceDetection != null) {
+            scheduledDeviceDetection.cancel(true);
+            scheduledDeviceDetection = null;
+        }
+    }
+
+    @Override
+    public void resume() {
+        checkDevice();
+
+        if (scheduledDeviceDetection == null) {
+            futureList.add(scheduledDeviceDetection = scheduledExecutorService.scheduleAtFixedRate(this::checkDevice, 3000, 60000, TimeUnit.MILLISECONDS));
         }
     }
 
@@ -248,7 +266,7 @@ public class DeviceManager extends TriggerManager {
     public void checkRouteInfo(MediaRouter.RouteInfo info, String prefix) {
         Device device = genDevice(info);
         Log.e(TAG, String.format(prefix + " deviceID: %s", device.deviceID));
-        if (!currentDevice.equals(device)) {
+        if (!device.equals(currentDevice)) {
             Bundle bundle = new Bundle();
             bundle.putString("deviceID", device.deviceID);
             if (!devices.contains(device)) {
