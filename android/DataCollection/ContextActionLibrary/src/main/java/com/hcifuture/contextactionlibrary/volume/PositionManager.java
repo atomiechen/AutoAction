@@ -42,7 +42,7 @@ public class PositionManager extends TriggerManager {
     private ScheduledFuture<?> scheduledPositionDetection;
     private ScheduledFuture<?> scheduledPositionListLog;
     private long initialDelay = 0;
-    private long period = 1000 * 15;  // detect position every 15s
+    private long period = 1000 * 60;  // detect position every 15s
     private List<Position> positions;
     private List<HistoryItem> history;
     private Position lastPosition;

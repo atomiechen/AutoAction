@@ -192,8 +192,8 @@ public class NoiseManager extends TriggerManager {
         }
     }
 
-    public double getPresentNoise() {
-        return lastNoise;
+    public int getPresentNoise() {
+        return (int)lastNoise;
     }
 
     private void setPresentNoise(double noise) {
