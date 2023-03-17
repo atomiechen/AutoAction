@@ -629,7 +629,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                                 );
                             }
 
-                            Log.e(TAG, "Local Context Data: " + String.format("%d,%f,%s,%s,%s,%b,%d",
+                            Log.e(TAG, "Local Context Data: " + String.format("%d,%d,%s,%s,%s,%b,%d",
                                     System.currentTimeMillis(),
                                     noiseManager.getPresentNoise(),
                                     deviceManager.getPresentDeviceID(),
