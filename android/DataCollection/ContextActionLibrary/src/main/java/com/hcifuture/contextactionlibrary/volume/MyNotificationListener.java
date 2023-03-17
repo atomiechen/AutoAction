@@ -68,6 +68,8 @@ public class MyNotificationListener extends TriggerManager {
         if (source_app.equals("微信") || source_app.equals("QQ"))
             sender = title;
         String type = appManager.getAppType(sbn.getPackageName());
+        if (type.equals("system"))
+            return;
         if (posted_or_removed == 0)
             this.latest_message = new Message(sender, source_app, title, content, type);
         else

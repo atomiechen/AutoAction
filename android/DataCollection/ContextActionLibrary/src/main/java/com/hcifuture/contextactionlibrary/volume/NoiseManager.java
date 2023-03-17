@@ -137,7 +137,7 @@ public class NoiseManager extends TriggerManager {
     }
 
     public String getNoiseLevel() {
-        if (lastNoise <= 0)
+        if (lastNoise < 0)
             return "error";
         else if (lastNoise <= 50)
             return "quiet";
