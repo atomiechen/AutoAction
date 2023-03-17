@@ -47,6 +47,7 @@ import com.hcifuture.contextactionlibrary.volume.TimeManager;
 import com.hcifuture.contextactionlibrary.volume.VolEventListener;
 import com.hcifuture.contextactionlibrary.volume.VolumeContext;
 import com.hcifuture.contextactionlibrary.volume.NoiseManager;
+import com.hcifuture.contextactionlibrary.volume.VolumeDetector;
 import com.hcifuture.contextactionlibrary.volume.VolumeManager;
 import com.hcifuture.contextactionlibrary.volume.ContextRuleManager;
 import com.hcifuture.contextactionlibrary.volume.data.DataUtils;
@@ -73,6 +74,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import androidx.annotation.RequiresApi;
@@ -142,6 +144,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     private final TimeManager timeManager;
     private final NetworkManager networkManager;
     private final MyNotificationListener myNotificationListener;
+    private final VolumeDetector volumeDetector;
 
     private final SocketManager socketManager;
 
@@ -153,6 +156,8 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
     private CompletableFuture<Double> detectedNoiseFt = null;
     private CompletableFuture<Void> allFutures = null;
+
+    private ScheduledFuture<?> periodic_scan;
 
     private Uploader uploader;
 
@@ -181,6 +186,8 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
         myNotificationListener = new MyNotificationListener(this, appManager);
 
+        volumeDetector = new VolumeDetector(mContext);
+
         crowdManager = new CrowdManager(this, scheduledExecutorService, futureList,
                 (BluetoothCollector) collectorManager.getCollector(CollectorManager.CollectorType.Bluetooth), mContext);
 
@@ -196,7 +203,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
         timeManager = new TimeManager();
 
-        networkManager =  new NetworkManager(mContext);
+        networkManager =  new NetworkManager(this, mContext, scheduledExecutorService, futureList, (WifiCollector) collectorManager.getCollector(CollectorManager.CollectorType.Wifi));
 
         dataUtils = new DataUtils(mContext);
 
@@ -228,7 +235,6 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         volume.put("volume_music_earpiece", 0);
 
         last_record_all = 0;
-
     }
 
     public void setUploader(Uploader uploader) {
@@ -249,10 +255,19 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         motionManager.start();
         activityManager.start();
         myNotificationListener.start();
+        networkManager.start();
 
         // get audio capture permission
         if (!soundManager.hasCapturePermission()) {
             notifyRequestRecordPermission();
+        }
+
+        if (periodic_scan == null) {
+            periodic_scan = scheduledExecutorService.scheduleAtFixedRate(() -> {
+                last_context = current_context;
+                current_context = getPresentContext();
+            }, 0, 60 * 1000, TimeUnit.MILLISECONDS);
+            futureList.add(periodic_scan);
         }
     }
 
@@ -272,6 +287,12 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         noiseManager.stop();
         appManager.stop();
         socketManager.stop();
+        networkManager.stop();
+
+        if (periodic_scan != null) {
+            periodic_scan.cancel(true);
+            periodic_scan = null;
+        }
     }
 
     @Override
@@ -290,6 +311,12 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         noiseManager.pause();
         appManager.pause();
         socketManager.pause();
+        networkManager.pause();
+
+        if (periodic_scan != null) {
+            periodic_scan.cancel(true);
+            periodic_scan = null;
+        }
     }
 
     @RequiresApi(api = Build.VERSION_CODES.Q)
@@ -306,10 +333,19 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         motionManager.resume();
         activityManager.resume();
         myNotificationListener.resume();
+        networkManager.resume();
 
         // get audio capture permission
         if (!soundManager.hasCapturePermission()) {
             notifyRequestRecordPermission();
+        }
+
+        if (periodic_scan == null) {
+            periodic_scan = scheduledExecutorService.scheduleAtFixedRate(() -> {
+                last_context = current_context;
+                current_context = getPresentContext();
+            }, 0, 60 * 1000, TimeUnit.MILLISECONDS);
+            futureList.add(periodic_scan);
         }
     }
 
@@ -351,6 +387,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         String context_activity = activityManager.getActivity();
         String context_wifi_name = networkManager.getWifiName();
         String context_environment_sound = noiseManager.getNoiseLevel();
+        int context_noise_db = noiseManager.getPresentNoise();
         String context_playback_device = deviceManager.getDeviceType();
         String context_app = appManager.getPresentApp();
         String context_network = networkManager.getNetworkType();
@@ -363,8 +400,18 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         String message_content = message.content;
         String message_type = message.type;
 
-        return new VolumeContext(context_time, context_week, context_gps_position, context_activity, context_wifi_name,
-                context_environment_sound, context_playback_device, context_app, context_network, message_sender, message_source_app, message_title, message_content, message_type);
+        List<String> message_behavior = myNotificationListener.getMessageBehavior();
+        List<String> volume_behavior = volumeDetector.getVolumeBehaviors();
+
+        VolumeContext present_context = new VolumeContext(context_time, context_week, context_gps_position, context_activity, context_wifi_name,
+                context_environment_sound, context_noise_db, context_playback_device, context_app, context_network, message_sender, message_source_app,
+                message_title, message_content, message_type, message_behavior, volume_behavior);
+
+        if (last_context != null) {
+            present_context = VolumeContext.fillEvent(last_context, present_context);
+        }
+//        Log.i(TAG, "present context: " + Collector.gson.toJson(present_context));
+        return present_context;
     }
 
     public Bundle getRules(VolumeContext volumeContext, int type) {
@@ -944,8 +991,8 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
     @Override
     public String getCurrentContext() {
-        return Collector.gson.toJson(getPresentContext());
-//        return Collector.gson.toJson(current_context);
+//        return Collector.gson.toJson(getPresentContext());
+        return Collector.gson.toJson(current_context);
     }
 
     @Override

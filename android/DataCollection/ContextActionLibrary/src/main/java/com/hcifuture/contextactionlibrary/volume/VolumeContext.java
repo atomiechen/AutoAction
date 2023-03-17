@@ -1,16 +1,16 @@
 package com.hcifuture.contextactionlibrary.volume;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 public class VolumeContext {
     private String context_time;
-    private String context_week;
+    private String context_day_of_week;
     private String context_gps_position;
     private String context_activity;
     private String context_wifi_name;
     private String context_environment_sound;
+    private int context_noise_db;
     private String context_playback_device;
     private String context_app;
     private String context_network;
@@ -20,26 +20,28 @@ public class VolumeContext {
     private String message_content;
     private String message_type;
 
-    private ArrayList<m_Event> events;
+    private List<String> events;
+    private List<String> behavior;
 
-    public static class m_Event {
-        long timestamp;
-        String event;
+//    public static class m_Event {
+//        long timestamp;
+//        String event;
+//
+//        public m_Event(long time, String event) {
+//            this.timestamp = time;
+//            this.event = event;
+//        }
+//    }
 
-        public m_Event(long time, String event) {
-            this.timestamp = time;
-            this.event = event;
-        }
-    }
-
-    public VolumeContext(String time, String week, String gps_position, String activity, String wifi_name, String environment_sound, String playback_device, String app,
-                         String network, String message_sender, String message_source_app, String message_title, String message_content, String message_type) {
+    public VolumeContext(String time, String week, String gps_position, String activity, String wifi_name, String environment_sound, int noise_db, String playback_device, String app,
+                         String network, String message_sender, String message_source_app, String message_title, String message_content, String message_type, List<String> message_behavior, List<String> volume_behavior) {
         this.context_time = time;
-        this.context_week = week;
+        this.context_day_of_week = week;
         this.context_gps_position = gps_position;
         this.context_activity = activity;
         this.context_wifi_name = wifi_name;
         this.context_environment_sound = environment_sound;
+        this.context_noise_db = noise_db;
         this.context_playback_device = playback_device;
         this.context_app = app;
         this.context_network = network;
@@ -48,9 +50,48 @@ public class VolumeContext {
         this.message_title = message_title;
         this.message_content = message_content;
         this.message_type = message_type;
+
+        this.events = new ArrayList<>();
+
+        this.behavior = new ArrayList<>();
+        this.behavior.addAll(message_behavior);
+        this.behavior.addAll(volume_behavior);
     }
 
     public static VolumeContext fillEvent(VolumeContext old, VolumeContext present) {
+        if (!present.context_time.equals(old.context_time)) {
+            present.events.add("TimeChange");
+        }
+        if (!present.context_day_of_week.equals(old.context_day_of_week)) {
+            present.events.add("DayOfWeekChange");
+        }
+        if (!present.context_gps_position.equals(old.context_gps_position)) {
+            present.events.add("PositionChange");
+        }
+        if (!present.context_activity.equals(old.context_activity)) {
+            present.events.add("ActivityChange");
+        }
+        if (!present.context_wifi_name.equals(old.context_wifi_name)) {
+            present.events.add("WifiChange");
+        }
+        if (!present.context_environment_sound.equals(old.context_environment_sound)) {
+            if (present.context_noise_db > old.context_noise_db)
+                present.events.add("NoiseUp");
+            else
+                present.events.add("NoiseDown");
+        }
+        if (!present.context_playback_device.equals(old.context_playback_device)) {
+            present.events.add("DeviceChange");
+        }
+        if (!present.context_app.equals(old.context_app)) {
+            present.events.add("AppChange");
+        }
+        if (!present.context_network.equals(old.context_network)) {
+            present.events.add("NetworkChange");
+        }
+        if (!present.message_content.equals(old.message_content)) {
+            present.events.add("NewMessageCome");
+        }
         return present;
     }
 
@@ -63,11 +104,11 @@ public class VolumeContext {
     }
 
     public String getContextWeek() {
-        return context_week;
+        return context_day_of_week;
     }
 
     public void setContextWeek(String context_week) {
-        this.context_week = context_week;
+        this.context_day_of_week = context_week;
     }
 
     public String getContextGpsPosition() {

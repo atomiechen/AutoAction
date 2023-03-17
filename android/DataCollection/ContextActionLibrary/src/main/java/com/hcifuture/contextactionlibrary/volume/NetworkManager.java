@@ -11,21 +11,30 @@ import android.os.Build;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 
 import com.hcifuture.contextactionlibrary.sensor.collector.async.WifiCollector;
+import com.hcifuture.contextactionlibrary.sensor.data.WifiData;
+import com.hcifuture.contextactionlibrary.sensor.trigger.TriggerConfig;
 
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
-public class NetworkManager {
+public class NetworkManager extends TriggerManager {
     public final String TAG = "NetworkManager";
     ConnectivityManager connectivityManager;
-    WifiManager wifiManager;
     private String networkType;
     private String wifiName;
+    private ScheduledFuture<?> wifi_scan;
+    private ScheduledExecutorService scheduledExecutorService;
+    private List<ScheduledFuture<?>> futureList;
+    private WifiCollector wifiCollector;
 
-    public NetworkManager(Context context) {
+    public NetworkManager(VolEventListener volEventListener, Context context, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, WifiCollector wifiCollector) {
+        super(volEventListener);
         networkType = "unknown";
         wifiName = "unknown";
         //获取ConnectivityManager
@@ -60,6 +69,9 @@ public class NetworkManager {
         };
         //注册网络监听器
         connectivityManager.registerNetworkCallback(customMonitor, networkCallback);
+        this.scheduledExecutorService = scheduledExecutorService;
+        this.futureList = futureList;
+        this.wifiCollector = wifiCollector;
     }
 
     private void refreshNetworkInfo() {
@@ -85,7 +97,6 @@ public class NetworkManager {
             networkType = "connected to Wi-Fi";
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 Log.i(TAG, ((WifiInfo)networkCapabilities.getTransportInfo()).toString());
-                wifiName = ((WifiInfo) networkCapabilities.getTransportInfo()).getSSID();
             }
         }
         else if (networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {
@@ -103,5 +114,32 @@ public class NetworkManager {
 
     public String getWifiName() {
         return wifiName;
+    }
+
+    @Override
+    @RequiresApi(api = Build.VERSION_CODES.N)
+    public void start() {
+        if (wifi_scan == null) {
+            wifi_scan = scheduledExecutorService.scheduleAtFixedRate(() -> {
+                try {
+                    WifiData wifiData = (WifiData) wifiCollector.getData(new TriggerConfig()).get().getData();
+                    if (networkType.equals("connected to Wi-Fi")) {
+                        if (wifiData.getAps() != null && wifiData.getAps().size() > 0)
+                            wifiName = wifiData.getAps().get(0).getSsid();
+                    }
+                } catch (ExecutionException | InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }, 0, 1000 * 60, TimeUnit.MILLISECONDS);
+            futureList.add(wifi_scan);
+        }
+    }
+
+    @Override
+    public void stop() {
+        if (wifi_scan != null) {
+            wifi_scan.cancel(true);
+            wifi_scan = null;
+        }
     }
 }
