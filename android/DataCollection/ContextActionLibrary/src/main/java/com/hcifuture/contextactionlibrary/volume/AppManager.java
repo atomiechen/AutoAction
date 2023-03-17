@@ -33,6 +33,36 @@ public class AppManager extends TriggerManager {
     private boolean wechat_chatting_video_on;
     private Context mContext;
     private PackageManager packageManager;
+    public static final List<String> systemPackages = new ArrayList<>(Arrays.asList(
+            "com.android.systemui",
+            "com.huawei.android.launcher",
+            "com.bbk.launcher2",
+            "com.miui.home",
+            "com.android.launcher",
+            "com.hihonor.android.launcher",
+            "com.google.android.inputmethod.latin",
+            "com.vivo.hiboard",
+            "com.oppo.launcher",
+            "com.huawei.ohos.inputmethod",
+            "com.huawei.aod",
+            "net.oneplus.launcher",
+            "com.hihonor.aod",
+            "com.android.incallui",
+            "com.baidu.input_huawei",
+            "com.baidu.input_oppo",
+            "com.android.settings",
+            "android",
+            "com.android.mms",
+            "com.miui.personalassistant",
+            "com.huawei.android.totemweather",
+            "com.huawei.magazine",
+            "com.java.myfirsttest",
+            "com.baidu.input_mi",
+            "miui.systemui.plugin",
+            "com.android.permissioncontroller",
+            "com.hcifuture.scanner",
+            "com.ss.android.lark"
+    ));
 
     public AppManager(VolEventListener volEventListener, Context context) {
         super(volEventListener);
@@ -102,8 +132,8 @@ public class AppManager extends TriggerManager {
     public void onAccessibilityEvent(AccessibilityEvent event) {
         if (event.getPackageName() == null || event.getEventType() == AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED)
             return;
-        // 去掉拍拍助手和飞书
-        if ((event.getPackageName().toString().equals("com.hcifuture.scanner") || event.getPackageName().toString().equals("com.ss.android.lark")))
+        // 去掉拍拍助手和飞书以及其他系统应用
+        if (systemPackages.contains(event.getPackageName().toString()))
             return;
         String packageName = event.getPackageName().toString();
         try {

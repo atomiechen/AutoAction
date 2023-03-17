@@ -255,6 +255,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         motionManager.start();
         activityManager.start();
         myNotificationListener.start();
+        networkManager.start();
 
         // get audio capture permission
         if (!soundManager.hasCapturePermission()) {
@@ -286,6 +287,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         noiseManager.stop();
         appManager.stop();
         socketManager.stop();
+        networkManager.stop();
 
         if (periodic_scan != null) {
             periodic_scan.cancel(true);
@@ -309,6 +311,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         noiseManager.pause();
         appManager.pause();
         socketManager.pause();
+        networkManager.pause();
 
         if (periodic_scan != null) {
             periodic_scan.cancel(true);
@@ -330,6 +333,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         motionManager.resume();
         activityManager.resume();
         myNotificationListener.resume();
+        networkManager.resume();
 
         // get audio capture permission
         if (!soundManager.hasCapturePermission()) {
