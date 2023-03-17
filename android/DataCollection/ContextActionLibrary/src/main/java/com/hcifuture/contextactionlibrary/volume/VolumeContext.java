@@ -75,9 +75,9 @@ public class VolumeContext {
             present.events.add("WifiChange");
         }
         if (!present.context_environment_sound.equals(old.context_environment_sound)) {
-            if (present.context_noise_db > old.context_noise_db)
+            if (present.context_noise_db - old.context_noise_db > 5)
                 present.events.add("NoiseUp");
-            else
+            else if (old.context_noise_db - present.context_noise_db > 5)
                 present.events.add("NoiseDown");
         }
         if (!present.context_playback_device.equals(old.context_playback_device)) {
