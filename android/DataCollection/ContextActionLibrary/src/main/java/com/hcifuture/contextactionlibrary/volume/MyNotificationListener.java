@@ -48,6 +48,23 @@ public class MyNotificationListener extends TriggerManager {
     public void onNotificationPosted(StatusBarNotification sbn, NotificationListenerService.RankingMap rankingMap) {
         Log.e(TAG, "onNotificationPosted: rankingMap" + rankingMap);
         recordNotification(sbn, 0);
+
+        Bundle bundle = new Bundle();
+        String source_app = appManager.getNameByPackageName(sbn.getPackageName());
+        Bundle extras = sbn.getNotification().extras;
+        String title = extras.getString(Notification.EXTRA_TITLE); //通知title
+        String content = extras.getString(Notification.EXTRA_TEXT); //通知内容
+        String sender = "";
+        if (source_app.equals("微信") || source_app.equals("QQ"))
+            sender = title;
+        String type = appManager.getAppType(sbn.getPackageName());
+
+        bundle.putString("source_app", source_app);
+        bundle.putString("title", title);
+        bundle.putString("content", content);
+        bundle.putString("sender", sender);
+        bundle.putString("type", type);
+        volEventListener.onVolEvent(VolEventListener.EventType.NewMessageCome, bundle);
     }
 
     public void onNotificationRemoved(StatusBarNotification sbn, NotificationListenerService.RankingMap rankingMap, int reason) {

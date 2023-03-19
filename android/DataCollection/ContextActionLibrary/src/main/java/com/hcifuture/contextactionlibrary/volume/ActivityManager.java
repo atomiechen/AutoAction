@@ -96,7 +96,7 @@ public class ActivityManager extends TriggerManager {
             prevActivity = curActivity;
             Bundle bundle = new Bundle();
             bundle.putString("activity", curActivity);
-            volEventListener.onVolEvent(VolEventListener.EventType.Activity, bundle);
+            volEventListener.onVolEvent(VolEventListener.EventType.ActivityChange, bundle);
         }
         Log.i(TAG, curActivity);
     }

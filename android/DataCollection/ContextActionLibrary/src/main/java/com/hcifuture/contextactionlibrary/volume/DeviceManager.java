@@ -273,11 +273,11 @@ public class DeviceManager extends TriggerManager {
                 devices.add(device);
                 writeDevices();
             }
-            volEventListener.onVolEvent(VolEventListener.EventType.Device, bundle);
+            volEventListener.onVolEvent(VolEventListener.EventType.DeviceChange, bundle);
             JSONObject json = new JSONObject();
             JSONUtils.jsonPut(json, "last_device", currentDevice.deviceID);
             JSONUtils.jsonPut(json, "new_device", device.deviceID);
-            volEventListener.recordEvent(VolEventListener.EventType.Device, "device_change", json.toString());
+//            volEventListener.recordEvent(VolEventListener.EventType.Device, "device_change", json.toString());
             setPresentDevice(device);
         }
     }

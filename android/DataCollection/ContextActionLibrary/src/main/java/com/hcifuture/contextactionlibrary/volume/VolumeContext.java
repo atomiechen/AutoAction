@@ -1,9 +1,14 @@
 package com.hcifuture.contextactionlibrary.volume;
 
+import android.os.Build;
+import android.os.Bundle;
+
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 public class VolumeContext {
+    private String context_exact_time;
     private String context_time;
     private String context_day_of_week;
     private String context_gps_position;
@@ -20,21 +25,29 @@ public class VolumeContext {
     private String message_content;
     private String message_type;
 
-    private List<String> events;
+    private List<Event> events;
     private List<String> behavior;
 
-//    public static class m_Event {
-//        long timestamp;
-//        String event;
-//
-//        public m_Event(long time, String event) {
-//            this.timestamp = time;
-//            this.event = event;
-//        }
-//    }
+    public static class Event {
+        long timestamp;
+        String event;
+        Bundle extras;
 
-    public VolumeContext(String time, String week, String gps_position, String activity, String wifi_name, String environment_sound, int noise_db, String playback_device, String app,
-                         String network, String message_sender, String message_source_app, String message_title, String message_content, String message_type, List<String> message_behavior, List<String> volume_behavior) {
+        public Event(long time, String event, Bundle extras) {
+            this.timestamp = time;
+            this.event = event;
+            this.extras = extras;
+        }
+
+        public long getTimestamp() {
+            return timestamp;
+        }
+    }
+
+    public VolumeContext(String exact_time, String time, String week, String gps_position, String activity, String wifi_name, String environment_sound, int noise_db, String playback_device, String app,
+                         String network, String message_sender, String message_source_app, String message_title, String message_content, String message_type,
+                         List<Event> eventList, List<String> message_behavior, List<String> volume_behavior) {
+        this.context_exact_time = exact_time;
         this.context_time = time;
         this.context_day_of_week = week;
         this.context_gps_position = gps_position;
@@ -51,49 +64,34 @@ public class VolumeContext {
         this.message_content = message_content;
         this.message_type = message_type;
 
-        this.events = new ArrayList<>();
+        this.events = eventList;
 
         this.behavior = new ArrayList<>();
         this.behavior.addAll(message_behavior);
         this.behavior.addAll(volume_behavior);
     }
 
-    public static VolumeContext fillEvent(VolumeContext old, VolumeContext present) {
-        if (!present.context_time.equals(old.context_time)) {
-            present.events.add("TimeChange");
-        }
-        if (!present.context_day_of_week.equals(old.context_day_of_week)) {
-            present.events.add("DayOfWeekChange");
-        }
-        if (!present.context_gps_position.equals(old.context_gps_position)) {
-            present.events.add("PositionChange");
-        }
-        if (!present.context_activity.equals(old.context_activity)) {
-            present.events.add("ActivityChange");
-        }
-        if (!present.context_wifi_name.equals(old.context_wifi_name)) {
-            present.events.add("WifiChange");
-        }
-        if (!present.context_environment_sound.equals(old.context_environment_sound)) {
-            if (present.context_noise_db - old.context_noise_db > 5)
-                present.events.add("NoiseUp");
-            else if (old.context_noise_db - present.context_noise_db > 5)
-                present.events.add("NoiseDown");
-        }
-        if (!present.context_playback_device.equals(old.context_playback_device)) {
-            present.events.add("DeviceChange");
-        }
-        if (!present.context_app.equals(old.context_app)) {
-            present.events.add("AppChange");
-        }
-        if (!present.context_network.equals(old.context_network)) {
-            present.events.add("NetworkChange");
-        }
-        if (!present.message_content.equals(old.message_content)) {
-            present.events.add("NewMessageCome");
-        }
-        return present;
-    }
+
+//    private List<TempEvent> fillEvent(List<Event> eventList) {
+//        List<TempEvent> result = new ArrayList<>();
+//        for (Event event: eventList) {
+//            String event_name = event.event;
+//            boolean already_in_list = false;
+//            for (TempEvent tempEvent: result) {
+//                if (tempEvent.event.equals(event_name)) {
+//                    tempEvent.count += 1;
+//                    already_in_list = true;
+//                }
+//            }
+//            if (!already_in_list) {
+//                result.add(new TempEvent(event_name, 1));
+//            }
+//        }
+//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+//            result.sort((o1, o2) -> o2.count - o1.count);
+//        }
+//        return result;
+//    }
 
     public String getContextTime() {
         return context_time;

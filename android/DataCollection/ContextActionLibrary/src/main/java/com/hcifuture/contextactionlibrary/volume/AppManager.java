@@ -145,68 +145,14 @@ public class AppManager extends TriggerManager {
         }
         String name = getNameByPackageName(packageName);
         if (!name.equals(appName)) {
+            Bundle bundle = new Bundle();
+            bundle.putString("last_app", appName);
+            bundle.putString("new_app", name);
+            volEventListener.onVolEvent(VolEventListener.EventType.AppChange, bundle);
             last_appName = appName;
             appName = name;
             Log.i(TAG, "new app: " + appName);
         }
-//        if (event.getText() != null && event.getText().size() > 0 && event.getText().get(0) != null) {
-//            String tmp_name = event.getText().get(0).toString();
-//            String packageName = "";
-//            if (event.getPackageName() != null) {
-//                packageName = event.getPackageName().toString();
-//                if (last_packageName != null && !packageName.equals(last_packageName)) {
-//                    JSONObject json = new JSONObject();
-//                    JSONUtils.jsonPut(json, "last_package", last_packageName);
-//                    JSONUtils.jsonPut(json, "new_package", packageName);
-//                    volEventListener.recordEvent(VolEventListener.EventType.App, "package_change", json.toString());
-//                    last_packageName = packageName;
-//                }
-//            }
-//            if (isNeedOverlayApp(tmp_name, packageName) || isNotNeedOverlayApp(tmp_name, packageName)) {
-//                appName = tmp_name;
-//                if (findByAppName(need_overlay_apps, appName) != null)
-//                    latest_id = findByAppName(need_overlay_apps, appName).id;
-//                else if (findByAppName(not_need_overlay_apps, appName) != null)
-//                    latest_id = findByAppName(not_need_overlay_apps, appName).id;
-//                if (!(appName.equals(last_appName))) {
-//                    if (isNeedOverlayApp(appName, packageName) && !(event.getClassName() != null && isVideoWidget(event.getClassName().toString()))) {
-//                        Bundle bundle = new Bundle();
-//                        bundle.putString("app", appName);
-//                        Log.e(TAG, "App Changed from " + last_appName + " to " + appName + ", timestamp: " + System.currentTimeMillis());
-//                        volEventListener.onVolEvent(VolEventListener.EventType.App, bundle);
-//                        overlay_has_showed_for_other_reason = true;
-//                    }
-//                    JSONObject json = new JSONObject();
-//                    JSONUtils.jsonPut(json, "last_app", last_appName);
-//                    JSONUtils.jsonPut(json, "last_app_type", getAppType(last_appName));
-//                    JSONUtils.jsonPut(json, "new_app", appName);
-//                    JSONUtils.jsonPut(json, "new_app_type", getAppType(appName));
-//                    volEventListener.recordEvent(VolEventListener.EventType.App, "app_change", json.toString());
-//                    last_appName = appName;
-//                }
-//            }
-//        }
-//        if (event.getClassName() != null) {
-//            if (isVideoWidget(event.getClassName().toString())) {
-//                if (overlay_has_showed_for_other_reason || !last_valid_widget.equals(event.getClassName().toString())) {
-//                    Bundle bundle = new Bundle();
-//                    bundle.putString("app", appName);
-//                    Log.e(TAG, "App Changed from " + last_appName + " to " + event.getClassName().toString() + ", timestamp: " + System.currentTimeMillis());
-//                    volEventListener.onVolEvent(VolEventListener.EventType.App, bundle);
-//                    overlay_has_showed_for_other_reason = false;
-//                    last_valid_widget = event.getClassName().toString();
-//                }
-//            }
-//            if (blank_widgets.contains(event.getClassName().toString())) {
-//                overlay_has_showed_for_other_reason = true;
-//            }
-////            Log.e("AccessibilityEventType", event.getClassName().toString());
-////            Log.e("Event", event.toString());
-//            if (event.getText() != null && event.getText().size() > 0) {
-////                Log.e("EventText", event.getText().get(0).toString());
-//                wechat_chatting_video_on = getWechatChattingVideoOn(event);
-//            }
-//        }
     }
 
     public boolean getWechatChattingVideoOn(AccessibilityEvent event) {

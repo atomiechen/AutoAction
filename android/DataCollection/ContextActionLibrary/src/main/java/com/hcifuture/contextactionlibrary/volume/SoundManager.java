@@ -336,7 +336,7 @@ public class SoundManager extends TriggerManager {
                                 JSONUtils.jsonPut(json, "diff", diff);
                                 JSONUtils.jsonPut(json, "musicVolume", getVolume());
                                 JSONUtils.jsonPut(json, "musicVolumeMax", MAX_VOLUME_MUSIC);
-                                volEventListener.recordEvent(VolEventListener.EventType.Audio, "system_audio_db", json.toString());
+//                                volEventListener.recordEvent(VolEventListener.EventType.Audio, "system_audio_db", json.toString());
                                 Log.e(TAG, "startLoopToSaveAudioFile: rms = " + rms);
                                 Log.e(TAG, "startLoopToSaveAudioFile: audio db = " + newDB);
 
@@ -345,7 +345,7 @@ public class SoundManager extends TriggerManager {
                                     latest_audioLevel = getAudioLevel(SYSTEM_VOLUME);
                                     Bundle bundle = new Bundle();
                                     bundle.putInt("AudioLevel", latest_audioLevel);
-                                    volEventListener.onVolEvent(VolEventListener.EventType.Audio, bundle);
+//                                    volEventListener.onVolEvent(VolEventListener.EventType.Audio, bundle);
                                 }
                             }
                             loudness_sum = 0;

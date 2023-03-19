@@ -127,7 +127,7 @@ public class PositionManager extends TriggerManager {
         JSONObject json = new JSONObject();
         JSONUtils.jsonPut(json, "positions", result);
         JSONUtils.jsonPut(json, "position_history", result2);
-        volEventListener.recordEvent(VolEventListener.EventType.Position, "position_list", json.toString());
+//        volEventListener.recordEvent(VolEventListener.EventType.Position, "position_list", json.toString());
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
@@ -219,7 +219,14 @@ public class PositionManager extends TriggerManager {
         locationCollector.getData(new TriggerConfig()).thenApply(v -> {
             try {
                 LocationData locationData = (LocationData) v.getData();
-                latest_poiname = locationData.getPoiName();
+                String poiname = locationData.getPoiName();
+                if (!poiname.equals(latest_poiname)) {
+                    Bundle bundle = new Bundle();
+                    bundle.putString("old_location", latest_poiname);
+                    bundle.putString("location", poiname);
+                    volEventListener.onVolEvent(VolEventListener.EventType.PositionChange, bundle);
+                    latest_poiname = poiname;
+                }
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -264,7 +271,7 @@ public class PositionManager extends TriggerManager {
                     JSONUtils.jsonPut(json, "change", false);
                     JSONUtils.jsonPut(json, "position", lastPosition.getId());
                     JSONUtils.jsonPut(json, "position_gps", lastPosition.getLatitude()+","+lastPosition.getLongitude());
-                    volEventListener.recordEvent(VolEventListener.EventType.Position, "periodic_scan", json.toString());
+//                    volEventListener.recordEvent(VolEventListener.EventType.Position, "periodic_scan", json.toString());
                 }
                 if (lastPosition == null || !lastPosition.sameAs(position)) {
                     // 查找是否是新地点
@@ -293,7 +300,7 @@ public class PositionManager extends TriggerManager {
                         bundle.putString("id", tmp.getId());
                         bundle.putString("name", tmp.getName());
                         Log.e(TAG, "Position Changed from " + lastPosition.getId() + " to " + tmp.getId() + ", timestamp: " + System.currentTimeMillis());
-                        volEventListener.onVolEvent(VolEventListener.EventType.Position, bundle);
+//                        volEventListener.onVolEvent(VolEventListener.EventType.Position, bundle);
                     }
                     JSONObject json = new JSONObject();
                     JSONUtils.jsonPut(json, "change", true);
@@ -302,7 +309,7 @@ public class PositionManager extends TriggerManager {
                     JSONUtils.jsonPut(json, "now_position", tmp.getId());
                     JSONUtils.jsonPut(json, "now_position_gps", tmp.getLatitude()+","+tmp.getLongitude());
                     JSONUtils.jsonPut(json, "type", type);
-                    volEventListener.recordEvent(VolEventListener.EventType.Position, "periodic_scan", json.toString());
+//                    volEventListener.recordEvent(VolEventListener.EventType.Position, "periodic_scan", json.toString());
                     lastPosition = tmp;
                     latest_position = Integer.parseInt(lastPosition.getId());
                 }
