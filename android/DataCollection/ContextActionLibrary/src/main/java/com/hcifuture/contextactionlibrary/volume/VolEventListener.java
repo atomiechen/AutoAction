@@ -14,8 +14,16 @@ public interface VolEventListener {
         DeviceChange,
         AppChange,
         NetworkChange,
+        // TODO
         NewMessageCome,
         RemoveMessage,
+        NetworkDelayUp,
+        NetworkDelayDown,
+        ScreenOrientationChange,
+        NearbyPCIncrease,
+        NearbyPCDecrease,
+        VolumeUp,
+        VolumeDown,
         // unused
         FrontEnd
     }

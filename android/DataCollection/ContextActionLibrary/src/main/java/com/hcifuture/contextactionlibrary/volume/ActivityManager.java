@@ -95,10 +95,11 @@ public class ActivityManager extends TriggerManager {
         else if (activity == 11 || activity == 12 || activity == 14)
             curActivity = ACTION_STATIC;
         if (!Objects.equals(prevActivity, curActivity)) {
-            prevActivity = curActivity;
             Bundle bundle = new Bundle();
+            bundle.putString("last_activity", prevActivity);
             bundle.putString("activity", curActivity);
             volEventListener.onVolEvent(VolEventListener.EventType.ActivityChange, bundle);
+            prevActivity = curActivity;
         }
         Log.i(TAG, curActivity);
     }

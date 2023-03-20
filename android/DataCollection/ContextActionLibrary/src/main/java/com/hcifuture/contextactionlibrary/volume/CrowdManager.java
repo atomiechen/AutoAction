@@ -12,16 +12,12 @@ import android.util.Log;
 
 import androidx.annotation.RequiresApi;
 
-import com.hcifuture.contextactionlibrary.sensor.collector.CollectorResult;
 import com.hcifuture.contextactionlibrary.sensor.collector.async.BluetoothCollector;
-import com.hcifuture.contextactionlibrary.sensor.collector.sync.LogCollector;
 import com.hcifuture.contextactionlibrary.sensor.data.BluetoothData;
 import com.hcifuture.contextactionlibrary.sensor.data.SingleBluetoothData;
 import com.hcifuture.contextactionlibrary.sensor.trigger.TriggerConfig;
 import com.hcifuture.contextactionlibrary.utils.JSONUtils;
 
-import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
@@ -32,7 +28,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -42,10 +37,11 @@ public class CrowdManager extends TriggerManager {
     List<ScheduledFuture<?>> futureList;
     private BluetoothCollector bluetoothCollector;
     private List<BluetoothItem> bleList;
-    private List<BluetoothItem> phoneList;
+    private List<BluetoothItem> PCList;
     public static Integer latest_bleNumLevel = -1;
     private Context mContext;
     private BLEManager bleManager;
+    private int nearbyPCNum = 0;
 
     private ScheduledFuture<?> scheduledPhoneDetection;
     private ScheduledFuture<?> repeatScan;
@@ -186,44 +182,34 @@ public class CrowdManager extends TriggerManager {
 
     @RequiresApi(api = Build.VERSION_CODES.O)
     public CompletableFuture<List<List<BluetoothItem>>> scanAndUpdate() {
-//        // 手写3次扫描的方法
-//        List<List<BluetoothItem>> listOfList = new ArrayList<>();
-//        return toScan().thenCompose(v1 -> {
-//            listOfList.add(v1);
-//            return toScan().thenCompose(v2 -> {
-//                listOfList.add(v2);
-//                return toScan().thenApply(v3 -> {
-//                    listOfList.add(v3);
-//                    phoneList = setBluetoothDeviceList(listOfList.get(0), listOfList.get(1), listOfList.get(2));
-//                    return phoneList;
-//                });
-//            });
-//        });
-
         // 变次数扫描方法
         Log.e(TAG, "scanAndUpdate: start 3 times");
         return repeatScan(3).thenApply(listOfListOfList -> {
-            phoneList = setBluetoothDeviceList(listOfListOfList.get(0));
+            PCList = setBluetoothDeviceList(listOfListOfList.get(0));
             bleList = setBluetoothDeviceList(listOfListOfList.get(1));
-            int after_size = (bleList == null) ? 0 : bleList.size();
-            if (!Objects.equals(latest_bleNumLevel, getBluetoothLevel(after_size))) {
-                latest_bleNumLevel = getBluetoothLevel(after_size);
+            int after_size = (PCList == null) ? 0 : PCList.size();
+            if (after_size != nearbyPCNum) {
                 Bundle bundle = new Bundle();
-                bundle.putInt("BluetoothLevel", latest_bleNumLevel);
-//                volEventListener.onVolEvent(VolEventListener.EventType.Bluetooth, bundle);
+                bundle.putInt("nearby_PC_num_before", nearbyPCNum);
+                bundle.putInt("nearby_PC_num_now", after_size);
+                if (after_size > nearbyPCNum)
+                    volEventListener.onVolEvent(VolEventListener.EventType.NearbyPCIncrease, bundle);
+                else
+                    volEventListener.onVolEvent(VolEventListener.EventType.NearbyPCDecrease, bundle);
+                nearbyPCNum = after_size;
             }
-            Log.e(TAG, "scanAndUpdate: get phone list " + phoneList);
+            Log.e(TAG, "scanAndUpdate: get PC list " + PCList);
             Log.e(TAG, "scanAndUpdate: get ble list " + bleList);
 
             // record data to file
             JSONObject json = new JSONObject();
-            JSONUtils.jsonPut(json, "phone_number", phoneList.size());
+            JSONUtils.jsonPut(json, "phone_number", PCList.size());
             JSONUtils.jsonPut(json, "ble_number", bleList.size());
-            JSONUtils.jsonPut(json, "phone_devices", blItemList2StringList(phoneList));
+            JSONUtils.jsonPut(json, "phone_devices", blItemList2StringList(PCList));
             JSONUtils.jsonPut(json, "ble_devices", blItemList2StringList(bleList));
 //            volEventListener.recordEvent(VolEventListener.EventType.Crowd, "crowd_bt_scan_3times", json.toString());
 
-            return Arrays.asList(phoneList, bleList);
+            return Arrays.asList(PCList, bleList);
         });
     }
 
@@ -434,8 +420,9 @@ public class CrowdManager extends TriggerManager {
 
     @SuppressLint("MissingPermission")
     public boolean isFilteredDevice(BluetoothDevice bluetoothDevice) {
-        return bluetoothDevice.getBluetoothClass().getMajorDeviceClass() == BluetoothClass.Device.Major.PHONE
-                || bluetoothDevice.getBluetoothClass().getMajorDeviceClass() == BluetoothClass.Device.Major.WEARABLE;
+//        return bluetoothDevice.getBluetoothClass().getMajorDeviceClass() == BluetoothClass.Device.Major.PHONE
+//                || bluetoothDevice.getBluetoothClass().getMajorDeviceClass() == BluetoothClass.Device.Major.WEARABLE;
+        return bluetoothDevice.getBluetoothClass().getMajorDeviceClass() == BluetoothClass.Device.Major.COMPUTER;
     }
 
     public double rssi2distance(int rssi) {
@@ -449,5 +436,9 @@ public class CrowdManager extends TriggerManager {
         return bleList;
     }
 
-    public List<BluetoothItem> getPhoneList() { return phoneList; }
+    public List<BluetoothItem> getPCList() { return PCList; }
+
+    public int getNearbyPCNum() {
+        return nearbyPCNum;
+    }
 }
