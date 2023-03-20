@@ -259,8 +259,8 @@ public class MotionManager extends TriggerManager {
                 isFaceDown = true;
                 isFaceUp = false;
                 Bundle bundle = new Bundle();
-                bundle.putString("motion", "faceDown");
-//                volEventListener.onVolEvent(VolEventListener.EventType.Motion, bundle);
+                bundle.putString("screen_orientation", "down");
+//                volEventListener.onVolEvent(VolEventListener.EventType.ScreenOrientationChange, bundle);
 
                 JSONObject json = new JSONObject();
                 JSONUtils.jsonPut(json, "gesture", "faceDown");
@@ -272,8 +272,8 @@ public class MotionManager extends TriggerManager {
                 isFaceUp = true;
                 isFaceDown = false;
                 Bundle bundle = new Bundle();
-                bundle.putString("motion", "faceUp");
-//                volEventListener.onVolEvent(VolEventListener.EventType.Motion, bundle);
+                bundle.putString("screen_orientation", "up");
+//                volEventListener.onVolEvent(VolEventListener.EventType.ScreenOrientationChange, bundle);
 
                 JSONObject json = new JSONObject();
                 JSONUtils.jsonPut(json, "gesture", "faceUp");
@@ -287,8 +287,8 @@ public class MotionManager extends TriggerManager {
             isFaceDown = false;
             isFaceUp = false;
             Bundle bundle = new Bundle();
-            bundle.putString("motion", "noGesture");
-//            volEventListener.onVolEvent(VolEventListener.EventType.Motion, bundle);
+            bundle.putString("screen_orientation", "others");
+//            volEventListener.onVolEvent(VolEventListener.EventType.ScreenOrientationChange, bundle);
 
             JSONObject json = new JSONObject();
             JSONUtils.jsonPut(json, "gesture", "noGesture");
@@ -361,5 +361,14 @@ public class MotionManager extends TriggerManager {
         } else {
             return "running";
         }
+    }
+
+    public String getScreenOrientation() {
+        if (isFaceUp)
+            return "up";
+        else if (isFaceDown)
+            return "down";
+        else
+            return "others";
     }
 }

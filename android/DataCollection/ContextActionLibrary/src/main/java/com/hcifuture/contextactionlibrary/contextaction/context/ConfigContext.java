@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.hardware.display.DisplayManager;
+import android.media.AudioManager;
 import android.net.Uri;
 import android.net.wifi.WifiManager;
 import android.os.Build;
@@ -159,7 +160,12 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
     private Uploader uploader;
 
+    private boolean eventList_remove_lock = false;
     private List<VolumeContext.Event> eventList = new ArrayList<>();
+
+    private int last_volume = -1;
+    private int new_volume = -1;
+    private long last_volume_trigger_time = 0;
 
     public ConfigContext(Context context, ContextConfig config, RequestListener requestListener, List<ContextListener> contextListener, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, CollectorManager collectorManager) {
         super(context, config, requestListener, contextListener, scheduledExecutorService, futureList);
@@ -363,6 +369,14 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         String context_playback_device = deviceManager.getDeviceType();
         String context_app = appManager.getPresentApp();
         String context_network = networkManager.getNetworkType();
+        String context_network_delay = networkManager.getNetworkDelay();
+        String context_screen_orientation = "";
+        if (mContext.getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT)
+            context_screen_orientation = "vertical";
+        else if (mContext.getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE)
+            context_screen_orientation = "horizontal";
+        int context_nearby_PC = crowdManager.getNearbyPCNum();
+        String context_volume = volumeDetector.getVolumes();
 
         // message
         MyNotificationListener.Message message = myNotificationListener.getLatestMessage();
@@ -372,15 +386,12 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         String message_content = message.content;
         String message_type = message.type;
 
-        List<String> message_behavior = myNotificationListener.getMessageBehavior();
-        List<String> volume_behavior = volumeDetector.getVolumeBehaviors();
-
         removeOutOfDateEvent();
 
 //        Log.i(TAG, "present context: " + Collector.gson.toJson(present_context));
         return new VolumeContext(context_exact_time, context_time, context_week, context_gps_position, context_activity, context_wifi_name,
                 context_environment_sound, context_noise_db, context_playback_device, context_app, context_network, message_sender, message_source_app,
-                message_title, message_content, message_type, eventList, message_behavior, volume_behavior);
+                message_title, message_content, message_type, context_network_delay, context_screen_orientation, context_nearby_PC, context_volume, eventList);
     }
 
     public Bundle getRules(VolumeContext volumeContext, int type) {
@@ -440,6 +451,22 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 //                        notifyContext(NEED_NONIMU, timestamp, logID, "screen brightness change");
                     } else if (database_key.startsWith("volume_")) {
                         record = true;
+                        if (System.currentTimeMillis() - last_volume_trigger_time < 10 * 1000) {
+                            new_volume = value;
+                        } else {
+                            last_volume_trigger_time = System.currentTimeMillis();
+                            last_volume = (volume.containsKey(database_key)) ? volume.get(database_key) : value;
+                            new_volume = value;
+                            futureList.add(scheduledExecutorService.schedule(() -> {
+                                Bundle bundle = new Bundle();
+                                bundle.putInt("old_volume", (int) Math.round(15.0 * last_volume / volumeDetector.getMaxVolume()));
+                                bundle.putInt("new_volume", (int) Math.round(15.0 * new_volume / volumeDetector.getMaxVolume()));
+                                if (new_volume > last_volume)
+                                    onVolEvent(EventType.VolumeUp, bundle);
+                                else if (new_volume < last_volume)
+                                    onVolEvent(EventType.VolumeDown, bundle);
+                            }, 10 * 1000, TimeUnit.MILLISECONDS));
+                        }
                         if (!volume.containsKey(database_key)) {
                             // record new volume value
                             volume.put(database_key, value);
@@ -686,7 +713,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                             context.putDouble("noise", noiseManager.getPresentNoise());
                             context.putString("position", positionManager.getPresentPosition());
                             context.putStringArrayList("bleDevices", new ArrayList<>(CrowdManager.blItemList2StringList(crowdManager.getBleList())));
-                            context.putStringArrayList("filteredDevices", new ArrayList<>(CrowdManager.blItemList2StringList(crowdManager.getPhoneList())));
+                            context.putStringArrayList("filteredDevices", new ArrayList<>(CrowdManager.blItemList2StringList(crowdManager.getPCList())));
                             if (allFutures != null) {
                                 Log.e(TAG, "onExternalEvent: check manual detection");
                                 String finalKeyFactor = keyFactor;
@@ -695,7 +722,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                                     context.putDouble("noise", noiseManager.getPresentNoise());
                                     context.putString("position", positionManager.getPresentPosition());
                                     context.putStringArrayList("bleDevices", new ArrayList<>(CrowdManager.blItemList2StringList(crowdManager.getBleList())));
-                                    context.putStringArrayList("filteredDevices", new ArrayList<>(CrowdManager.blItemList2StringList(crowdManager.getPhoneList())));
+                                    context.putStringArrayList("filteredDevices", new ArrayList<>(CrowdManager.blItemList2StringList(crowdManager.getPCList())));
                                     if (finalKeyFactor != null)
                                         dataUtils.addContextForReason(DataUtils.getReasonByName(dataUtils.getReasonList(), finalKeyFactor), context);
 //                                    record(System.currentTimeMillis(), incLogID(), TAG, "manual_detect", "reason: " + finalKeyFactor, Collector.gson.toJson(context));
@@ -858,10 +885,14 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     }
 
     private void removeOutOfDateEvent() {
-        for (VolumeContext.Event event: eventList) {
-            if (System.currentTimeMillis() - event.getTimestamp() < 10 * 60 * 1000)
-                break;
-            eventList.remove(event);
+        if (!eventList_remove_lock) {
+            eventList_remove_lock = true;
+            for (VolumeContext.Event event : eventList) {
+                if (System.currentTimeMillis() - event.getTimestamp() < 10 * 60 * 1000)
+                    break;
+                eventList.remove(event);
+            }
+            eventList_remove_lock = false;
         }
     }
 

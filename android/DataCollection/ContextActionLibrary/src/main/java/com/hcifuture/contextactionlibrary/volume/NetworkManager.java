@@ -18,6 +18,10 @@ import com.hcifuture.contextactionlibrary.sensor.collector.async.WifiCollector;
 import com.hcifuture.contextactionlibrary.sensor.data.WifiData;
 import com.hcifuture.contextactionlibrary.sensor.trigger.TriggerConfig;
 
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
@@ -30,16 +34,18 @@ public class NetworkManager extends TriggerManager {
     private String networkType;
     private String last_networkType;
     private String wifiName;
-    private ScheduledFuture<?> wifi_scan;
+    private ScheduledFuture<?> network_delay_detect;
     private ScheduledExecutorService scheduledExecutorService;
     private List<ScheduledFuture<?>> futureList;
     private WifiManager wifiManager;
+    private int network_delay;
 
     public NetworkManager(VolEventListener volEventListener, Context context, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, WifiCollector wifiCollector) {
         super(volEventListener);
         networkType = "unknown";
         last_networkType = "unknown";
         wifiName = "unknown";
+        network_delay = -1;
         //获取ConnectivityManager
         connectivityManager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
         //创建NetworkRequest对象，定制化监听
@@ -126,44 +132,80 @@ public class NetworkManager extends TriggerManager {
         return wifiName;
     }
 
-//    @Override
-//    @RequiresApi(api = Build.VERSION_CODES.N)
-//    public void start() {
-//        if (wifi_scan == null) {
-//            wifi_scan = scheduledExecutorService.scheduleAtFixedRate(() -> {
-//                try {
-//                    WifiData wifiData = (WifiData) wifiCollector.getData(new TriggerConfig()).get().getData();
-//                    if (networkType.equals("connected to Wi-Fi")) {
-//                        if (wifiData.getAps() != null && wifiData.getAps().size() > 0) {
-//                            if(!wifiName.equals(wifiData.getAps().get(0).getSsid())) {
-//                                Bundle bundle = new Bundle();
-//                                bundle.putString("last_wifi", wifiName);
-//                                bundle.putString("wifi", wifiData.getAps().get(0).getSsid());
-//                                volEventListener.onVolEvent(VolEventListener.EventType.WifiChange, bundle);
-//                                wifiName = wifiData.getAps().get(0).getSsid();
-//                            }
-//                        }
-//                    }
-//                } catch (ExecutionException | InterruptedException e) {
-//                    e.printStackTrace();
-//                }
-//            }, 0, 1000 * 60, TimeUnit.MILLISECONDS);
-//            futureList.add(wifi_scan);
-//        }
-//    }
+    @Override
+    @RequiresApi(api = Build.VERSION_CODES.N)
+    public void start() {
+        if (network_delay_detect == null) {
+            network_delay_detect = scheduledExecutorService.scheduleAtFixedRate(() -> {
+                try {
+                    // www.baidu.com
+                    String host = "182.61.200.6";
+                    int timeOut = 3000;
+                    long[] time = new long[5];
+                    boolean reachable = false;
 
-//    @Override
-//    public void stop() {
-//        if (wifi_scan != null) {
-//            wifi_scan.cancel(true);
-//            wifi_scan = null;
-//        }
-//    }
+                    for(int i = 0; i < 5; i++)
+                    {
+                        long BeforeTime = System.currentTimeMillis();
+                        reachable = InetAddress.getByName(host).isReachable(timeOut);
+                        long AfterTime = System.currentTimeMillis();
+                        long TimeDifference = AfterTime - BeforeTime;
+                        time[i] = TimeDifference;
+                    }
+
+                    int new_network_delay = 0;
+                    if (!reachable) {
+                        new_network_delay = 4000;
+                    } else {
+                        new_network_delay = (int) Arrays.stream(time).sum() / 5;
+                    }
+
+                    Bundle bundle = new Bundle();
+                    if (network_delay <= 3000)
+                        bundle.putString("old_network_delay", "" + network_delay + "ms");
+                    else
+                        bundle.putString("old_network_delay", "no network connection");
+
+                    if (new_network_delay <= 3000)
+                        bundle.putString("now_network_delay", "" + new_network_delay + "ms");
+                    else
+                        bundle.putString("now_network_delay", "no network connection");
+
+                    if (new_network_delay - network_delay > 150)
+                        volEventListener.onVolEvent(VolEventListener.EventType.NetworkDelayUp, bundle);
+                    else if (network_delay - new_network_delay > 150)
+                        volEventListener.onVolEvent(VolEventListener.EventType.NetworkDelayDown, bundle);
+
+                    network_delay = new_network_delay;
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }, 0, 1000 * 60, TimeUnit.MILLISECONDS);
+            futureList.add(network_delay_detect);
+        }
+    }
+
+    @Override
+    public void stop() {
+        if (network_delay_detect != null) {
+            network_delay_detect.cancel(true);
+            network_delay_detect = null;
+        }
+    }
 
     public String getWifi() {
         if (wifiManager.getConnectionInfo() != null && wifiManager.getConnectionInfo().getSSID() != null)
             return wifiManager.getConnectionInfo().getSSID();
         else
             return "";
+    }
+
+    public String getNetworkDelay() {
+        if (network_delay < 0)
+            return "uninitialized";
+        else if (network_delay > 3000)
+            return "no network connection";
+        else
+            return "" + network_delay + "ms";
     }
 }
