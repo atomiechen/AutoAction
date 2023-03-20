@@ -159,7 +159,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
     private Uploader uploader;
 
-    private List<VolumeContext.Event> eventList;
+    private List<VolumeContext.Event> eventList = new ArrayList<>();
 
     public ConfigContext(Context context, ContextConfig config, RequestListener requestListener, List<ContextListener> contextListener, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, CollectorManager collectorManager) {
         super(context, config, requestListener, contextListener, scheduledExecutorService, futureList);
@@ -232,8 +232,6 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         volume.put("volume_music_earpiece", 0);
 
         last_record_all = 0;
-
-        eventList = new ArrayList<>();
     }
 
     public void setUploader(Uploader uploader) {
@@ -853,6 +851,8 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
     @Override
     public void onVolEvent(EventType eventType, Bundle bundle) {
+        if (eventList == null)
+            eventList = new ArrayList<>();
         eventList.add(new VolumeContext.Event(System.currentTimeMillis(), eventType.toString(), bundle));
         removeOutOfDateEvent();
     }

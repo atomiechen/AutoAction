@@ -64,7 +64,8 @@ public class VolumeContext {
         this.message_content = message_content;
         this.message_type = message_type;
 
-        this.events = eventList;
+        this.events = new ArrayList<>();
+        this.events.addAll(eventList);
 
         this.behavior = new ArrayList<>();
         this.behavior.addAll(message_behavior);

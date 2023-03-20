@@ -15,6 +15,7 @@ public interface VolEventListener {
         AppChange,
         NetworkChange,
         NewMessageCome,
+        RemoveMessage,
         // unused
         FrontEnd
     }
