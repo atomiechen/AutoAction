@@ -15,8 +15,8 @@ public interface VolEventListener {
         AppChange,
         NetworkChange,
         // TODO
-        NewMessageCome,
-        RemoveMessage,
+        NewMessagePosted,
+        MessageRemoved,
         NetworkDelayUp,
         NetworkDelayDown,
         ScreenOrientationChange,

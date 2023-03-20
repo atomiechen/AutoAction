@@ -306,10 +306,6 @@ public class DeviceManager extends TriggerManager {
         return currentDevice.deviceID;
     }
 
-    public String getDeviceType() {
-        return currentDevice.name;
-    }
-
     private void setPresentDevice(Device device) {
         currentDevice = device;
         latest_device = currentDevice.deviceID.hashCode();

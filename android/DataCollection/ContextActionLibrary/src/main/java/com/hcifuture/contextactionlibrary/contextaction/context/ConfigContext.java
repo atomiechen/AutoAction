@@ -358,25 +358,27 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
     public VolumeContext getPresentContext() {
         // context
+        long timestamp = timeManager.getTimestamp();
         String context_exact_time = timeManager.getExactTime();
         String context_time = timeManager.getTimeString();
         String context_week = timeManager.getWeekString();
         String context_gps_position = positionManager.getLatestPoiname();
         String context_activity = activityManager.getActivity();
         String context_wifi_name = networkManager.getWifi();
-        String context_environment_sound = noiseManager.getNoiseLevel();
+        String context_noise_level = noiseManager.getNoiseLevel();
         int context_noise_db = noiseManager.getPresentNoise();
-        String context_playback_device = deviceManager.getDeviceType();
+        String context_audio_device = deviceManager.getPresentDeviceID();
         String context_app = appManager.getPresentApp();
         String context_network = networkManager.getNetworkType();
-        String context_network_delay = networkManager.getNetworkDelay();
+        int context_network_delay = networkManager.getNetworkDelay();
         String context_screen_orientation = "";
         if (mContext.getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT)
             context_screen_orientation = "vertical";
         else if (mContext.getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE)
             context_screen_orientation = "horizontal";
         int context_nearby_PC = crowdManager.getNearbyPCNum();
-        String context_volume = volumeDetector.getVolumes();
+        HashMap<String, Integer> context_volume = volumeDetector.getVolumes();
+        String streamType = volumeDetector.getStreamTypeByMode();
 
         // message
         MyNotificationListener.Message message = myNotificationListener.getLatestMessage();
@@ -389,9 +391,10 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         removeOutOfDateEvent();
 
 //        Log.i(TAG, "present context: " + Collector.gson.toJson(present_context));
-        return new VolumeContext(context_exact_time, context_time, context_week, context_gps_position, context_activity, context_wifi_name,
-                context_environment_sound, context_noise_db, context_playback_device, context_app, context_network, message_sender, message_source_app,
-                message_title, message_content, message_type, context_network_delay, context_screen_orientation, context_nearby_PC, context_volume, eventList);
+        return new VolumeContext(timestamp, context_exact_time, context_time, context_week, context_gps_position, context_activity, context_wifi_name,
+                context_noise_level, context_noise_db, context_audio_device, context_app, context_network, message_sender, message_source_app,
+                message_title, message_content, message_type, context_network_delay, context_screen_orientation, context_nearby_PC, context_volume,
+                streamType, eventList);
     }
 
     public Bundle getRules(VolumeContext volumeContext, int type) {
@@ -459,8 +462,11 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                             new_volume = value;
                             futureList.add(scheduledExecutorService.schedule(() -> {
                                 Bundle bundle = new Bundle();
-                                bundle.putInt("old_volume", (int) Math.round(15.0 * last_volume / volumeDetector.getMaxVolume()));
-                                bundle.putInt("new_volume", (int) Math.round(15.0 * new_volume / volumeDetector.getMaxVolume()));
+//                                bundle.putInt("old_volume", (int) Math.round(15.0 * last_volume / volumeDetector.getMaxVolume()));
+//                                bundle.putInt("new_volume", (int) Math.round(15.0 * new_volume / volumeDetector.getMaxVolume()));
+                                bundle.putInt("old_volume", last_volume);
+                                bundle.putInt("new_volume", new_volume);
+                                bundle.putString("volume_type", volumeDetector.getStreamTypeByMode());
                                 if (new_volume > last_volume)
                                     onVolEvent(EventType.VolumeUp, bundle);
                                 else if (new_volume < last_volume)

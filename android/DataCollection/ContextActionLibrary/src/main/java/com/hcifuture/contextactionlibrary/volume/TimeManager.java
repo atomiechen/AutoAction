@@ -95,4 +95,8 @@ public class TimeManager extends TriggerManager {
     public String getExactTime() {
         return new Date().toString();
     }
+
+    public long getTimestamp() {
+        return System.currentTimeMillis();
+    }
 }

@@ -45,85 +45,85 @@ public class Condition {
         // Check context_time
         boolean timeCheck = true;
         if (!context_time.isEmpty()) {
-            timeCheck = context_time.contains(context.getContextTime());
+            timeCheck = context_time.contains(context.context_time);
         }
 
         // Check context_week
         boolean weekCheck = true;
         if (!context_week.isEmpty()) {
-            weekCheck = context_week.contains(context.getContextWeek());
+            weekCheck = context_week.contains(context.context_day_of_week);
         }
 
         // Check context_gps_position
         boolean gpsCheck = true;
         if (!context_gps_position.isEmpty()) {
-            gpsCheck = context_gps_position.contains(context.getContextGpsPosition());
+            gpsCheck = context_gps_position.contains(context.context_gps_position);
         }
 
         // Check context_activity
         boolean activityCheck = true;
         if (!context_activity.isEmpty()) {
-            activityCheck = context_activity.contains(context.getContextActivity());
+            activityCheck = context_activity.contains(context.context_activity);
         }
 
         // Check context_wifi_name
         boolean wifiCheck = true;
         if (!context_wifi_name.isEmpty()) {
-            wifiCheck = context_wifi_name.contains(context.getContextWifiName());
+            wifiCheck = context_wifi_name.contains(context.context_wifi_name);
         }
 
         // Check noise_upperbound and noise_lowerbound
         boolean noiseCheck = true;
         if (!context_environment_sound.isEmpty()) {
-            noiseCheck = context_environment_sound.contains(context.getContextEnvironmentSound());
+            noiseCheck = context_environment_sound.contains(context.context_noise_level);
         }
 
         // Check context_playback_device
         boolean playbackCheck = true;
         if (!context_playback_device.isEmpty()) {
-            playbackCheck = context_playback_device.contains(context.getContextPlaybackDevice());
+            playbackCheck = context_playback_device.contains(context.context_audio_device);
         }
 
         // Check context_app
         boolean appCheck = true;
         if (!context_app.isEmpty()) {
-            appCheck = context_app.contains(context.getContextApp());
+            appCheck = context_app.contains(context.context_app);
         }
 
         // Check context_network
         boolean networkCheck = true;
         if (!context_network.isEmpty()) {
-            networkCheck = context_network.contains(context.getContextNetwork());
+            networkCheck = context_network.contains(context.context_network);
         }
 
         // Check if message_sender is in the list of senders
         boolean senderCheck = true;
         if (!message_sender.isEmpty()) {
-            senderCheck = message_sender.contains(context.getMessageSender());
+            senderCheck = message_sender.contains(context.message_sender);
         }
 
         // Check if message_source_app is in the list of source apps
         boolean sourceAppCheck = true;
         if (!message_source_app.isEmpty()) {
-            sourceAppCheck = message_source_app.contains(context.getMessageSourceApp());
+            sourceAppCheck = message_source_app.contains(context.message_source_app);
         }
 
         // Check if message_title is in the list of titles
         boolean titleCheck = true;
         if (!message_title.isEmpty()) {
-            titleCheck = message_title.contains(context.getMessageTitle());
+            titleCheck = message_title.contains(context.message_title);
         }
 
         // Check if message_content is in the list of contents
         boolean contentCheck = true;
         if (!message_content.isEmpty()) {
-            contentCheck = message_content.contains(context.getMessageContent());
+            contentCheck = message_content.contains(context.message_content);
         }
 
         // Check if message_type is in the list of types
         boolean typeCheck = true;
         if (!message_type.isEmpty()) {
-            typeCheck = message_type.contains(context.getMessageType());
+            typeCheck = message_type.contains(context.message_type);
         }
 
         // Return true if all conditions are satisfied

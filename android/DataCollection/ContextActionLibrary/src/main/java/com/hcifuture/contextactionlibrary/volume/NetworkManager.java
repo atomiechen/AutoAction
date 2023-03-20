@@ -200,12 +200,7 @@ public class NetworkManager extends TriggerManager {
             return "";
     }
 
-    public String getNetworkDelay() {
-        if (network_delay < 0)
-            return "uninitialized";
-        else if (network_delay > 3000)
-            return "no network connection";
-        else
-            return "" + network_delay + "ms";
+    public int getNetworkDelay() {
+        return network_delay;
     }
 }

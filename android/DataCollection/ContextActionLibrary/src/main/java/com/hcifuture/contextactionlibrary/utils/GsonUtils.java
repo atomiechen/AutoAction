@@ -63,7 +63,7 @@ public class GsonUtils {
                 return JsonNull.INSTANCE;
             } else {
                 JsonObject jsonObject = new JsonObject();
-                jsonObject.addProperty(TO_STRING, src.toString());
+//                jsonObject.addProperty(TO_STRING, src.toString());
                 for (String key : src.keySet()) {
                     Object value = src.get(key);
                     JsonElement jsonElement = wrapObjRecursive(value, context);
