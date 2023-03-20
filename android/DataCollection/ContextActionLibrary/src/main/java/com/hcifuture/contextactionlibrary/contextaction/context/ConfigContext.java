@@ -359,7 +359,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         String context_week = timeManager.getWeekString();
         String context_gps_position = positionManager.getLatestPoiname();
         String context_activity = activityManager.getActivity();
-        String context_wifi_name = networkManager.getWifiName();
+        String context_wifi_name = networkManager.getWifi();
         String context_environment_sound = noiseManager.getNoiseLevel();
         int context_noise_db = noiseManager.getPresentNoise();
         String context_playback_device = deviceManager.getDeviceType();
