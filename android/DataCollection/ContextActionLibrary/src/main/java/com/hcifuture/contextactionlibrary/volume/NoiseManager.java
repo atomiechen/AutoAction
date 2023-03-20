@@ -147,6 +147,17 @@ public class NoiseManager extends TriggerManager {
             return "noisy";
     }
 
+    private String getNoiseLevel(double noise) {
+        if (noise < 0)
+            return "error";
+        else if (noise <= 50)
+            return "quiet";
+        else if (noise <= 65)
+            return "moderate";
+        else
+            return "noisy";
+    }
+
     public CompletableFuture<Double> detectNoise(long length, long period) {
         return detectNoise(length, period, false);
     }
@@ -175,7 +186,7 @@ public class NoiseManager extends TriggerManager {
             JSONUtils.jsonPut(json, "noise", noise);
             JSONUtils.jsonPut(json, "old_noise", getPresentNoise());
             JSONUtils.jsonPut(json, "diff", diff);
-            volEventListener.recordEvent(VolEventListener.EventType.Noise, "periodic_detect", json.toString());
+//            volEventListener.recordEvent(VolEventListener.EventType.Noise, "periodic_detect", json.toString());
             setPresentNoise(noise);
         }
     }
@@ -186,9 +197,11 @@ public class NoiseManager extends TriggerManager {
             Bundle bundle = new Bundle();
             bundle.putDouble("noise", noise);
             bundle.putDouble("lastTriggerNoise", lastTriggerNoise);
-            volEventListener.onVolEvent(VolEventListener.EventType.Noise, bundle);
+            if (noise > lastTriggerNoise)
+                volEventListener.onVolEvent(VolEventListener.EventType.NoiseUp, bundle);
+            else
+                volEventListener.onVolEvent(VolEventListener.EventType.NoiseDown, bundle);
             lastTriggerNoise = noise;
-//            setPresentNoise(noise);
         }
     }
 

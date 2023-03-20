@@ -210,7 +210,7 @@ public class CrowdManager extends TriggerManager {
                 latest_bleNumLevel = getBluetoothLevel(after_size);
                 Bundle bundle = new Bundle();
                 bundle.putInt("BluetoothLevel", latest_bleNumLevel);
-                volEventListener.onVolEvent(VolEventListener.EventType.Bluetooth, bundle);
+//                volEventListener.onVolEvent(VolEventListener.EventType.Bluetooth, bundle);
             }
             Log.e(TAG, "scanAndUpdate: get phone list " + phoneList);
             Log.e(TAG, "scanAndUpdate: get ble list " + bleList);
@@ -221,7 +221,7 @@ public class CrowdManager extends TriggerManager {
             JSONUtils.jsonPut(json, "ble_number", bleList.size());
             JSONUtils.jsonPut(json, "phone_devices", blItemList2StringList(phoneList));
             JSONUtils.jsonPut(json, "ble_devices", blItemList2StringList(bleList));
-            volEventListener.recordEvent(VolEventListener.EventType.Crowd, "crowd_bt_scan_3times", json.toString());
+//            volEventListener.recordEvent(VolEventListener.EventType.Crowd, "crowd_bt_scan_3times", json.toString());
 
             return Arrays.asList(phoneList, bleList);
         });
@@ -278,7 +278,7 @@ public class CrowdManager extends TriggerManager {
             JSONUtils.jsonPut(json, "ble_number", bleScanList.size());
             JSONUtils.jsonPut(json, "phone_devices", blItemList2StringList(phoneScanList));
             JSONUtils.jsonPut(json, "ble_devices", blItemList2StringList(bleScanList));
-            volEventListener.recordEvent(VolEventListener.EventType.Crowd, "crowd_bt_scan", json.toString());
+//            volEventListener.recordEvent(VolEventListener.EventType.Crowd, "crowd_bt_scan", json.toString());
             return Arrays.asList(phoneScanList, bleScanList);
         });
     }

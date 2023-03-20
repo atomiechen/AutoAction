@@ -8,6 +8,7 @@ import android.net.NetworkRequest;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Build;
+import android.os.Bundle;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
@@ -27,15 +28,17 @@ public class NetworkManager extends TriggerManager {
     public final String TAG = "NetworkManager";
     ConnectivityManager connectivityManager;
     private String networkType;
+    private String last_networkType;
     private String wifiName;
     private ScheduledFuture<?> wifi_scan;
     private ScheduledExecutorService scheduledExecutorService;
     private List<ScheduledFuture<?>> futureList;
-    private WifiCollector wifiCollector;
+    private WifiManager wifiManager;
 
     public NetworkManager(VolEventListener volEventListener, Context context, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, WifiCollector wifiCollector) {
         super(volEventListener);
         networkType = "unknown";
+        last_networkType = "unknown";
         wifiName = "unknown";
         //获取ConnectivityManager
         connectivityManager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
@@ -71,7 +74,7 @@ public class NetworkManager extends TriggerManager {
         connectivityManager.registerNetworkCallback(customMonitor, networkCallback);
         this.scheduledExecutorService = scheduledExecutorService;
         this.futureList = futureList;
-        this.wifiCollector = wifiCollector;
+        this.wifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
     }
 
     private void refreshNetworkInfo() {
@@ -80,6 +83,13 @@ public class NetworkManager extends TriggerManager {
             if (activeNetwork != null) {
                 NetworkCapabilities networkCapabilities = connectivityManager.getNetworkCapabilities(activeNetwork);
                 checkNetworkType(networkCapabilities);
+                if (!networkType.equals(last_networkType)) {
+                    Bundle bundle = new Bundle();
+                    bundle.putString("network_type", networkType);
+                    bundle.putString("last_network_type", last_networkType);
+                    volEventListener.onVolEvent(VolEventListener.EventType.NetworkChange, bundle);
+                    last_networkType = networkType;
+                }
             } else {
                 networkType = "no internet connection";
                 wifiName = "";
@@ -116,30 +126,44 @@ public class NetworkManager extends TriggerManager {
         return wifiName;
     }
 
-    @Override
-    @RequiresApi(api = Build.VERSION_CODES.N)
-    public void start() {
-        if (wifi_scan == null) {
-            wifi_scan = scheduledExecutorService.scheduleAtFixedRate(() -> {
-                try {
-                    WifiData wifiData = (WifiData) wifiCollector.getData(new TriggerConfig()).get().getData();
-                    if (networkType.equals("connected to Wi-Fi")) {
-                        if (wifiData.getAps() != null && wifiData.getAps().size() > 0)
-                            wifiName = wifiData.getAps().get(0).getSsid();
-                    }
-                } catch (ExecutionException | InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }, 0, 1000 * 60, TimeUnit.MILLISECONDS);
-            futureList.add(wifi_scan);
-        }
-    }
+//    @Override
+//    @RequiresApi(api = Build.VERSION_CODES.N)
+//    public void start() {
+//        if (wifi_scan == null) {
+//            wifi_scan = scheduledExecutorService.scheduleAtFixedRate(() -> {
+//                try {
+//                    WifiData wifiData = (WifiData) wifiCollector.getData(new TriggerConfig()).get().getData();
+//                    if (networkType.equals("connected to Wi-Fi")) {
+//                        if (wifiData.getAps() != null && wifiData.getAps().size() > 0) {
+//                            if(!wifiName.equals(wifiData.getAps().get(0).getSsid())) {
+//                                Bundle bundle = new Bundle();
+//                                bundle.putString("last_wifi", wifiName);
+//                                bundle.putString("wifi", wifiData.getAps().get(0).getSsid());
+//                                volEventListener.onVolEvent(VolEventListener.EventType.WifiChange, bundle);
+//                                wifiName = wifiData.getAps().get(0).getSsid();
+//                            }
+//                        }
+//                    }
+//                } catch (ExecutionException | InterruptedException e) {
+//                    e.printStackTrace();
+//                }
+//            }, 0, 1000 * 60, TimeUnit.MILLISECONDS);
+//            futureList.add(wifi_scan);
+//        }
+//    }
 
-    @Override
-    public void stop() {
-        if (wifi_scan != null) {
-            wifi_scan.cancel(true);
-            wifi_scan = null;
-        }
+//    @Override
+//    public void stop() {
+//        if (wifi_scan != null) {
+//            wifi_scan.cancel(true);
+//            wifi_scan = null;
+//        }
+//    }
+
+    public String getWifi() {
+        if (wifiManager.getConnectionInfo() != null && wifiManager.getConnectionInfo().getSSID() != null)
+            return wifiManager.getConnectionInfo().getSSID();
+        else
+            return "";
     }
 }

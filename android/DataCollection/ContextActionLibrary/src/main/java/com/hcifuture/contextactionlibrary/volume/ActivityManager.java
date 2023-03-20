@@ -18,15 +18,17 @@ import org.pytorch.LiteModuleLoader;
 import org.pytorch.Module;
 import org.pytorch.Tensor;
 
+import java.util.Objects;
+
 public class ActivityManager extends TriggerManager {
 
     static final String TAG = "ActivityManager";
 
-    public static String ACTION_STATIC = "action.static.action";
-    public static String ACTION_WALKING = "action.walking.action";
-    public static String ACTION_RUNNING = "action.running.action";
-    public static String ACTION_CYCLING = "action.cycling.action";
-    public static String ACTION_OTHERS = "action.others.action";
+    public static String ACTION_STATIC = "static";
+    public static String ACTION_WALKING = "walking";
+    public static String ACTION_RUNNING = "running";
+    public static String ACTION_CYCLING = "cycling";
+    public static String ACTION_OTHERS = "others";
 
     private Module imuModule = null;
     private String prevActivity = ACTION_OTHERS;
@@ -92,11 +94,11 @@ public class ActivityManager extends TriggerManager {
             curActivity = ACTION_CYCLING;
         else if (activity == 11 || activity == 12 || activity == 14)
             curActivity = ACTION_STATIC;
-        if (prevActivity != curActivity) {
+        if (!Objects.equals(prevActivity, curActivity)) {
             prevActivity = curActivity;
             Bundle bundle = new Bundle();
             bundle.putString("activity", curActivity);
-            volEventListener.onVolEvent(VolEventListener.EventType.Activity, bundle);
+            volEventListener.onVolEvent(VolEventListener.EventType.ActivityChange, bundle);
         }
         Log.i(TAG, curActivity);
     }

@@ -4,19 +4,20 @@ import android.os.Bundle;
 
 public interface VolEventListener {
     enum EventType {
-        Noise,
-        Device,
-        Position,
-        App,
-        Motion,
-        Bluetooth,
-        Audio,
-        Time,
-        Crowd,
-        FrontEnd,
-        Step,
-        IMU,
-        Activity
+        TimeChange,
+        DayOfWeekChange,
+        PositionChange,
+        ActivityChange,
+        WifiChange,
+        NoiseUp,
+        NoiseDown,
+        DeviceChange,
+        AppChange,
+        NetworkChange,
+        NewMessageCome,
+        RemoveMessage,
+        // unused
+        FrontEnd
     }
 
     void onVolEvent(EventType eventType, Bundle bundle);

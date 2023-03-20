@@ -122,7 +122,7 @@ public class MotionManager extends TriggerManager {
                                     JSONUtils.jsonPut(json, "imu_file_start_time", start_file_time);
                                     JSONUtils.jsonPut(json, "imu_file_end_time", end_file_time);
                                     JSONUtils.jsonPut(json, "imu_file_offset_in_nano", v.getExtras().getLong("offset_in_nano"));
-                                    volEventListener.recordEvent(VolEventListener.EventType.IMU, "imu_upload", json.toString());
+//                                    volEventListener.recordEvent(VolEventListener.EventType.IMU, "imu_upload", json.toString());
                                     // update file ID
                                     mFileIDCounter.getAndIncrement();
                                 });
@@ -195,7 +195,7 @@ public class MotionManager extends TriggerManager {
             JSONObject json = new JSONObject();
             JSONUtils.jsonPut(json, "step_count", curCount);
             JSONUtils.jsonPut(json, "sensor_timestamp", data.getTimestamp());
-            volEventListener.recordEvent(VolEventListener.EventType.Step, "get_step_counter", json.toString());
+//            volEventListener.recordEvent(VolEventListener.EventType.Step, "get_step_counter", json.toString());
         }
         sampleOffset();
     }
@@ -260,11 +260,11 @@ public class MotionManager extends TriggerManager {
                 isFaceUp = false;
                 Bundle bundle = new Bundle();
                 bundle.putString("motion", "faceDown");
-                volEventListener.onVolEvent(VolEventListener.EventType.Motion, bundle);
+//                volEventListener.onVolEvent(VolEventListener.EventType.Motion, bundle);
 
                 JSONObject json = new JSONObject();
                 JSONUtils.jsonPut(json, "gesture", "faceDown");
-                volEventListener.recordEvent(VolEventListener.EventType.Motion, "motion_change", json.toString());
+//                volEventListener.recordEvent(VolEventListener.EventType.Motion, "motion_change", json.toString());
             } else if (checkIsHorizontalUp()) {
                 isGesture = true;
                 if (isFaceUp)
@@ -273,11 +273,11 @@ public class MotionManager extends TriggerManager {
                 isFaceDown = false;
                 Bundle bundle = new Bundle();
                 bundle.putString("motion", "faceUp");
-                volEventListener.onVolEvent(VolEventListener.EventType.Motion, bundle);
+//                volEventListener.onVolEvent(VolEventListener.EventType.Motion, bundle);
 
                 JSONObject json = new JSONObject();
                 JSONUtils.jsonPut(json, "gesture", "faceUp");
-                volEventListener.recordEvent(VolEventListener.EventType.Motion, "motion_change", json.toString());
+//                volEventListener.recordEvent(VolEventListener.EventType.Motion, "motion_change", json.toString());
             }
         }
 
@@ -288,11 +288,11 @@ public class MotionManager extends TriggerManager {
             isFaceUp = false;
             Bundle bundle = new Bundle();
             bundle.putString("motion", "noGesture");
-            volEventListener.onVolEvent(VolEventListener.EventType.Motion, bundle);
+//            volEventListener.onVolEvent(VolEventListener.EventType.Motion, bundle);
 
             JSONObject json = new JSONObject();
             JSONUtils.jsonPut(json, "gesture", "noGesture");
-            volEventListener.recordEvent(VolEventListener.EventType.Motion, "motion_change", json.toString());
+//            volEventListener.recordEvent(VolEventListener.EventType.Motion, "motion_change", json.toString());
         }
     }
 

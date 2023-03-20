@@ -157,12 +157,9 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     private CompletableFuture<Double> detectedNoiseFt = null;
     private CompletableFuture<Void> allFutures = null;
 
-    private ScheduledFuture<?> periodic_scan;
-
     private Uploader uploader;
 
-    private VolumeContext last_context;
-    private VolumeContext current_context;
+    private List<VolumeContext.Event> eventList = new ArrayList<>();
 
     public ConfigContext(Context context, ContextConfig config, RequestListener requestListener, List<ContextListener> contextListener, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, CollectorManager collectorManager) {
         super(context, config, requestListener, contextListener, scheduledExecutorService, futureList);
@@ -201,7 +198,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
         activityManager = new ActivityManager(this);
 
-        timeManager = new TimeManager();
+        timeManager = new TimeManager(this, scheduledExecutorService, futureList);
 
         networkManager =  new NetworkManager(this, mContext, scheduledExecutorService, futureList, (WifiCollector) collectorManager.getCollector(CollectorManager.CollectorType.Wifi));
 
@@ -261,14 +258,6 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         if (!soundManager.hasCapturePermission()) {
             notifyRequestRecordPermission();
         }
-
-        if (periodic_scan == null) {
-            periodic_scan = scheduledExecutorService.scheduleAtFixedRate(() -> {
-                last_context = current_context;
-                current_context = getPresentContext();
-            }, 0, 60 * 1000, TimeUnit.MILLISECONDS);
-            futureList.add(periodic_scan);
-        }
     }
 
     @Override
@@ -288,11 +277,6 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         appManager.stop();
         socketManager.stop();
         networkManager.stop();
-
-        if (periodic_scan != null) {
-            periodic_scan.cancel(true);
-            periodic_scan = null;
-        }
     }
 
     @Override
@@ -312,11 +296,6 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         appManager.pause();
         socketManager.pause();
         networkManager.pause();
-
-        if (periodic_scan != null) {
-            periodic_scan.cancel(true);
-            periodic_scan = null;
-        }
     }
 
     @RequiresApi(api = Build.VERSION_CODES.Q)
@@ -338,14 +317,6 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         // get audio capture permission
         if (!soundManager.hasCapturePermission()) {
             notifyRequestRecordPermission();
-        }
-
-        if (periodic_scan == null) {
-            periodic_scan = scheduledExecutorService.scheduleAtFixedRate(() -> {
-                last_context = current_context;
-                current_context = getPresentContext();
-            }, 0, 60 * 1000, TimeUnit.MILLISECONDS);
-            futureList.add(periodic_scan);
         }
     }
 
@@ -381,11 +352,12 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
     public VolumeContext getPresentContext() {
         // context
+        String context_exact_time = timeManager.getExactTime();
         String context_time = timeManager.getTimeString();
         String context_week = timeManager.getWeekString();
         String context_gps_position = positionManager.getLatestPoiname();
         String context_activity = activityManager.getActivity();
-        String context_wifi_name = networkManager.getWifiName();
+        String context_wifi_name = networkManager.getWifi();
         String context_environment_sound = noiseManager.getNoiseLevel();
         int context_noise_db = noiseManager.getPresentNoise();
         String context_playback_device = deviceManager.getDeviceType();
@@ -403,15 +375,12 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         List<String> message_behavior = myNotificationListener.getMessageBehavior();
         List<String> volume_behavior = volumeDetector.getVolumeBehaviors();
 
-        VolumeContext present_context = new VolumeContext(context_time, context_week, context_gps_position, context_activity, context_wifi_name,
-                context_environment_sound, context_noise_db, context_playback_device, context_app, context_network, message_sender, message_source_app,
-                message_title, message_content, message_type, message_behavior, volume_behavior);
+        removeOutOfDateEvent();
 
-        if (last_context != null) {
-            present_context = VolumeContext.fillEvent(last_context, present_context);
-        }
 //        Log.i(TAG, "present context: " + Collector.gson.toJson(present_context));
-        return present_context;
+        return new VolumeContext(context_exact_time, context_time, context_week, context_gps_position, context_activity, context_wifi_name,
+                context_environment_sound, context_noise_db, context_playback_device, context_app, context_network, message_sender, message_source_app,
+                message_title, message_content, message_type, eventList, message_behavior, volume_behavior);
     }
 
     public Bundle getRules(VolumeContext volumeContext, int type) {
@@ -882,50 +851,17 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
     @Override
     public void onVolEvent(EventType eventType, Bundle bundle) {
-        // popup == false ONLY FOR EXPERIMENT_1
-        boolean popup = false;
-        double noise = noiseManager.getPresentNoise();
-        switch (eventType) {
-            case Noise:
-                noise = bundle.getDouble("noise");
-                double lastTriggerNoise = bundle.getDouble("lastTriggerNoise");
-                Log.e(TAG, "onVolEvent: " + eventType + " " + noise + " " + lastTriggerNoise);
+        if (eventList == null)
+            eventList = new ArrayList<>();
+        eventList.add(new VolumeContext.Event(System.currentTimeMillis(), eventType.toString(), bundle));
+        removeOutOfDateEvent();
+    }
+
+    private void removeOutOfDateEvent() {
+        for (VolumeContext.Event event: eventList) {
+            if (System.currentTimeMillis() - event.getTimestamp() < 10 * 60 * 1000)
                 break;
-            case Device:
-                String deviceID = bundle.getString("deviceID");
-                Log.e(TAG, "onVolEvent: " + eventType + " " + deviceID);
-                break;
-            case App:
-                String appID = bundle.getString("app");
-                Log.e(TAG, "onVolEvent: " + eventType + " " + appID);
-                break;
-            case Position:
-                String positionID = bundle.getString("id");
-                String positionName = bundle.getString("name");
-                Log.e(TAG, "onVolEvent: " + eventType + " " + positionID + " " + positionName);
-                break;
-            case Motion:
-                String motion = bundle.getString("motion");
-                popup = false;
-                Log.e(TAG, "onVolEvent: " + motion);
-                break;
-            case Bluetooth:
-            case Audio:
-            case Time:
-                popup = false;
-                break;
-        }
-        if (popup && currentMode != MODE_QUIET && !soundManager.isAudioOn()) {
-            // map noise to volume and adjust
-//            double adjustedVolume = fakeMapping(noise);
-            double adjustedVolume = volumeManager.predict(getCurrentFID(), noise);
-            Log.e(TAG, "onVolEvent: noise = " + noise + " adjust volume = " + adjustedVolume);
-            // do not adjust, if:
-            // (1) new context (no data yet), adjustedVolume = -1
-            // (2) the predicted volume is the same as current volume
-            if (adjustedVolume >= 0 && soundManager.percent2int(adjustedVolume) != soundManager.getVolume()) {
-                tryPopUpFrontend(REASON_AUTO_DIRECT, adjustedVolume);
-            }
+            eventList.remove(event);
         }
     }
 
@@ -991,8 +927,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
     @Override
     public String getCurrentContext() {
-//        return Collector.gson.toJson(getPresentContext());
-        return Collector.gson.toJson(current_context);
+        return Collector.gson.toJson(getPresentContext());
     }
 
     @Override

@@ -75,13 +75,16 @@ public class MyNotificationListener extends TriggerManager {
         else
             this.last_removed_message = new Message(sender, source_app, title, content, type);
 
-        Log.i(TAG, "package: " + sbn.getPackageName());
-        Log.i(TAG, "time: " + new Date(sbn.getPostTime()));
-        Log.i(TAG, "title: " + title);
-        Log.i(TAG, "content: " + content);
-        Log.i(TAG, "sender: " + sender);
-        Log.i(TAG, "type: " + type);
-        Log.i(TAG, "source_app: " + source_app);
+        Bundle bundle = new Bundle();
+        bundle.putString("source_app", source_app);
+        bundle.putString("title", title);
+        bundle.putString("content", content);
+        bundle.putString("sender", sender);
+        bundle.putString("type", type);
+        if (posted_or_removed == 0)
+            volEventListener.onVolEvent(VolEventListener.EventType.NewMessageCome, bundle);
+        else
+            volEventListener.onVolEvent(VolEventListener.EventType.RemoveMessage, bundle);
     }
 
     public List<String> getMessageBehavior() {
