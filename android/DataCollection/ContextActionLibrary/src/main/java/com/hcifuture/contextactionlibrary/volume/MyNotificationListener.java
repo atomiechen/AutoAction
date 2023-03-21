@@ -89,9 +89,14 @@ public class MyNotificationListener extends TriggerManager {
         bundle.putString("type", type);
         bundle.putString("key", sbn.getKey());
 
-        if (posted_or_removed == 0)
+        if (posted_or_removed == 0) {
+            bundle.putLong("post_time", sbn.getPostTime());
+            Notification notification = sbn.getNotification();
+            bundle.putBoolean("sound", notification.sound != null);
+            bundle.putBoolean("vibrate", notification.vibrate != null && notification.vibrate.length >= 2 && notification.vibrate[1] > 0);
+            bundle.putBoolean("banner", notification.priority == Notification.PRIORITY_HIGH || notification.priority == Notification.PRIORITY_MAX);
             volEventListener.onVolEvent(VolEventListener.EventType.NewMessagePosted, bundle);
-        else {
+        } else {
             String reasonString = "";
             switch (reason) {
                 case NotificationListenerService.REASON_CLICK:
