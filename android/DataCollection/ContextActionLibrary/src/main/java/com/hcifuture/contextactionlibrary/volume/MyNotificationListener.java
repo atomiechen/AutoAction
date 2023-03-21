@@ -18,7 +18,6 @@ public class MyNotificationListener extends TriggerManager {
     private AppManager appManager;
     private Message latest_message;
     private Message last_removed_message;
-    private long last_posted_time = 0;
 
     public static class Message {
         public String sender;
@@ -40,6 +39,11 @@ public class MyNotificationListener extends TriggerManager {
         }
 
         public Message() { this("", "", "", "", "", "", 0); }
+
+        public static boolean isSameMessage(Message message1, Message message2) {
+            return message1.source_app.equals(message2.source_app) && message1.title.equals(message2.title)
+                    && message1.content.equals(message2.content);
+        }
     }
 
     public MyNotificationListener(VolEventListener volEventListener, AppManager appManager) {
@@ -75,10 +79,9 @@ public class MyNotificationListener extends TriggerManager {
             return;
         if (posted_or_removed == 0) {
             Message new_message = new Message(sender, source_app, title, content, type, sbn.getKey(), sbn.getPostTime());
-            if (new_message.key.equals(latest_message.key) && (System.currentTimeMillis() - last_posted_time < 5000))
+            if (Message.isSameMessage(new_message, latest_message) && (new_message.timestamp - latest_message.timestamp < 5000))
                 return;
             this.latest_message = new_message;
-            this.last_posted_time = System.currentTimeMillis();
         } else {
             this.last_removed_message = new Message(sender, source_app, title, content, type, sbn.getKey(), sbn.getPostTime());
         }
