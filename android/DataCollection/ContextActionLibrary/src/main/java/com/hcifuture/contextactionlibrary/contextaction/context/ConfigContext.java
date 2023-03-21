@@ -162,7 +162,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
     private Uploader uploader;
 
-    private boolean eventList_remove_lock = false;
+//    private boolean eventList_remove_lock = false;
     private final List<VolumeContext.Event> eventList = Collections.synchronizedList(new ArrayList<>());
 
     private int last_volume = -1;
