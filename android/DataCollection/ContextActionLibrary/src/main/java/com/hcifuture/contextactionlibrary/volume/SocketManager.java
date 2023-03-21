@@ -52,22 +52,26 @@ public class SocketManager extends TriggerManager {
             Log.e(TAG, "deviceid: " + volEventListener.getDeviceId());
         });
 
-        socket.on("llm_query", args -> {
-            Log.e(TAG, "LLM query: " + (String) args[0]);
-        });
-        socket.on("llm_response", args -> {
-            Log.e(TAG, "LLM response: " + (String) args[0]);
-        });
+//        socket.on("llm_query", args -> {
+//            Log.e(TAG, "LLM query: " + (String) args[0]);
+//        });
+//        socket.on("llm_response", args -> {
+//            Log.e(TAG, "LLM response: " + (String) args[0]);
+//        });
 
         // 情境query
         socket.on("context_query", args -> {
-            // 服务器需要acknowledge，此处返回该事件的response
-            // ref: https://socketio.github.io/socket.io-client-java/emitting_events.html
-            int lastIndex = args.length - 1;
-            if (args.length > 0 && args[lastIndex] instanceof Ack) {
-                String response = volEventListener.getCurrentContext();
-                Log.i(TAG, response);
-                ((Ack) args[lastIndex]).call(response);
+            try {
+                // 服务器需要acknowledge，此处返回该事件的response
+                // ref: https://socketio.github.io/socket.io-client-java/emitting_events.html
+                int lastIndex = args.length - 1;
+                if (args.length > 0 && args[lastIndex] instanceof Ack) {
+                    String response = volEventListener.getCurrentContext();
+                    Log.i(TAG, response);
+                    ((Ack) args[lastIndex]).call(response);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
             }
         });
     }
@@ -75,14 +79,22 @@ public class SocketManager extends TriggerManager {
     @Override
     public void start() {
         if (socket != null) {
-            socket.connect();
+            try {
+                socket.connect();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 
     @Override
     public void stop() {
         if (socket != null) {
-            socket.disconnect();
+            try {
+                socket.disconnect();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 }
