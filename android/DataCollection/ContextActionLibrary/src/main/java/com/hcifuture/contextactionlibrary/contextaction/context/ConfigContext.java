@@ -69,7 +69,9 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -161,7 +163,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     private Uploader uploader;
 
     private boolean eventList_remove_lock = false;
-    private List<VolumeContext.Event> eventList = new ArrayList<>();
+    private final List<VolumeContext.Event> eventList = Collections.synchronizedList(new ArrayList<>());
 
     private int last_volume = -1;
     private int new_volume = -1;
@@ -885,21 +887,34 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
     @Override
     public void onVolEvent(EventType eventType, Bundle bundle) {
-        if (eventList == null)
-            eventList = new ArrayList<>();
-        eventList.add(new VolumeContext.Event(System.currentTimeMillis(), eventType.toString(), bundle));
-        removeOutOfDateEvent();
+//        if (eventList == null)
+//            eventList = new ArrayList<>();
+        synchronized (eventList) {
+            eventList.add(new VolumeContext.Event(System.currentTimeMillis(), eventType.toString(), bundle));
+            removeOutOfDateEvent();
+        }
     }
 
     private void removeOutOfDateEvent() {
-        if (!eventList_remove_lock) {
-            eventList_remove_lock = true;
-            for (VolumeContext.Event event : eventList) {
-                if (System.currentTimeMillis() - event.getTimestamp() < 10 * 60 * 1000)
-                    break;
-                eventList.remove(event);
+//        if (!eventList_remove_lock) {
+//            eventList_remove_lock = true;
+//            for (VolumeContext.Event event : eventList) {
+//                if (System.currentTimeMillis() - event.getTimestamp() < 10 * 60 * 1000)
+//                    break;
+//                eventList.remove(event);
+//            }
+//            eventList_remove_lock = false;
+//        }
+
+        synchronized (eventList) {
+            Iterator<VolumeContext.Event> iterator = eventList.iterator();
+            while (iterator.hasNext()) {
+                VolumeContext.Event event = iterator.next();
+                // if longer than 10min, then remove this event
+                if (System.currentTimeMillis() - event.getTimestamp() >= 10 * 60 * 1000) {
+                    iterator.remove();
+                }
             }
-            eventList_remove_lock = false;
         }
     }
 
