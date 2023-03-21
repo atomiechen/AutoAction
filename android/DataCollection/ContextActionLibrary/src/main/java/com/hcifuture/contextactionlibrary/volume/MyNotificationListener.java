@@ -27,17 +27,19 @@ public class MyNotificationListener extends TriggerManager {
         public String content;
         public String type;
         public String key;
+        public long timestamp;
 
-        public Message(String sender, String source_app, String title, String content, String type, String key) {
+        public Message(String sender, String source_app, String title, String content, String type, String key, long timestamp) {
             this.sender = sender;
             this.source_app = source_app;
             this.title = title;
             this.content = content;
             this.type = type;
             this.key = key;
+            this.timestamp = timestamp;
         }
 
-        public Message() { this("", "", "", "", "", ""); }
+        public Message() { this("", "", "", "", "", "", 0); }
     }
 
     public MyNotificationListener(VolEventListener volEventListener, AppManager appManager) {
@@ -72,13 +74,13 @@ public class MyNotificationListener extends TriggerManager {
         if (type.equals("system"))
             return;
         if (posted_or_removed == 0) {
-            Message new_message = new Message(sender, source_app, title, content, type, sbn.getKey());
+            Message new_message = new Message(sender, source_app, title, content, type, sbn.getKey(), sbn.getPostTime());
             if (new_message.key.equals(latest_message.key) && (System.currentTimeMillis() - last_posted_time < 5000))
                 return;
             this.latest_message = new_message;
             this.last_posted_time = System.currentTimeMillis();
         } else {
-            this.last_removed_message = new Message(sender, source_app, title, content, type, sbn.getKey());
+            this.last_removed_message = new Message(sender, source_app, title, content, type, sbn.getKey(), sbn.getPostTime());
         }
 
         Bundle bundle = new Bundle();
@@ -88,9 +90,9 @@ public class MyNotificationListener extends TriggerManager {
         bundle.putString("sender", sender);
         bundle.putString("type", type);
         bundle.putString("key", sbn.getKey());
+        bundle.putLong("post_time", sbn.getPostTime());
 
         if (posted_or_removed == 0) {
-            bundle.putLong("post_time", sbn.getPostTime());
             Notification notification = sbn.getNotification();
             bundle.putBoolean("sound", notification.sound != null);
             bundle.putBoolean("vibrate", notification.vibrate != null && notification.vibrate.length >= 2 && notification.vibrate[1] > 0);

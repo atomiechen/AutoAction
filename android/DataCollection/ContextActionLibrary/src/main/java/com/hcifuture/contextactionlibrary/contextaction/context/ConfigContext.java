@@ -390,13 +390,14 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         String message_title = message.title;
         String message_content = message.content;
         String message_type = message.type;
+        long message_timestamp = message.timestamp;
 
         removeOutOfDateEvent();
 
 //        Log.i(TAG, "present context: " + Collector.gson.toJson(present_context));
         return new VolumeContext(timestamp, context_exact_time, context_time, context_week, context_gps_position, context_activity, context_wifi_name,
                 context_noise_level, context_noise_db, context_audio_device, context_app, context_network, message_sender, message_source_app,
-                message_title, message_content, message_type, context_network_delay, context_screen_orientation, context_nearby_PC, context_volume,
+                message_title, message_content, message_type, message_timestamp, context_network_delay, context_screen_orientation, context_nearby_PC, context_volume,
                 streamType, context_audio_playing, eventList);
     }
 

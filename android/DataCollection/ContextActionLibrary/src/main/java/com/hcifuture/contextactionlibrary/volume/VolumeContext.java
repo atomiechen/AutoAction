@@ -30,6 +30,7 @@ public class VolumeContext {
     public String message_title;
     public String message_content;
     public String message_type;
+    public long message_timestamp;
 
     public List<Event> events;
 
@@ -50,7 +51,7 @@ public class VolumeContext {
     }
 
     public VolumeContext(long timestamp, String exact_time, String time, String week, String gps_position, String activity, String wifi_name, String context_noise_level, int noise_db, String context_audio_device, String app,
-                         String network, String message_sender, String message_source_app, String message_title, String message_content, String message_type,
+                         String network, String message_sender, String message_source_app, String message_title, String message_content, String message_type, long message_timestamp,
                          int network_delay, String screen_orientation, int nearby_PC, HashMap<String, Integer> volume,
                          String streamType, boolean audio_playing, List<Event> eventList) {
         this.context_timestamp = timestamp;
@@ -76,6 +77,7 @@ public class VolumeContext {
         this.message_title = message_title;
         this.message_content = message_content;
         this.message_type = message_type;
+        this.message_timestamp = message_timestamp;
 
         this.events = new ArrayList<>();
         this.events.addAll(eventList);
