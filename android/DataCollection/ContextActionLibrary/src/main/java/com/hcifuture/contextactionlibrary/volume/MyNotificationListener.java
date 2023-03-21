@@ -10,6 +10,7 @@ import com.hcifuture.contextactionlibrary.sensor.collector.Collector;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class MyNotificationListener extends TriggerManager {
 
@@ -17,6 +18,7 @@ public class MyNotificationListener extends TriggerManager {
     private AppManager appManager;
     private Message latest_message;
     private Message last_removed_message;
+    private long last_posted_time = 0;
 
     public static class Message {
         public String sender;
@@ -24,16 +26,18 @@ public class MyNotificationListener extends TriggerManager {
         public String title;
         public String content;
         public String type;
+        public String key;
 
-        public Message(String sender, String source_app, String title, String content, String type) {
+        public Message(String sender, String source_app, String title, String content, String type, String key) {
             this.sender = sender;
             this.source_app = source_app;
             this.title = title;
             this.content = content;
             this.type = type;
+            this.key = key;
         }
 
-        public Message() { this("", "", "", "", ""); }
+        public Message() { this("", "", "", "", "", ""); }
     }
 
     public MyNotificationListener(VolEventListener volEventListener, AppManager appManager) {
@@ -67,10 +71,15 @@ public class MyNotificationListener extends TriggerManager {
         String type = appManager.getAppType(sbn.getPackageName());
         if (type.equals("system"))
             return;
-        if (posted_or_removed == 0)
-            this.latest_message = new Message(sender, source_app, title, content, type);
-        else
-            this.last_removed_message = new Message(sender, source_app, title, content, type);
+        if (posted_or_removed == 0) {
+            Message new_message = new Message(sender, source_app, title, content, type, sbn.getKey());
+            if (new_message.key.equals(latest_message.key) && (System.currentTimeMillis() - last_posted_time < 5000))
+                return;
+            this.latest_message = new_message;
+            this.last_posted_time = System.currentTimeMillis();
+        } else {
+            this.last_removed_message = new Message(sender, source_app, title, content, type, sbn.getKey());
+        }
 
         Bundle bundle = new Bundle();
         bundle.putString("source_app", source_app);
