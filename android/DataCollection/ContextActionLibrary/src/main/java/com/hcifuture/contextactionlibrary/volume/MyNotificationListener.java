@@ -94,8 +94,8 @@ public class MyNotificationListener extends TriggerManager {
 
         if (posted_or_removed == 0) {
             Notification notification = sbn.getNotification();
-            bundle.putBoolean("sound", notification.sound != null);
-            bundle.putBoolean("vibrate", notification.vibrate != null && notification.vibrate.length >= 2 && notification.vibrate[1] > 0);
+//            bundle.putBoolean("sound", notification.sound != null);
+//            bundle.putBoolean("vibrate", notification.vibrate != null && notification.vibrate.length >= 2 && notification.vibrate[1] > 0);
             bundle.putBoolean("banner", notification.priority == Notification.PRIORITY_HIGH || notification.priority == Notification.PRIORITY_MAX);
             volEventListener.onVolEvent(VolEventListener.EventType.NewMessagePosted, bundle);
         } else {
