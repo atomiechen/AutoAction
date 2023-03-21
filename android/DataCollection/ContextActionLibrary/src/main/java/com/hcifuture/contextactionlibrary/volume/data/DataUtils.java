@@ -4,7 +4,6 @@ import android.content.Context;
 import android.media.AudioManager;
 import android.os.Build;
 import android.os.Bundle;
-import android.util.Log;
 
 import androidx.annotation.RequiresApi;
 
@@ -15,10 +14,8 @@ import com.hcifuture.contextactionlibrary.utils.FileUtils;
 import com.hcifuture.contextactionlibrary.volume.AppManager;
 import com.hcifuture.contextactionlibrary.volume.CrowdManager;
 import com.hcifuture.contextactionlibrary.volume.DeviceManager;
-import com.hcifuture.contextactionlibrary.volume.NoiseManager;
 import com.hcifuture.contextactionlibrary.volume.PositionManager;
 import com.hcifuture.contextactionlibrary.volume.SoundManager;
-import com.hcifuture.contextactionlibrary.volume.TimeManager;
 
 import java.io.File;
 import java.lang.reflect.Type;
@@ -239,7 +236,7 @@ public class DataUtils {
                     valueList.add(CrowdManager.latest_bleNumLevel);
                     break;
                 case "Audio":
-                    valueList.add(SoundManager.latest_audioLevel);
+//                    valueList.add(SoundManager.isAudioPlaying);
                     break;
 //                case "Time":
 //                    valueList.add(TimeManager.latest_formalizedTime);

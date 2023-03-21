@@ -379,6 +379,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         int context_nearby_PC = crowdManager.getNearbyPCNum();
         HashMap<String, Integer> context_volume = volumeDetector.getVolumes();
         String streamType = volumeDetector.getStreamTypeByMode();
+        boolean context_audio_playing = soundManager.isAudioOn();
 
         // message
         MyNotificationListener.Message message = myNotificationListener.getLatestMessage();
@@ -394,7 +395,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         return new VolumeContext(timestamp, context_exact_time, context_time, context_week, context_gps_position, context_activity, context_wifi_name,
                 context_noise_level, context_noise_db, context_audio_device, context_app, context_network, message_sender, message_source_app,
                 message_title, message_content, message_type, context_network_delay, context_screen_orientation, context_nearby_PC, context_volume,
-                streamType, eventList);
+                streamType, context_audio_playing, eventList);
     }
 
     public Bundle getRules(VolumeContext volumeContext, int type) {

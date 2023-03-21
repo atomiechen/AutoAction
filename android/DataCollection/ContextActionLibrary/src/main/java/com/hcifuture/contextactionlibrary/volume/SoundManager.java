@@ -80,7 +80,7 @@ public class SoundManager extends TriggerManager {
 
     private final int MAX_VOLUME_MUSIC;
 
-    public static Integer latest_audioLevel;
+    public boolean audioPlaying = false;
 
     @RequiresApi(api = Build.VERSION_CODES.N)
     public SoundManager(VolEventListener volEventListener, Context context, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList) {
@@ -124,7 +124,7 @@ public class SoundManager extends TriggerManager {
     }
 
     public boolean isAudioOn() {
-        return audioManager.isMusicActive();
+        return audioPlaying;
     }
 
     public int getAudioMode() {
@@ -133,15 +133,8 @@ public class SoundManager extends TriggerManager {
         return audioManager.getMode();
     }
 
-    public Integer getAudioLevel(double db) {
-        if (db <= 0)
-            return 0;
-        else if (db < 15)
-            return 1;
-        else if (db < 40)
-            return 2;
-        else
-            return 3;
+    public boolean isAudioPlaying(double db) {
+        return !(db <= 0);
     }
 
     public int getVolume() {
@@ -341,11 +334,12 @@ public class SoundManager extends TriggerManager {
                                 Log.e(TAG, "startLoopToSaveAudioFile: audio db = " + newDB);
 
                                 SYSTEM_VOLUME = newDB;
-                                if (!Objects.equals(latest_audioLevel, getAudioLevel(SYSTEM_VOLUME))) {
-                                    latest_audioLevel = getAudioLevel(SYSTEM_VOLUME);
-                                    Bundle bundle = new Bundle();
-                                    bundle.putInt("AudioLevel", latest_audioLevel);
-//                                    volEventListener.onVolEvent(VolEventListener.EventType.Audio, bundle);
+                                if (!Objects.equals(audioPlaying, isAudioPlaying(SYSTEM_VOLUME))) {
+                                    if (isAudioPlaying(SYSTEM_VOLUME))
+                                        volEventListener.onVolEvent(VolEventListener.EventType.PlayAudio, null);
+                                    else
+                                        volEventListener.onVolEvent(VolEventListener.EventType.PauseAudio, null);
+                                    audioPlaying = isAudioPlaying(SYSTEM_VOLUME);
                                 }
                             }
                             loudness_sum = 0;
@@ -362,7 +356,7 @@ public class SoundManager extends TriggerManager {
                     try {
                         double rms = Math.sqrt(loudness_sum / sum_cnt);
                         SYSTEM_VOLUME = Math.max(0, 20 * Math.log10(rms));
-                        latest_audioLevel = getAudioLevel(SYSTEM_VOLUME);
+                        audioPlaying = isAudioPlaying(SYSTEM_VOLUME);
                         Log.e(TAG, "System Volume rms = " + rms);
                         Log.e(TAG, "System Volume: " + SYSTEM_VOLUME + "dB");
                         if (fos != null) {

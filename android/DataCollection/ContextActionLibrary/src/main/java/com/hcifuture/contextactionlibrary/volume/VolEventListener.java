@@ -14,7 +14,6 @@ public interface VolEventListener {
         DeviceChange,
         AppChange,
         NetworkChange,
-        // TODO
         NewMessagePosted,
         MessageRemoved,
         NetworkDelayUp,
@@ -24,6 +23,8 @@ public interface VolEventListener {
         NearbyPCDecrease,
         VolumeUp,
         VolumeDown,
+        PlayAudio,
+        PauseAudio,
         // unused
         FrontEnd
     }

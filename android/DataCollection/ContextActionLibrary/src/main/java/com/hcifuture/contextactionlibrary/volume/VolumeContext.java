@@ -24,6 +24,7 @@ public class VolumeContext {
     public int context_nearby_PC;
     public HashMap<String, Integer> context_volume;
     public String context_volume_stream_type;
+    public boolean context_audio_playing;
     public String message_sender;
     public String message_source_app;
     public String message_title;
@@ -51,7 +52,7 @@ public class VolumeContext {
     public VolumeContext(long timestamp, String exact_time, String time, String week, String gps_position, String activity, String wifi_name, String context_noise_level, int noise_db, String context_audio_device, String app,
                          String network, String message_sender, String message_source_app, String message_title, String message_content, String message_type,
                          int network_delay, String screen_orientation, int nearby_PC, HashMap<String, Integer> volume,
-                         String streamType, List<Event> eventList) {
+                         String streamType, boolean audio_playing, List<Event> eventList) {
         this.context_timestamp = timestamp;
         this.context_exact_time = exact_time;
         this.context_time = time;
@@ -69,6 +70,7 @@ public class VolumeContext {
         this.context_nearby_PC = nearby_PC;
         this.context_volume = volume;
         this.context_volume_stream_type = streamType;
+        this.context_audio_playing = audio_playing;
         this.message_sender = message_sender;
         this.message_source_app = message_source_app;
         this.message_title = message_title;
