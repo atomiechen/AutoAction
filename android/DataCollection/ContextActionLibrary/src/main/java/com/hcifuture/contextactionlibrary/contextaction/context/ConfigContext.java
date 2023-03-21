@@ -140,7 +140,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     private final CrowdManager crowdManager;
     private final DeviceManager deviceManager;
     private final SoundManager soundManager;
-    private final MotionManager motionManager;
+//    private final MotionManager motionManager;
     private final ActivityManager activityManager;
     private final TimeManager timeManager;
     private final NetworkManager networkManager;
@@ -199,8 +199,8 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                 (GPSCollector) collectorManager.getCollector(CollectorManager.CollectorType.GPS),
                 (WifiCollector) collectorManager.getCollector(CollectorManager.CollectorType.Wifi));
 
-        motionManager = new MotionManager(this, mContext, scheduledExecutorService, futureList,
-                (IMUCollector) collectorManager.getCollector(CollectorManager.CollectorType.IMU));
+//        motionManager = new MotionManager(this, mContext, scheduledExecutorService, futureList,
+//                (IMUCollector) collectorManager.getCollector(CollectorManager.CollectorType.IMU));
 
         activityManager = new ActivityManager(this);
 
@@ -255,7 +255,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         positionManager.start();
         crowdManager.start();
         soundManager.start();
-        motionManager.start();
+//        motionManager.start();
         activityManager.start();
         myNotificationListener.start();
         networkManager.start();
@@ -274,7 +274,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
         myNotificationListener.stop();
         activityManager.stop();
-        motionManager.stop();
+//        motionManager.stop();
         soundManager.stop();
         crowdManager.stop();
         positionManager.stop();
@@ -293,7 +293,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
         myNotificationListener.pause();
         activityManager.pause();
-        motionManager.pause();
+//        motionManager.pause();
         soundManager.pause();
         crowdManager.pause();
         positionManager.pause();
@@ -315,7 +315,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         positionManager.resume();
         crowdManager.resume();
         soundManager.resume();
-        motionManager.resume();
+//        motionManager.resume();
         activityManager.resume();
         myNotificationListener.resume();
         networkManager.resume();
@@ -328,13 +328,13 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
     @Override
     public void onIMUSensorEvent(SingleIMUData data) {
-        motionManager.onIMUSensorEvent(data);
+//        motionManager.onIMUSensorEvent(data);
         activityManager.onIMUSensorEvent(data);
     }
 
     @Override
     public void onNonIMUSensorEvent(NonIMUData data) {
-        motionManager.onNonIMUSensorEvent(data);
+//        motionManager.onNonIMUSensorEvent(data);
     }
 
     @Override

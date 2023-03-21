@@ -285,31 +285,31 @@ public class SoundManager extends TriggerManager {
                             }
                         }
                         long cur_time = System.currentTimeMillis();
-                        if (cur_time - last_file_time >= intervalFile) {
-                            if (fos != null) {
-                                fos.close();
-                                if (maxValInFile == 0) {
-                                    // no data in file, no need to upload
-                                    FileUtils.deleteFile(new File(mCurrentFilename), "");
-//                                // reset file ID
-//                                mFileIDCounter.getAndDecrement();
-                                } else {
-                                    // upload current file
-                                    volEventListener.upload(mCurrentFilename, last_file_time, cur_time, "Volume_SystemAudio", "");
-                                    // update file ID
-                                    mFileIDCounter.getAndIncrement();
-                                }
-                                maxValInFile = 0;
-                            }
-                            // create a new file
-                            String dateTime = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
-                            // update file ID
-                            mCurrentFileID = mFileIDCounter.get();
-                            mCurrentFilename = AUDIO_DIR + "SystemAudio_" + dateTime + "_" + mCurrentFileID + ".aac";
-                            FileUtils.makeFile(new File(mCurrentFilename));
-                            fos = new FileOutputStream(mCurrentFilename);
-                            last_file_time = cur_time;
-                        }
+//                        if (cur_time - last_file_time >= intervalFile) {
+//                            if (fos != null) {
+//                                fos.close();
+//                                if (maxValInFile == 0) {
+//                                    // no data in file, no need to upload
+//                                    FileUtils.deleteFile(new File(mCurrentFilename), "");
+////                                // reset file ID
+////                                mFileIDCounter.getAndDecrement();
+//                                } else {
+//                                    // upload current file
+//                                    volEventListener.upload(mCurrentFilename, last_file_time, cur_time, "Volume_SystemAudio", "");
+//                                    // update file ID
+//                                    mFileIDCounter.getAndIncrement();
+//                                }
+//                                maxValInFile = 0;
+//                            }
+//                            // create a new file
+//                            String dateTime = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
+//                            // update file ID
+//                            mCurrentFileID = mFileIDCounter.get();
+//                            mCurrentFilename = AUDIO_DIR + "SystemAudio_" + dateTime + "_" + mCurrentFileID + ".aac";
+//                            FileUtils.makeFile(new File(mCurrentFilename));
+//                            fos = new FileOutputStream(mCurrentFilename);
+//                            last_file_time = cur_time;
+//                        }
                         if (fos != null)
                             fos.write(aacEncoder.offerEncoder(bytes));
                         if (cur_time - last_time >= intervalDetection) {
