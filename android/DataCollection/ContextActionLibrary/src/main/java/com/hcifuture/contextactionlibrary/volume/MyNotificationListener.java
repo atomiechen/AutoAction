@@ -41,8 +41,32 @@ public class MyNotificationListener extends TriggerManager {
         public Message() { this("", "", "", "", "", "", 0); }
 
         public static boolean isSameMessage(Message message1, Message message2) {
-            return message1.source_app.equals(message2.source_app) && message1.title.equals(message2.title)
-                    && message1.content.equals(message2.content);
+            int count = 0;
+            if (message1.source_app == null) {
+                if (message2.source_app == null)
+                    count += 1;
+            } else {
+                if (message1.source_app.equals(message2.source_app))
+                    count += 1;
+            }
+
+            if (message1.title == null) {
+                if (message2.title == null)
+                    count += 1;
+            } else {
+                if (message1.title.equals(message2.title))
+                    count += 1;
+            }
+
+            if (message1.content == null) {
+                if (message2.content == null)
+                    count += 1;
+            } else {
+                if (message1.content.equals(message2.content))
+                    count += 1;
+            }
+
+            return count == 3;
         }
     }
 
