@@ -41,32 +41,8 @@ public class MyNotificationListener extends TriggerManager {
         public Message() { this("", "", "", "", "", "", 0); }
 
         public static boolean isSameMessage(Message message1, Message message2) {
-            int count = 0;
-            if (message1.source_app == null) {
-                if (message2.source_app == null)
-                    count += 1;
-            } else {
-                if (message1.source_app.equals(message2.source_app))
-                    count += 1;
-            }
-
-            if (message1.title == null) {
-                if (message2.title == null)
-                    count += 1;
-            } else {
-                if (message1.title.equals(message2.title))
-                    count += 1;
-            }
-
-            if (message1.content == null) {
-                if (message2.content == null)
-                    count += 1;
-            } else {
-                if (message1.content.equals(message2.content))
-                    count += 1;
-            }
-
-            return count == 3;
+            return message1.source_app.equals(message2.source_app) && message1.title.equals(message2.title)
+                    && message1.content.equals(message2.content);
         }
     }
 
@@ -95,6 +71,21 @@ public class MyNotificationListener extends TriggerManager {
         Bundle extras = sbn.getNotification().extras;
         String title = extras.getString(Notification.EXTRA_TITLE); //通知title
         String content = extras.getString(Notification.EXTRA_TEXT); //通知内容
+        String key = sbn.getKey();
+
+        if (source_app == null) {
+            source_app = "";
+        }
+        if (title == null) {
+            title = "";
+        }
+        if (content == null) {
+            content = "";
+        }
+        if (key == null) {
+            key = "";
+        }
+
         String sender = "";
         if (source_app.equals("微信") || source_app.equals("QQ"))
             sender = title;
@@ -102,7 +93,7 @@ public class MyNotificationListener extends TriggerManager {
         if (type.equals("system"))
             return;
         if (posted_or_removed == 0) {
-            Message new_message = new Message(sender, source_app, title, content, type, sbn.getKey(), sbn.getPostTime());
+            Message new_message = new Message(sender, source_app, title, content, type, key, sbn.getPostTime());
             if (Message.isSameMessage(new_message, latest_message) && (new_message.timestamp - latest_message.timestamp < 5000))
                 return;
             this.latest_message = new_message;
