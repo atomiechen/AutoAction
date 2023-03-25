@@ -9,14 +9,10 @@ import androidx.annotation.RequiresApi;
 import com.google.gson.reflect.TypeToken;
 import com.hcifuture.contextactionlibrary.contextaction.context.ConfigContext;
 import com.hcifuture.contextactionlibrary.sensor.collector.Collector;
-import com.hcifuture.contextactionlibrary.sensor.collector.CollectorResult;
 import com.hcifuture.contextactionlibrary.sensor.collector.async.GPSCollector;
 import com.hcifuture.contextactionlibrary.sensor.collector.async.LocationCollector;
 import com.hcifuture.contextactionlibrary.sensor.collector.async.WifiCollector;
-import com.hcifuture.contextactionlibrary.sensor.data.GPSData;
 import com.hcifuture.contextactionlibrary.sensor.data.LocationData;
-import com.hcifuture.contextactionlibrary.sensor.data.SingleWifiData;
-import com.hcifuture.contextactionlibrary.sensor.data.WifiData;
 import com.hcifuture.contextactionlibrary.sensor.trigger.TriggerConfig;
 import com.hcifuture.contextactionlibrary.utils.FileUtils;
 import com.hcifuture.contextactionlibrary.utils.JSONUtils;
@@ -27,7 +23,6 @@ import java.io.File;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -49,7 +44,7 @@ public class PositionManager extends TriggerManager {
     public static Integer latest_position;
 
     private LocationCollector locationCollector;
-    private String latest_poiname;
+    private String latest_name;
 
     @RequiresApi(api = Build.VERSION_CODES.N)
     public PositionManager(VolEventListener volEventListener, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, LocationCollector locationCollector, GPSCollector gpsCollector, WifiCollector wifiCollector) {
@@ -61,10 +56,10 @@ public class PositionManager extends TriggerManager {
         this.wifiCollector = wifiCollector;
         positions = getPositionsFromFile();
         history = getPositionHistoryFromFile();
-        lastPosition = history.size() > 0? findById(history.get(history.size() - 1).getId()) : null;
+//        lastPosition = history.size() > 0? findById(history.get(history.size() - 1).getId()) : null;
 
         this.locationCollector = locationCollector;
-        latest_poiname = "";
+        latest_name = "";
     }
 
     public static class HistoryItem {
@@ -89,14 +84,14 @@ public class PositionManager extends TriggerManager {
         public void setOutTime(long outTime) { this.outTime = outTime; }
     }
 
-    public Position findById(String id) {
-        if (positions == null) return null;
-        for (Position position: positions) {
-            if (position.getId().equals(id))
-                return position;
-        }
-        return null;
-    }
+//    public Position findById(String id) {
+//        if (positions == null) return null;
+//        for (Position position: positions) {
+//            if (position.getId().equals(id))
+//                return position;
+//        }
+//        return null;
+//    }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
     public List<Position> getPositionsFromFile() {
@@ -149,24 +144,24 @@ public class PositionManager extends TriggerManager {
         FileUtils.writeStringToFile(result, new File(ConfigContext.VOLUME_SAVE_FOLDER + "position_history.json"));
     }
 
-    public List<String> getPositionList() {
-        List<String> result = new ArrayList<>();
-        for (Position position: positions) {
-            result.add(position.getId());
-        }
-        return  result;
-    }
+//    public List<String> getPositionList() {
+//        List<String> result = new ArrayList<>();
+//        for (Position position: positions) {
+//            result.add(position.getId());
+//        }
+//        return  result;
+//    }
 
-    public String getPresentPosition() {
-        if (lastPosition == null) {
-            return "NULL";
-        } else {
-            return lastPosition.getId();
-        }
-    }
+//    public String getPresentPosition() {
+//        if (lastPosition == null) {
+//            return "NULL";
+//        } else {
+//            return lastPosition.getId();
+//        }
+//    }
 
-    public String getLatestPoiname() {
-        return latest_poiname;
+    public String getLatestName() {
+        return latest_name;
     }
 
     public List<HistoryItem> getHistory() {
@@ -220,117 +215,121 @@ public class PositionManager extends TriggerManager {
             try {
                 LocationData locationData = (LocationData) v.getData();
                 String poiname = locationData.getPoiName();
-                if (!poiname.equals(latest_poiname)) {
+                double latitude = locationData.getLatitude();
+                double longitude = locationData.getLongitude();
+                String name = Position.getLocation(latitude, longitude, poiname);
+                if (!name.equals(latest_name)) {
                     Bundle bundle = new Bundle();
-                    bundle.putString("old_location", latest_poiname);
-                    bundle.putString("location", poiname);
+                    bundle.putString("old_location", latest_name);
+                    bundle.putString("location", name);
                     volEventListener.onVolEvent(VolEventListener.EventType.PositionChange, bundle);
-                    latest_poiname = poiname;
+                    latest_name = name;
                 }
+                Log.i(TAG, "latest location: " + name + ", " + latitude + ", " + longitude);
             } catch (Exception e) {
                 e.printStackTrace();
             }
-            return latest_poiname;
+            return latest_name;
         });
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.O)
-    public CompletableFuture<Position> scanAndUpdate() {
-        CompletableFuture<Position> ft = new CompletableFuture<>();
-
-        Log.e(TAG, "start to detect position");
-        List<CompletableFuture<CollectorResult>> fts = new ArrayList<>();
-        fts.add(gpsCollector.getData(new TriggerConfig()));
-        fts.add(wifiCollector.getData(new TriggerConfig()));
-        CompletableFuture<Void> allFutures = CompletableFuture.allOf(fts.toArray(new CompletableFuture[0]));
-        return allFutures.thenApply(v -> {
-            try {
-                GPSData gpsData = (GPSData) fts.get(0).get().getData();
-                WifiData wifiData = (WifiData) fts.get(1).get().getData();
-
-                List<String> wifiIds = new ArrayList<>();
-                if (wifiData != null) {
-                    List<SingleWifiData> singleWifiDataList = wifiData.getAps();
-                    for (SingleWifiData singleWifiData: singleWifiDataList) {
-                        String key = singleWifiData.getSsid() + singleWifiData.getBssid();
-                        wifiIds.add(key);
-                    }
-                }
-                double latitude = -200;
-                double longitude = -200;
-                if (gpsData != null) {
-                    latitude = gpsData.getLatitude();
-                    longitude = gpsData.getLongitude();
-                }
-                Position position = new Position("" + System.currentTimeMillis(), "unknown", latitude, longitude, wifiIds);
-                String type;
-                if (lastPosition != null && lastPosition.sameAs(position)) {
-                    Log.e(TAG, "Old Position: " + lastPosition.getId());
-                    type = "old";
-                    JSONObject json = new JSONObject();
-                    JSONUtils.jsonPut(json, "change", false);
-                    JSONUtils.jsonPut(json, "position", lastPosition.getId());
-                    JSONUtils.jsonPut(json, "position_gps", lastPosition.getLatitude()+","+lastPosition.getLongitude());
-//                    volEventListener.recordEvent(VolEventListener.EventType.Position, "periodic_scan", json.toString());
-                }
-                if (lastPosition == null || !lastPosition.sameAs(position)) {
-                    // 查找是否是新地点
-                    Position tmp = findInList(position);
-                    if (tmp == null) {
-                        positions.add(position);
-                        Log.e(TAG, "New Position: " + position.getId());
-                        writePositionsToFile();
-                        tmp = position;
-                        type = "new";
-                    } else {
-                        Log.e(TAG, "Old Position: " + tmp.getId());
-                        type = "old";
-                    }
-                    // 更新地点历史
-                    if (history.size() > 0) {
-                        HistoryItem historyItem = history.get(history.size() - 1);
-                        historyItem.setOutTime(System.currentTimeMillis());
-                        history.remove(history.size() - 1);
-                        history.add(historyItem);
-                    }
-                    history.add(new HistoryItem(tmp.getId(), System.currentTimeMillis(), -1));
-                    writeHistoryToFile();
-                    if (lastPosition != null) {
-                        Bundle bundle = new Bundle();
-                        bundle.putString("id", tmp.getId());
-                        bundle.putString("name", tmp.getName());
-                        Log.e(TAG, "Position Changed from " + lastPosition.getId() + " to " + tmp.getId() + ", timestamp: " + System.currentTimeMillis());
-//                        volEventListener.onVolEvent(VolEventListener.EventType.Position, bundle);
-                    }
-                    JSONObject json = new JSONObject();
-                    JSONUtils.jsonPut(json, "change", true);
-                    JSONUtils.jsonPut(json, "previous_position", lastPosition.getId());
-                    JSONUtils.jsonPut(json, "previous_position_gps", lastPosition.getLatitude()+","+lastPosition.getLongitude());
-                    JSONUtils.jsonPut(json, "now_position", tmp.getId());
-                    JSONUtils.jsonPut(json, "now_position_gps", tmp.getLatitude()+","+tmp.getLongitude());
-                    JSONUtils.jsonPut(json, "type", type);
-//                    volEventListener.recordEvent(VolEventListener.EventType.Position, "periodic_scan", json.toString());
-                    lastPosition = tmp;
-                    latest_position = Integer.parseInt(lastPosition.getId());
-                }
-//                ft.complete(lastPosition);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-            return lastPosition;
-        });
-
-//        return ft;
-    }
-
-    public Position findInList(Position position) {
-        if (positions == null) return null;
-
-        for (Position _position: positions) {
-            if (_position.sameAs(position)) {
-                return _position;
-            }
-        }
-        return null;
-    }
+//    @RequiresApi(api = Build.VERSION_CODES.O)
+//    public CompletableFuture<Position> scanAndUpdate() {
+//        CompletableFuture<Position> ft = new CompletableFuture<>();
+//
+//        Log.e(TAG, "start to detect position");
+//        List<CompletableFuture<CollectorResult>> fts = new ArrayList<>();
+//        fts.add(gpsCollector.getData(new TriggerConfig()));
+//        fts.add(wifiCollector.getData(new TriggerConfig()));
+//        CompletableFuture<Void> allFutures = CompletableFuture.allOf(fts.toArray(new CompletableFuture[0]));
+//        return allFutures.thenApply(v -> {
+//            try {
+//                GPSData gpsData = (GPSData) fts.get(0).get().getData();
+//                WifiData wifiData = (WifiData) fts.get(1).get().getData();
+//
+//                List<String> wifiIds = new ArrayList<>();
+//                if (wifiData != null) {
+//                    List<SingleWifiData> singleWifiDataList = wifiData.getAps();
+//                    for (SingleWifiData singleWifiData: singleWifiDataList) {
+//                        String key = singleWifiData.getSsid() + singleWifiData.getBssid();
+//                        wifiIds.add(key);
+//                    }
+//                }
+//                double latitude = -200;
+//                double longitude = -200;
+//                if (gpsData != null) {
+//                    latitude = gpsData.getLatitude();
+//                    longitude = gpsData.getLongitude();
+//                }
+//                Position position = new Position("" + System.currentTimeMillis(), "unknown", latitude, longitude, wifiIds);
+//                String type;
+//                if (lastPosition != null && lastPosition.sameAs(position)) {
+//                    Log.e(TAG, "Old Position: " + lastPosition.getId());
+//                    type = "old";
+//                    JSONObject json = new JSONObject();
+//                    JSONUtils.jsonPut(json, "change", false);
+//                    JSONUtils.jsonPut(json, "position", lastPosition.getId());
+//                    JSONUtils.jsonPut(json, "position_gps", lastPosition.getLatitude()+","+lastPosition.getLongitude());
+////                    volEventListener.recordEvent(VolEventListener.EventType.Position, "periodic_scan", json.toString());
+//                }
+//                if (lastPosition == null || !lastPosition.sameAs(position)) {
+//                    // 查找是否是新地点
+//                    Position tmp = findInList(position);
+//                    if (tmp == null) {
+//                        positions.add(position);
+//                        Log.e(TAG, "New Position: " + position.getId());
+//                        writePositionsToFile();
+//                        tmp = position;
+//                        type = "new";
+//                    } else {
+//                        Log.e(TAG, "Old Position: " + tmp.getId());
+//                        type = "old";
+//                    }
+//                    // 更新地点历史
+//                    if (history.size() > 0) {
+//                        HistoryItem historyItem = history.get(history.size() - 1);
+//                        historyItem.setOutTime(System.currentTimeMillis());
+//                        history.remove(history.size() - 1);
+//                        history.add(historyItem);
+//                    }
+//                    history.add(new HistoryItem(tmp.getId(), System.currentTimeMillis(), -1));
+//                    writeHistoryToFile();
+//                    if (lastPosition != null) {
+//                        Bundle bundle = new Bundle();
+//                        bundle.putString("id", tmp.getId());
+//                        bundle.putString("name", tmp.getName());
+//                        Log.e(TAG, "Position Changed from " + lastPosition.getId() + " to " + tmp.getId() + ", timestamp: " + System.currentTimeMillis());
+////                        volEventListener.onVolEvent(VolEventListener.EventType.Position, bundle);
+//                    }
+//                    JSONObject json = new JSONObject();
+//                    JSONUtils.jsonPut(json, "change", true);
+//                    JSONUtils.jsonPut(json, "previous_position", lastPosition.getId());
+//                    JSONUtils.jsonPut(json, "previous_position_gps", lastPosition.getLatitude()+","+lastPosition.getLongitude());
+//                    JSONUtils.jsonPut(json, "now_position", tmp.getId());
+//                    JSONUtils.jsonPut(json, "now_position_gps", tmp.getLatitude()+","+tmp.getLongitude());
+//                    JSONUtils.jsonPut(json, "type", type);
+////                    volEventListener.recordEvent(VolEventListener.EventType.Position, "periodic_scan", json.toString());
+//                    lastPosition = tmp;
+//                    latest_position = Integer.parseInt(lastPosition.getId());
+//                }
+////                ft.complete(lastPosition);
+//            } catch (Exception e) {
+//                e.printStackTrace();
+//            }
+//            return lastPosition;
+//        });
+//
+////        return ft;
+//    }
+//
+//    public Position findInList(Position position) {
+//        if (positions == null) return null;
+//
+//        for (Position _position: positions) {
+//            if (_position.sameAs(position)) {
+//                return _position;
+//            }
+//        }
+//        return null;
+//    }
 }
