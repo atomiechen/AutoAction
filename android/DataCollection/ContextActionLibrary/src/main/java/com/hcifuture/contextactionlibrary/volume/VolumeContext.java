@@ -24,7 +24,7 @@ public class VolumeContext {
     public String context_screen_orientation;
     public int context_nearby_PC;
     public int context_nearby_phone;
-    public List<String> context_linked_device_classes;
+//    public List<String> context_linked_device_classes;
     public HashMap<String, Integer> context_volume;
     public String context_volume_stream_type;
     public boolean context_audio_playing;
@@ -74,8 +74,8 @@ public class VolumeContext {
         this.context_screen_orientation = screen_orientation;
         this.context_nearby_PC = nearby_PC;
         this.context_nearby_phone = nearby_phone;
-        this.context_linked_device_classes = new ArrayList<>();
-        this.context_linked_device_classes.addAll(linked_device_classes);
+//        this.context_linked_device_classes = new ArrayList<>();
+//        this.context_linked_device_classes.addAll(linked_device_classes);
         this.context_volume = volume;
         this.context_volume_stream_type = streamType;
         this.context_audio_playing = audio_playing;
