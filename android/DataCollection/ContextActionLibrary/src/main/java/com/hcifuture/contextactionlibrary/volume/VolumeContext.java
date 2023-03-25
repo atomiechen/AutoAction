@@ -14,6 +14,7 @@ public class VolumeContext {
     public String context_gps_position;
     public String context_activity;
     public String context_wifi_name;
+    public String context_wifi_bssid;
     public String context_noise_level;
     public int context_noise_db;
     public String context_audio_device;
@@ -22,6 +23,8 @@ public class VolumeContext {
     public int context_network_delay;
     public String context_screen_orientation;
     public int context_nearby_PC;
+    public int context_nearby_phone;
+    public List<String> context_linked_device_classes;
     public HashMap<String, Integer> context_volume;
     public String context_volume_stream_type;
     public boolean context_audio_playing;
@@ -53,7 +56,7 @@ public class VolumeContext {
     public VolumeContext(long timestamp, String exact_time, String time, String week, String gps_position, String activity, String wifi_name, String context_noise_level, int noise_db, String context_audio_device, String app,
                          String network, String message_sender, String message_source_app, String message_title, String message_content, String message_type, long message_timestamp,
                          int network_delay, String screen_orientation, int nearby_PC, HashMap<String, Integer> volume,
-                         String streamType, boolean audio_playing, List<Event> eventList) {
+                         String streamType, String wifi_bssid, int nearby_phone, List<String> linked_device_classes, boolean audio_playing, List<Event> eventList) {
         this.context_timestamp = timestamp;
         this.context_exact_time = exact_time;
         this.context_time = time;
@@ -61,6 +64,7 @@ public class VolumeContext {
         this.context_gps_position = gps_position;
         this.context_activity = activity;
         this.context_wifi_name = wifi_name;
+        this.context_wifi_bssid = wifi_bssid;
         this.context_noise_level = context_noise_level;
         this.context_noise_db = noise_db;
         this.context_audio_device = context_audio_device;
@@ -69,6 +73,9 @@ public class VolumeContext {
         this.context_network_delay = network_delay;
         this.context_screen_orientation = screen_orientation;
         this.context_nearby_PC = nearby_PC;
+        this.context_nearby_phone = nearby_phone;
+        this.context_linked_device_classes = new ArrayList<>();
+        this.context_linked_device_classes.addAll(linked_device_classes);
         this.context_volume = volume;
         this.context_volume_stream_type = streamType;
         this.context_audio_playing = audio_playing;

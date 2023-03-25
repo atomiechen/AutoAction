@@ -6,7 +6,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.hardware.display.DisplayManager;
-import android.media.AudioManager;
 import android.net.Uri;
 import android.net.wifi.WifiManager;
 import android.os.Build;
@@ -25,7 +24,6 @@ import com.hcifuture.contextactionlibrary.sensor.collector.CollectorResult;
 import com.hcifuture.contextactionlibrary.sensor.collector.async.AudioCollector;
 import com.hcifuture.contextactionlibrary.sensor.collector.async.BluetoothCollector;
 import com.hcifuture.contextactionlibrary.sensor.collector.async.GPSCollector;
-import com.hcifuture.contextactionlibrary.sensor.collector.async.IMUCollector;
 import com.hcifuture.contextactionlibrary.sensor.collector.async.LocationCollector;
 import com.hcifuture.contextactionlibrary.sensor.collector.async.WifiCollector;
 import com.hcifuture.contextactionlibrary.sensor.data.NonIMUData;
@@ -38,7 +36,6 @@ import com.hcifuture.contextactionlibrary.volume.ActivityManager;
 import com.hcifuture.contextactionlibrary.volume.AppManager;
 import com.hcifuture.contextactionlibrary.volume.CrowdManager;
 import com.hcifuture.contextactionlibrary.volume.DeviceManager;
-import com.hcifuture.contextactionlibrary.volume.MotionManager;
 import com.hcifuture.contextactionlibrary.volume.MyNotificationListener;
 import com.hcifuture.contextactionlibrary.volume.NetworkManager;
 import com.hcifuture.contextactionlibrary.volume.PositionManager;
@@ -367,6 +364,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         String context_gps_position = positionManager.getLatestName();
         String context_activity = activityManager.getActivity();
         String context_wifi_name = networkManager.getWifi();
+        String context_wifi_bssid = networkManager.getWifiBssid();
         String context_noise_level = noiseManager.getNoiseLevel();
         int context_noise_db = noiseManager.getPresentNoise();
         String context_audio_device = deviceManager.getPresentDeviceID();
@@ -379,6 +377,8 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         else if (mContext.getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE)
             context_screen_orientation = "horizontal";
         int context_nearby_PC = crowdManager.getNearbyPCNum();
+        int context_nearby_phone = crowdManager.getNearbyPhoneNum();
+        List<String> context_linked_device_classes = crowdManager.getLinkedDeviceClasses();
         HashMap<String, Integer> context_volume = volumeDetector.getVolumes();
         String streamType = volumeDetector.getStreamTypeByMode();
         boolean context_audio_playing = soundManager.isAudioOn();
@@ -398,7 +398,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         return new VolumeContext(timestamp, context_exact_time, context_time, context_week, context_gps_position, context_activity, context_wifi_name,
                 context_noise_level, context_noise_db, context_audio_device, context_app, context_network, message_sender, message_source_app,
                 message_title, message_content, message_type, message_timestamp, context_network_delay, context_screen_orientation, context_nearby_PC, context_volume,
-                streamType, context_audio_playing, eventList);
+                streamType, context_wifi_bssid, context_nearby_phone, context_linked_device_classes, context_audio_playing, eventList);
     }
 
     public Bundle getRules(VolumeContext volumeContext, int type) {
@@ -723,7 +723,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                             context.putDouble("noise", noiseManager.getPresentNoise());
                             context.putString("position", positionManager.getLatestName());
                             context.putStringArrayList("bleDevices", new ArrayList<>(CrowdManager.blItemList2StringList(crowdManager.getBleList())));
-                            context.putStringArrayList("filteredDevices", new ArrayList<>(CrowdManager.blItemList2StringList(crowdManager.getPCList())));
+                            context.putStringArrayList("filteredDevices", new ArrayList<>(CrowdManager.blItemList2StringList(crowdManager.getDeviceList())));
                             if (allFutures != null) {
                                 Log.e(TAG, "onExternalEvent: check manual detection");
                                 String finalKeyFactor = keyFactor;
@@ -732,7 +732,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                                     context.putDouble("noise", noiseManager.getPresentNoise());
                                     context.putString("position", positionManager.getLatestName());
                                     context.putStringArrayList("bleDevices", new ArrayList<>(CrowdManager.blItemList2StringList(crowdManager.getBleList())));
-                                    context.putStringArrayList("filteredDevices", new ArrayList<>(CrowdManager.blItemList2StringList(crowdManager.getPCList())));
+                                    context.putStringArrayList("filteredDevices", new ArrayList<>(CrowdManager.blItemList2StringList(crowdManager.getDeviceList())));
                                     if (finalKeyFactor != null)
                                         dataUtils.addContextForReason(DataUtils.getReasonByName(dataUtils.getReasonList(), finalKeyFactor), context);
 //                                    record(System.currentTimeMillis(), incLogID(), TAG, "manual_detect", "reason: " + finalKeyFactor, Collector.gson.toJson(context));

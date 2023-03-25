@@ -81,6 +81,7 @@ public class NetworkManager extends TriggerManager {
         this.scheduledExecutorService = scheduledExecutorService;
         this.futureList = futureList;
         this.wifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
+        Log.i(TAG, "bssid: " + getWifiBssid());
     }
 
     private void refreshNetworkInfo() {
@@ -194,8 +195,15 @@ public class NetworkManager extends TriggerManager {
     }
 
     public String getWifi() {
-        if (wifiManager.getConnectionInfo() != null && wifiManager.getConnectionInfo().getSSID() != null)
+        if (wifiManager.getConnectionInfo() != null && wifiManager.getConnectionInfo().getSSID() != null && !wifiManager.getConnectionInfo().getSSID().equals("<unknown ssid>"))
             return wifiManager.getConnectionInfo().getSSID();
+        else
+            return "";
+    }
+
+    public String getWifiBssid() {
+        if (wifiManager.getConnectionInfo() != null && wifiManager.getConnectionInfo().getBSSID() != null && !wifiManager.getConnectionInfo().getBSSID().equals("<unknown bssid>"))
+            return wifiManager.getConnectionInfo().getBSSID();
         else
             return "";
     }

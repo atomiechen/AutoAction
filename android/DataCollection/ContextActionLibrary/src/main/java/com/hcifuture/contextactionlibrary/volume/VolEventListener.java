@@ -21,6 +21,8 @@ public interface VolEventListener {
         ScreenOrientationChange,
         NearbyPCIncrease,
         NearbyPCDecrease,
+        NearbyPhoneIncrease,
+        NearbyPhoneDecrease,
         VolumeUp,
         VolumeDown,
         PlayAudio,

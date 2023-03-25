@@ -37,11 +37,13 @@ public class CrowdManager extends TriggerManager {
     List<ScheduledFuture<?>> futureList;
     private BluetoothCollector bluetoothCollector;
     private List<BluetoothItem> bleList;
-    private List<BluetoothItem> PCList;
+    private List<BluetoothItem> deviceList;
     public static Integer latest_bleNumLevel = -1;
     private Context mContext;
     private BLEManager bleManager;
     private int nearbyPCNum = 0;
+    private int nearbyPhoneNum = 0;
+    private List<Integer> linkedDeviceClasses = new ArrayList<>();
 
     private ScheduledFuture<?> scheduledPhoneDetection;
     private ScheduledFuture<?> repeatScan;
@@ -65,13 +67,15 @@ public class CrowdManager extends TriggerManager {
         private double distance;
         private int majorDeviceClass;
         private int deviceClass;
+        private boolean linked;
 
-        public BluetoothItem(String name, String address, int majorDeviceClass, int deviceClass, double distance) {
+        public BluetoothItem(String name, String address, int majorDeviceClass, int deviceClass, double distance, boolean linked) {
             this.name = name;
             this.address = address;
             this.majorDeviceClass = majorDeviceClass;
             this.deviceClass = deviceClass;
             this.distance = distance;
+            this.linked = linked;
         }
 
         public String getName() { return name; }
@@ -185,31 +189,54 @@ public class CrowdManager extends TriggerManager {
         // 变次数扫描方法
         Log.e(TAG, "scanAndUpdate: start 3 times");
         return repeatScan(3).thenApply(listOfListOfList -> {
-            PCList = setBluetoothDeviceList(listOfListOfList.get(0));
+            deviceList = setBluetoothDeviceList(listOfListOfList.get(0));
             bleList = setBluetoothDeviceList(listOfListOfList.get(1));
-            int after_size = (PCList == null) ? 0 : PCList.size();
-            if (after_size != nearbyPCNum) {
+            int pc_num = 0, phone_num = 0;
+            List<Integer> device_classes = new ArrayList<>();
+            for (BluetoothItem item: deviceList) {
+                if (item.majorDeviceClass == BluetoothClass.Device.Major.COMPUTER)
+                    pc_num += 1;
+                if (item.majorDeviceClass == BluetoothClass.Device.Major.PHONE)
+                    phone_num += 1;
+                if (item.linked && !device_classes.contains(item.majorDeviceClass))
+                    device_classes.add(item.majorDeviceClass);
+            }
+            linkedDeviceClasses = device_classes;
+            if (pc_num != nearbyPCNum) {
                 Bundle bundle = new Bundle();
                 bundle.putInt("nearby_PC_num_before", nearbyPCNum);
-                bundle.putInt("nearby_PC_num_now", after_size);
-                if (after_size > nearbyPCNum)
+                bundle.putInt("nearby_PC_num_now", pc_num);
+                if (pc_num > nearbyPCNum)
                     volEventListener.onVolEvent(VolEventListener.EventType.NearbyPCIncrease, bundle);
                 else
                     volEventListener.onVolEvent(VolEventListener.EventType.NearbyPCDecrease, bundle);
-                nearbyPCNum = after_size;
+                nearbyPCNum = pc_num;
             }
-            Log.e(TAG, "scanAndUpdate: get PC list " + PCList);
-            Log.e(TAG, "scanAndUpdate: get ble list " + bleList);
+            if (phone_num != nearbyPhoneNum) {
+                Bundle bundle = new Bundle();
+                bundle.putInt("nearby_phone_num_before", nearbyPhoneNum);
+                bundle.putInt("nearby_phone_num_now", phone_num);
+                if (phone_num > nearbyPhoneNum)
+                    volEventListener.onVolEvent(VolEventListener.EventType.NearbyPhoneIncrease, bundle);
+                else
+                    volEventListener.onVolEvent(VolEventListener.EventType.NearbyPhoneDecrease, bundle);
+                nearbyPhoneNum = phone_num;
+            }
+//            Log.e(TAG, "scanAndUpdate: get device list " + deviceList);
+//            Log.e(TAG, "scanAndUpdate: get ble list " + bleList);
+            Log.i(TAG, "" + deviceList);
+            Log.i(TAG, "pc_num: " + pc_num + ", phone_num: " + phone_num);
+            Log.i(TAG, "linked_device_classes: " + getLinkedDeviceClasses());
 
             // record data to file
             JSONObject json = new JSONObject();
-            JSONUtils.jsonPut(json, "phone_number", PCList.size());
+            JSONUtils.jsonPut(json, "phone_number", deviceList.size());
             JSONUtils.jsonPut(json, "ble_number", bleList.size());
-            JSONUtils.jsonPut(json, "phone_devices", blItemList2StringList(PCList));
+            JSONUtils.jsonPut(json, "phone_devices", blItemList2StringList(deviceList));
             JSONUtils.jsonPut(json, "ble_devices", blItemList2StringList(bleList));
 //            volEventListener.recordEvent(VolEventListener.EventType.Crowd, "crowd_bt_scan_3times", json.toString());
 
-            return Arrays.asList(PCList, bleList);
+            return Arrays.asList(deviceList, bleList);
         });
     }
 
@@ -314,7 +341,8 @@ public class CrowdManager extends TriggerManager {
                         cnt += 1;
                     }
                 }
-                result.add(new BluetoothItem(item.getName(), item.getAddress(), item.getMajorDeviceClass(), item.getDeviceClass(), distance / cnt));
+                boolean linked = distance == 0;
+                result.add(new BluetoothItem(item.getName(), item.getAddress(), item.getMajorDeviceClass(), item.getDeviceClass(), distance / cnt, linked));
             }
         }
         result.sort((a, b) -> {
@@ -363,33 +391,32 @@ public class CrowdManager extends TriggerManager {
         List<SingleBluetoothData> list = bluetoothData.getDevices();
         for (SingleBluetoothData singleBluetoothData: list) {
             BluetoothDevice device = singleBluetoothData.getDevice();
-            if (isFilteredDevice(device)) {
-                if (device.getUuids() != null) {
-                    if (singleBluetoothData.getLinked()) {
-                        String name = device.getName();
-                        String address = device.getAddress();
-                        double distance = 0;
-                        result.add(new BluetoothItem(name, address,
-                                device.getBluetoothClass().getMajorDeviceClass(),
-                                device.getBluetoothClass().getDeviceClass(),
-                                distance));
-                    }
-                } else {
+            if (device.getUuids() != null) {
+                if (singleBluetoothData.getLinked()) {
                     String name = device.getName();
                     String address = device.getAddress();
-                    double distance = -1;
-                    if (singleBluetoothData.getScanResult() != null) {
-                        distance = rssi2distance(singleBluetoothData.getScanResult().getRssi());
-                    } else if (singleBluetoothData.getIntentExtra() != null) {
-                        int rssi = singleBluetoothData.getIntentExtra().getShort(BluetoothDevice.EXTRA_RSSI, (short) 0);
-                        if (rssi < 0)
-                            distance = rssi2distance(rssi);
-                    }
+                    double distance = 0;
                     result.add(new BluetoothItem(name, address,
                             device.getBluetoothClass().getMajorDeviceClass(),
                             device.getBluetoothClass().getDeviceClass(),
-                            distance));
+                            distance, true));
                 }
+            } else {
+                String name = device.getName();
+                String address = device.getAddress();
+                double distance = -1;
+                if (singleBluetoothData.getScanResult() != null) {
+                    distance = rssi2distance(singleBluetoothData.getScanResult().getRssi());
+                } else if (singleBluetoothData.getIntentExtra() != null) {
+                    int rssi = singleBluetoothData.getIntentExtra().getShort(BluetoothDevice.EXTRA_RSSI, (short) 0);
+                    if (rssi < 0)
+                        distance = rssi2distance(rssi);
+                }
+                boolean linked = distance == 0;
+                result.add(new BluetoothItem(name, address,
+                        device.getBluetoothClass().getMajorDeviceClass(),
+                        device.getBluetoothClass().getDeviceClass(),
+                        distance, linked));
             }
         }
         Log.e(TAG, "end device2item");
@@ -408,22 +435,23 @@ public class CrowdManager extends TriggerManager {
                 double distance = rssi2distance(scanResult.getRssi());
                 String name = device.getName();
                 String address = device.getAddress();
+                boolean linked = distance == 0;
                 result.add(new BluetoothItem(name, address,
                         device.getBluetoothClass().getMajorDeviceClass(),
                         device.getBluetoothClass().getDeviceClass(),
-                        distance));
+                        distance, linked));
             }
         }
         Log.e(TAG, "end scanResult2BtItem");
         return result;
     }
 
-    @SuppressLint("MissingPermission")
-    public boolean isFilteredDevice(BluetoothDevice bluetoothDevice) {
+//    @SuppressLint("MissingPermission")
+//    public boolean isFilteredDevice(BluetoothDevice bluetoothDevice) {
 //        return bluetoothDevice.getBluetoothClass().getMajorDeviceClass() == BluetoothClass.Device.Major.PHONE
 //                || bluetoothDevice.getBluetoothClass().getMajorDeviceClass() == BluetoothClass.Device.Major.WEARABLE;
-        return bluetoothDevice.getBluetoothClass().getMajorDeviceClass() == BluetoothClass.Device.Major.COMPUTER;
-    }
+//        return bluetoothDevice.getBluetoothClass().getMajorDeviceClass() == BluetoothClass.Device.Major.COMPUTER;
+//    }
 
     public double rssi2distance(int rssi) {
         double A = 59;
@@ -436,9 +464,45 @@ public class CrowdManager extends TriggerManager {
         return bleList;
     }
 
-    public List<BluetoothItem> getPCList() { return PCList; }
+    public List<BluetoothItem> getDeviceList() { return deviceList; }
 
     public int getNearbyPCNum() {
         return nearbyPCNum;
+    }
+
+    public int getNearbyPhoneNum() {
+        return nearbyPhoneNum;
+    }
+
+    public List<String> getLinkedDeviceClasses() {
+        List<String> result = new ArrayList<>();
+        for (Integer item: linkedDeviceClasses) {
+            if (item == BluetoothClass.Device.Major.COMPUTER) {
+                result.add("computer");
+            } else if (item == BluetoothClass.Device.Major.PHONE) {
+                result.add("phone");
+            } else if (item == BluetoothClass.Device.Major.WEARABLE) {
+                result.add("wearable");
+            } else if (item == BluetoothClass.Device.Major.AUDIO_VIDEO) {
+                result.add("audio_video");
+            } else if (item == BluetoothClass.Device.Major.HEALTH) {
+                result.add("health");
+            } else if (item == BluetoothClass.Device.Major.IMAGING) {
+                result.add("imaging");
+            } else if (item == BluetoothClass.Device.Major.MISC) {
+                result.add("misc");
+            } else if (item == BluetoothClass.Device.Major.NETWORKING) {
+                result.add("networking");
+            } else if (item == BluetoothClass.Device.Major.PERIPHERAL) {
+                result.add("peripheral");
+            } else if (item == BluetoothClass.Device.Major.TOY) {
+                result.add("toy");
+            } else if (item == BluetoothClass.Device.Major.UNCATEGORIZED) {
+                result.add("uncategorized");
+            } else {
+                result.add("unknown");
+            }
+        }
+        return result;
     }
 }
