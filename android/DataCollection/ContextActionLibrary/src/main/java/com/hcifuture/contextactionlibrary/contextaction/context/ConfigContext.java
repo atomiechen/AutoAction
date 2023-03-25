@@ -347,7 +347,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 //            record_all("period_30m");
             JSONObject json = new JSONObject();
             JSONUtils.jsonPut(json, "devices", deviceManager.getDeviceIDs());
-            JSONUtils.jsonPut(json, "positions", positionManager.getPositionList());
+//            JSONUtils.jsonPut(json, "positions", positionManager.getPositionList());
             record(current_call, incLogID(), "period_30m", "", "", json.toString());
             last_record_all = current_call;
         }
@@ -364,7 +364,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         String context_exact_time = timeManager.getExactTime();
         String context_time = timeManager.getTimeString();
         String context_week = timeManager.getWeekString();
-        String context_gps_position = positionManager.getLatestPoiname();
+        String context_gps_position = positionManager.getLatestName();
         String context_activity = activityManager.getActivity();
         String context_wifi_name = networkManager.getWifi();
         String context_noise_level = noiseManager.getNoiseLevel();
@@ -630,7 +630,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                             if (allFutures == null) {
                                 allFutures = CompletableFuture.allOf(
 //                                        noiseManager.detectNoise(5000, 10),
-                                        positionManager.scanAndUpdate(),
+//                                        positionManager.scanAndUpdate(),
                                         crowdManager.scanAndUpdate()
                                 );
                             }
@@ -640,7 +640,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                                     noiseManager.getPresentNoise(),
                                     deviceManager.getPresentDeviceID(),
                                     appManager.getPresentApp(),
-                                    positionManager.getPresentPosition(),
+                                    positionManager.getLatestName(),
                                     soundManager.isAudioOn(),
                                     soundManager.getAudioMode()
                             ));
@@ -721,7 +721,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                             context.putString("package", appManager.getPresentPackage());
                             context.putString("device", deviceManager.getPresentDeviceID());
                             context.putDouble("noise", noiseManager.getPresentNoise());
-                            context.putString("position", positionManager.getPresentPosition());
+                            context.putString("position", positionManager.getLatestName());
                             context.putStringArrayList("bleDevices", new ArrayList<>(CrowdManager.blItemList2StringList(crowdManager.getBleList())));
                             context.putStringArrayList("filteredDevices", new ArrayList<>(CrowdManager.blItemList2StringList(crowdManager.getPCList())));
                             if (allFutures != null) {
@@ -730,7 +730,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                                 // update recently scan results
                                 allFutures.whenComplete((v, e) -> {
                                     context.putDouble("noise", noiseManager.getPresentNoise());
-                                    context.putString("position", positionManager.getPresentPosition());
+                                    context.putString("position", positionManager.getLatestName());
                                     context.putStringArrayList("bleDevices", new ArrayList<>(CrowdManager.blItemList2StringList(crowdManager.getBleList())));
                                     context.putStringArrayList("filteredDevices", new ArrayList<>(CrowdManager.blItemList2StringList(crowdManager.getPCList())));
                                     if (finalKeyFactor != null)
@@ -792,7 +792,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     }
 
     private String getCurrentContextID() {
-        return "@" + deviceManager.getPresentDeviceID() + "@" + appManager.getPresentApp() + "@" + positionManager.getPresentPosition();
+        return "@" + deviceManager.getPresentDeviceID() + "@" + appManager.getPresentApp() + "@" + positionManager.getLatestName();
     }
 
     private void appendLine(String line, String filename) {
