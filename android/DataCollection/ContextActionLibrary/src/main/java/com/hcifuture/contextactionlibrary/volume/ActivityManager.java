@@ -24,7 +24,7 @@ public class ActivityManager extends TriggerManager {
 
     static final String TAG = "ActivityManager";
 
-    public static String ACTION_STATIC = "static";
+    public static String ACTION_STATIC = "still";
     public static String ACTION_WALKING = "walking";
     public static String ACTION_RUNNING = "running";
     public static String ACTION_CYCLING = "cycling";
