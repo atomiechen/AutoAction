@@ -912,7 +912,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
             while (iterator.hasNext()) {
                 VolumeContext.Event event = iterator.next();
                 // if longer than 10min, then remove this event
-                if (System.currentTimeMillis() - event.getTimestamp() >= 10 * 60 * 1000) {
+                if (System.currentTimeMillis() - event.getTimestamp() >= 5 * 60 * 1000) {
                     iterator.remove();
                 }
             }
