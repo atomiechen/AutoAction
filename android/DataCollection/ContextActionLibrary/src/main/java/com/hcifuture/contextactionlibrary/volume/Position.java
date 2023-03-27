@@ -189,8 +189,10 @@ public class Position {
         double max_score = 0;
         for (Position position: tsinghua_positions) {
             double score = getScore(position, present);
-            if (score > max_score)
+            if (score > max_score) {
                 result = position.name;
+                max_score = score;
+            }
         }
         return result;
     }
