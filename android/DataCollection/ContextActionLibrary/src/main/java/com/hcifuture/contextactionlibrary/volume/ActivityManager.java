@@ -32,6 +32,8 @@ public class ActivityManager extends TriggerManager {
 
     private Module imuModule = null;
     private String prevActivity = ACTION_OTHERS;
+    private String prev_prev_Activity = ACTION_OTHERS;
+    private long last_activity_change_time = -1;
 
     private static int seqLength = 500;
     private float[] imuInput = new float[seqLength * 6];
@@ -95,11 +97,22 @@ public class ActivityManager extends TriggerManager {
         else if (activity == 11 || activity == 12 || activity == 14)
             curActivity = ACTION_STATIC;
         if (!Objects.equals(prevActivity, curActivity)) {
-            Bundle bundle = new Bundle();
-            bundle.putString("last_activity", prevActivity);
-            bundle.putString("activity", curActivity);
-            volEventListener.onVolEvent(VolEventListener.EventType.ActivityChange, bundle);
-            prevActivity = curActivity;
+            if (!curActivity.equals(prev_prev_Activity) || System.currentTimeMillis() - last_activity_change_time > 10 * 1000) {
+                if (last_activity_change_time > 0) {
+                    Bundle bundle = new Bundle();
+                    bundle.putString("last_activity", prev_prev_Activity);
+                    bundle.putString("activity", prevActivity);
+                    bundle.putLong("change_time", last_activity_change_time);
+                    volEventListener.onVolEvent(VolEventListener.EventType.ActivityChange, bundle);
+                }
+                prev_prev_Activity = prevActivity;
+                prevActivity = curActivity;
+                last_activity_change_time = System.currentTimeMillis();
+            } else {
+                last_activity_change_time = -1;
+                prev_prev_Activity = ACTION_OTHERS;
+                prevActivity = curActivity;
+            }
         }
         Log.i(TAG, curActivity);
     }
