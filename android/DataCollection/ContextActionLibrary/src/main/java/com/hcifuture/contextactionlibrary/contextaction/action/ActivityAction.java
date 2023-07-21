@@ -157,4 +157,9 @@ public class ActivityAction extends BaseAction {
         if (!isStarted)
             return;
     }
+
+    @Override
+    public String getName() {
+        return "ActivityAction";
+    }
 }
