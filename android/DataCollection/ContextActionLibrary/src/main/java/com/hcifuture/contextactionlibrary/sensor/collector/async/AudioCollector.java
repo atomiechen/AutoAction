@@ -24,25 +24,36 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class AudioCollector extends AsynchronousCollector {
+    private static final String TAG = "AudioCollector";
+
     private MediaRecorder mMediaRecorder;
     private final AtomicBoolean isCollecting;
     private final AudioManager audioManager;
+
+    private ScheduledFuture<?> repeatedSampleFt;
+    private final File dummyOutputFile;
+    private File saveFile;
 
     /*
       Error code:
         0: No error
         1: Invalid audio length
-        2: Null audio filename
+        2: Null audio filename (deprecated)
         3: Concurrent task of audio recording
         4: Unknown audio recording exception
         5: Unknown exception when stopping recording
         6: Mic not available
+        7: Exception during getMaxAmplitudeSequence (noise detection)
+        8: No valid result of getMaxAmplitudeSequence (noise value)
      */
 
     public AudioCollector(Context context, CollectorManager.CollectorType type, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList) {
         super(context, type, scheduledExecutorService, futureList);
         isCollecting = new AtomicBoolean(false);
         audioManager = (AudioManager) mContext.getSystemService(Context.AUDIO_SERVICE);
+
+        dummyOutputFile = new File(context.getExternalMediaDirs()[0].getAbsolutePath() + "/tmp/null");
+        FileUtils.makeDir(dummyOutputFile.getParent());
     }
 
     @Override
@@ -52,22 +63,39 @@ public class AudioCollector extends AsynchronousCollector {
 
     @Override
     public void close() {
-        stopRecording();
+        stopRecordingAndDelete();
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.O)
+    private void stopRecordingAndDelete() {
+        stopRecording();
+        // remove file
+        try {
+            FileUtils.deleteFile(saveFile, "");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.N)
     @Override
     public CompletableFuture<CollectorResult> getData(TriggerConfig config) {
         Heart.getInstance().newSensorGetEvent(getName(), System.currentTimeMillis());
         CompletableFuture<CollectorResult> ft = new CompletableFuture<>();
         CollectorResult result = new CollectorResult();
-        File saveFile = new File(config.getAudioFilename());
+        String filename;
+        // if audio filename not specified, use dummy output file
+        if (config.getAudioFilename() == null) {
+            filename = getDummyOutputFilePath();
+        } else {
+            filename = config.getAudioFilename();
+        }
+        saveFile = new File(filename);
         result.setSavePath(saveFile.getAbsolutePath());
 
         if (config.getAudioLength() <= 0) {
             ft.completeExceptionally(new CollectorException(1, "Invalid audio length: " + config.getAudioLength()));
-        } else if (config.getAudioFilename() == null) {
-            ft.completeExceptionally(new CollectorException(2, "Null audio filename"));
+//        } else if (config.getAudioFilename() == null) {
+//            ft.completeExceptionally(new CollectorException(2, "Null audio filename"));
         } else if (isCollecting.compareAndSet(false, true)) {
             try {
                 // check mic availability
@@ -78,29 +106,30 @@ public class AudioCollector extends AsynchronousCollector {
 //                MODE_IN_COMMUNICATION -> The Mic is being used by another application
                 int micMode = audioManager.getMode();
                 if (micMode != AudioManager.MODE_NORMAL) {
-                    ft.completeExceptionally(new CollectorException(6, "Mic not available: " + micMode));
                     isCollecting.set(false);
+                    ft.completeExceptionally(new CollectorException(6, "Mic not available: " + micMode));
                 } else {
                     FileUtils.makeDir(saveFile.getParent());
                     startRecording(saveFile);
+                    // first call returns 0
+                    mMediaRecorder.getMaxAmplitude();
                     futureList.add(scheduledExecutorService.schedule(() -> {
                         try {
                             stopRecording();
+                            isCollecting.set(false);
                             ft.complete(result);
                         } catch (Exception e) {
                             e.printStackTrace();
-                            ft.completeExceptionally(new CollectorException(5, e));
-                        } finally {
-//                            ft.complete(result);
                             isCollecting.set(false);
+                            ft.completeExceptionally(new CollectorException(5, e));
                         }
                     }, config.getAudioLength(), TimeUnit.MILLISECONDS));
                 }
             } catch (Exception e) {
                 e.printStackTrace();
-                stopRecording();
-                ft.completeExceptionally(new CollectorException(4, e));
+                stopRecordingAndDelete();
                 isCollecting.set(false);
+                ft.completeExceptionally(new CollectorException(4, e));
             }
         } else {
             ft.completeExceptionally(new CollectorException(3, "Concurrent task of audio recording"));
@@ -109,41 +138,17 @@ public class AudioCollector extends AsynchronousCollector {
         return ft;
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.O)
     private void startRecording(File file) throws IOException {
-        mMediaRecorder = new MediaRecorder();
-        // may throw IllegalStateException due to lack of permission
-        mMediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
-        mMediaRecorder.setAudioChannels(2);
-        mMediaRecorder.setAudioSamplingRate(44100);
-        mMediaRecorder.setAudioEncodingBitRate(16 * 44100);
-        mMediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
-        mMediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
-        mMediaRecorder.setOutputFile(file);
-        mMediaRecorder.prepare();
-        mMediaRecorder.start();
+        mMediaRecorder = startNewMediaRecorder(MediaRecorder.AudioSource.MIC, file.getAbsolutePath());
     }
 
     private void stopRecording() {
-        if (mMediaRecorder != null) {
-            try {
-                // may throw IllegalStateException because no valid audio data has been received
-                mMediaRecorder.stop();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-            try {
-                mMediaRecorder.release();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-            mMediaRecorder = null;
-        }
+        stopMediaRecorder(mMediaRecorder);
     }
 
     @Override
     public void pause() {
-        stopRecording();
+        stopRecordingAndDelete();
     }
 
     @Override
@@ -158,6 +163,51 @@ public class AudioCollector extends AsynchronousCollector {
 
     @Override
     public String getExt() {
-        return ".mp3";
+        return ".aac";
+    }
+
+    public String getDummyOutputFilePath() {
+        // from Android 11 (SDK 30) on, cannot use "/dev/null"
+        return dummyOutputFile.getAbsolutePath();
+    }
+
+    private MediaRecorder startNewMediaRecorder(int audioSource, String outputFilePath) throws IOException {
+        MediaRecorder mediaRecorder = new MediaRecorder();
+        // may throw IllegalStateException due to lack of permission
+        mediaRecorder.setAudioSource(audioSource);
+        mediaRecorder.setAudioChannels(2);
+        mediaRecorder.setAudioSamplingRate(44100);
+        mediaRecorder.setAudioEncodingBitRate(16 * 44100);
+        mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
+        mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
+        mediaRecorder.setOutputFile(outputFilePath);
+        mediaRecorder.prepare();
+        mediaRecorder.start();
+        return mediaRecorder;
+    }
+
+    private void stopMediaRecorder(MediaRecorder mediaRecorder) {
+        if (mediaRecorder != null) {
+            try {
+                // may throw IllegalStateException because no valid audio data has been received
+                mediaRecorder.stop();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            try {
+                mediaRecorder.release();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public int getMaxAmplitude() {
+        try {
+            // Returns the maximum absolute amplitude that was sampled since the last call to this method
+            return mMediaRecorder.getMaxAmplitude();
+        } catch (Exception e) {
+            return -1;
+        }
     }
 }

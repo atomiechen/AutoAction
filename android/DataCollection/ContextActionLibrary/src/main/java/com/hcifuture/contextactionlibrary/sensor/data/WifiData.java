@@ -56,4 +56,8 @@ public class WifiData extends Data {
     public DataType dataType() {
         return DataType.WifiData;
     }
+
+    public List<SingleWifiData> getAps() {
+        return aps;
+    }
 }

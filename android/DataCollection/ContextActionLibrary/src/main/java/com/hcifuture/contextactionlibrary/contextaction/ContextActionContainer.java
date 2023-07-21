@@ -24,6 +24,7 @@ import androidx.annotation.RequiresApi;
 
 //import com.amap.api.services.core.ServiceSettings;
 import com.google.gson.Gson;
+import com.hcifuture.contextactionlibrary.contextaction.action.ActivityAction;
 import com.hcifuture.contextactionlibrary.contextaction.action.MotionAction;
 import com.hcifuture.contextactionlibrary.contextaction.action.UploadDataAction;
 import com.hcifuture.contextactionlibrary.contextaction.collect.CloseCollector;
@@ -114,7 +115,7 @@ public class ContextActionContainer implements ActionListener, ContextListener {
     private ScheduledExecutorService scheduledExecutorService;
     private final List<ScheduledFuture<?>> futureList;
     private HandlerThread handlerThread;
-    private Handler handler;
+    public static Handler handler;
 
     private ScheduledFuture<?> actionFuture;
     private ScheduledFuture<?> contextFuture;
@@ -354,10 +355,10 @@ public class ContextActionContainer implements ActionListener, ContextListener {
 
     public void pause() {
         for (BaseAction action: actions) {
-            action.stop();
+            action.pause();
         }
         for (BaseContext context: contexts) {
-            context.stop();
+            context.pause();
         }
         if (dataDistributor != null) {
             dataDistributor.stop();
@@ -372,10 +373,10 @@ public class ContextActionContainer implements ActionListener, ContextListener {
             dataDistributor.start();
         }
         for (BaseAction action: actions) {
-            action.start();
+            action.resume();
         }
         for (BaseContext context: contexts) {
-            context.start();
+            context.resume();
         }
         if (actionFuture != null && (actionFuture.isDone() || actionFuture.isCancelled())) {
             monitorAction();
@@ -486,6 +487,9 @@ public class ContextActionContainer implements ActionListener, ContextListener {
                         case "InPocket":
                             InPocketContext inPocketContext = new InPocketContext(mContext, contextConfig, requestListener, Arrays.asList(this, contextListener), (NonIMUCollector) collectorManager.getCollector(CollectorManager.CollectorType.NonIMU), scheduledExecutorService, futureList);
                             contexts.add(inPocketContext);
+                            break;
+                        case "Config":
+                            contexts.add(new ConfigContext(mContext, contextConfig, requestListener, Arrays.asList(this, contextListener), scheduledExecutorService, futureList, collectorManager));
                             break;
                         default:
                             break;
@@ -600,7 +604,8 @@ public class ContextActionContainer implements ActionListener, ContextListener {
             TimedCollector timedCollector = new TimedCollector(mContext, scheduledExecutorService, futureList, requestListener, clickTrigger, uploader);
             collectors.add(timedCollector);
             collectors.add(new TapTapCollector(mContext, scheduledExecutorService, futureList, requestListener, clickTrigger, uploader));
-            collectors.add(new ConfigCollector(mContext, scheduledExecutorService, futureList, requestListener, clickTrigger, uploader));
+            ConfigCollector configCollector = new ConfigCollector(mContext, scheduledExecutorService, futureList, requestListener, clickTrigger, uploader);
+            collectors.add(configCollector);
 
 
             if (config != null) {
@@ -699,15 +704,19 @@ public class ContextActionContainer implements ActionListener, ContextListener {
                                 );
                                 break;
                             case "Config":
-                                LogCollector configLogCollector = collectorManager.newLogCollector("Config", 8192);
-                                contexts.add(new ConfigContext(mContext, contextConfig, requestListener, Arrays.asList(this, contextListener), configLogCollector, scheduledExecutorService, futureList));
-                                //                            setLogCollector(ConfigContext.class, configLogCollector);
+                                LogCollector configLogCollector = collectorManager.newLogCollector("Volume", 8192);
+                                setLogCollector(ConfigContext.class, configLogCollector);
                                 timedCollector.scheduleTimedLogUpload(
                                         configLogCollector,
                                         (period == null) ? 30 * 60000 : period.longValue(),
                                         (initialDelay == null) ? 5000 : initialDelay.longValue(),
-                                        (name == null) ? "Config" : name
+                                        (name == null) ? "Volume" : name
                                 );
+                                for (BaseContext context: contexts) {
+                                    if (context instanceof ConfigContext) {
+                                        ((ConfigContext) context).setBaseCollector(configCollector);
+                                    }
+                                }
                                 break;
                             default:
                                 break;

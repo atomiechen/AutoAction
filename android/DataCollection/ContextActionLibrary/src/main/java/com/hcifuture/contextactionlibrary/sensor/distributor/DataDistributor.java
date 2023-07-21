@@ -39,9 +39,9 @@ public class DataDistributor implements CollectorListener {
     }
 
     public void onExternalEvent(Bundle bundle) {
-        if (isRunning.get()) {
+//        if (isRunning.get()) {
+            contextLock.lock();
             try {
-                contextLock.lock();
                 for (BaseAction action : actions) {
                     if (!action.isPassiveDisabled() && action.isStarted()) {
                         action.onExternalEvent(bundle);
@@ -55,13 +55,13 @@ public class DataDistributor implements CollectorListener {
             } finally {
                 contextLock.unlock();
             }
-        }
+//        }
     }
 
     public void onBroadcastEvent(BroadcastEvent event) {
-        if (isRunning.get()) {
+//        if (isRunning.get()) {
+            contextLock.lock();
             try {
-                contextLock.lock();
                 for (BaseContext context : contexts) {
                     if (!context.isPassiveDisabled() && context.isStarted()) {
                         context.onBroadcastEvent(event);
@@ -70,13 +70,13 @@ public class DataDistributor implements CollectorListener {
             } finally {
                 contextLock.unlock();
             }
-        }
+//        }
     }
 
     public void onAccessibilityEvent(AccessibilityEvent event) {
-        if (isRunning.get()) {
+//        if (isRunning.get()) {
+            contextLock.lock();
             try {
-                contextLock.lock();
                 for (BaseContext context : contexts) {
                     if (!context.isPassiveDisabled() && context.isStarted()) {
                         context.onAccessibilityEvent(event);
@@ -85,14 +85,14 @@ public class DataDistributor implements CollectorListener {
             } finally {
                 contextLock.unlock();
             }
-        }
+//        }
     }
 
     @Override
     public void onSensorEvent(Data data) {
         if (isRunning.get()) {
+            contextLock.lock();
             try {
-                contextLock.lock();
                 for (BaseAction action : actions) {
                     if (!action.isPassiveDisabled() && action.isStarted()) {
                         List<SensorType> types = action.getConfig().getSensorType();

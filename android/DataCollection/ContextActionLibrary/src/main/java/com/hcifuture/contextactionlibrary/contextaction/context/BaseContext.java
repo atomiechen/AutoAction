@@ -57,6 +57,12 @@ public abstract class BaseContext {
     public synchronized boolean isStarted() {
         return isStarted;
     }
+    public void pause() {
+        stop();
+    }
+    public void resume() {
+        start();
+    }
     // public abstract void onIMUSensorChanged(SensorEvent event);
     // public abstract void onProximitySensorChanged(SensorEvent event);
     public abstract void onIMUSensorEvent(SingleIMUData data);

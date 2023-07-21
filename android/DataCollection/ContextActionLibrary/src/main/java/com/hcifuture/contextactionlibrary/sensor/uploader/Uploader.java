@@ -22,6 +22,7 @@ import com.google.gson.ToNumberStrategy;
 import com.google.gson.reflect.TypeToken;
 import com.hcifuture.contextactionlibrary.utils.FileUtils;
 import com.hcifuture.contextactionlibrary.utils.NetworkUtils;
+import com.hcifuture.contextactionlibrary.utils.RequestUtils;
 import com.hcifuture.shared.communicate.config.RequestConfig;
 import com.hcifuture.shared.communicate.listener.RequestListener;
 
@@ -60,7 +61,7 @@ public class Uploader {
     private static final long SECOND = 1000;
     private static final long MINUTE = SECOND * 60;
     private static final long HOUR = MINUTE * 60;
-    private static final int FILES_IN_PACKAGE = 5;
+    private static final int FILES_IN_PACKAGE = 1;
 
     private static final Gson gson = new GsonBuilder()
             .disableHtmlEscaping()
@@ -93,8 +94,6 @@ public class Uploader {
     private boolean lastWifiStatus = false;
     private final BroadcastReceiver receiver;
     private final Handler handler;
-
-    private String mUserId = String.valueOf(System.currentTimeMillis());
 
     enum UploaderStatus {
         OK,
@@ -409,7 +408,7 @@ public class Uploader {
             if (isUploadingLocalFiles.compareAndSet(false, true)) {
                 try {
                     Log.e(TAG, "uploadLocalFiles");
-                    long timestamp = System.currentTimeMillis() - 5 * MINUTE;
+                    long timestamp = System.currentTimeMillis();
                     uploadDirectory(new File(this.fileFolder), timestamp, false);
                     uploadDirectory(new File(this.zipFolder), timestamp, true);
                 } finally {
@@ -420,17 +419,6 @@ public class Uploader {
     }
 
     public String getUserId() {
-        // get unique user ID
-        RequestConfig request = new RequestConfig();
-        request.putString("getDeviceId", "");
-        String userId = (String) requestListener.onRequest(request).getObject("getDeviceId");
-        if (userId == null || "Unknown".equals(userId)) {
-//            userId = "Unknown_" + System.currentTimeMillis();
-            // use last known user ID
-            userId = "Unknown_" + mUserId;
-        } else {
-            mUserId = userId;
-        }
-        return userId;
+        return RequestUtils.getUserId(requestListener);
     }
 }

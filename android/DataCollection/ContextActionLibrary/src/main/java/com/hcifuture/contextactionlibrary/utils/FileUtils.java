@@ -49,10 +49,14 @@ public class FileUtils {
     }
 
     public static void writeStringToFile(String content, File saveFile) {
+        writeStringToFile(content, saveFile, false);
+    }
+
+    public static void writeStringToFile(String content, File saveFile, boolean append) {
         makeFile(saveFile);
         String toWrite = content + "\r\n";
         try {
-            OutputStreamWriter writer = new OutputStreamWriter(new FileOutputStream(saveFile));
+            OutputStreamWriter writer = new OutputStreamWriter(new FileOutputStream(saveFile, append));
             writer.write(toWrite);
             writer.close();
         } catch (Exception e) {
