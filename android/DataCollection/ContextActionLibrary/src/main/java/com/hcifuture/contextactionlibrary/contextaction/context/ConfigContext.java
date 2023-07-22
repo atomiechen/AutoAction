@@ -84,6 +84,10 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
     private static final String TAG = "ConfigContext";
 
+    // text agent related
+    static final String EXTERNAL_TYPE_AGENT = "type.agent.text";
+    static final String CONTEXT_AGENT = "context.agent.text";
+
     public static String VOLUME_SAVE_FOLDER;
     public static String FILE_TMP_DATA = "tmp_data.csv";
     public static String FILE_CONTEXT_MAP = "context2fid.json";
@@ -247,8 +251,8 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     @Override
     public synchronized void start() {
         isStarted = true;
-        record_all("start");
-        socketManager.start();
+//        record_all("start");
+//        socketManager.start();
         appManager.start();
         noiseManager.start();
         deviceManager.start();
@@ -281,7 +285,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         deviceManager.stop();
         noiseManager.stop();
         appManager.stop();
-        socketManager.stop();
+//        socketManager.stop();
         networkManager.stop();
         isStarted = false;
     }
@@ -301,15 +305,15 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         deviceManager.pause();
         noiseManager.pause();
         appManager.pause();
-        socketManager.pause();
+//        socketManager.pause();
         networkManager.pause();
     }
 
     @RequiresApi(api = Build.VERSION_CODES.Q)
     @Override
     public void resume() {
-        record_all("resume");
-        socketManager.resume();
+//        record_all("resume");
+//        socketManager.resume();
         appManager.resume();
         noiseManager.resume();
         deviceManager.resume();
@@ -766,6 +770,14 @@ public class ConfigContext extends BaseContext implements VolEventListener {
                     soundManager.start();
                     break;
             }
+        }
+        else if (EXTERNAL_TYPE_AGENT.equals(type)) {
+            // context information request from frontend App
+            // TODO
+            String activity = activityManager.getActivity();
+            Bundle result = new Bundle();
+            result.putString("activity", activity);
+            notifyFrontend(CONTEXT_AGENT, result);
         }
     }
 
