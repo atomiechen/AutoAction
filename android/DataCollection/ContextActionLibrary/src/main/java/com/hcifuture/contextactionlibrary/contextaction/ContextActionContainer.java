@@ -704,19 +704,19 @@ public class ContextActionContainer implements ActionListener, ContextListener {
                                 );
                                 break;
                             case "Config":
-                                LogCollector configLogCollector = collectorManager.newLogCollector("Volume", 8192);
-                                setLogCollector(ConfigContext.class, configLogCollector);
-                                timedCollector.scheduleTimedLogUpload(
-                                        configLogCollector,
-                                        (period == null) ? 30 * 60000 : period.longValue(),
-                                        (initialDelay == null) ? 5000 : initialDelay.longValue(),
-                                        (name == null) ? "Volume" : name
-                                );
-                                for (BaseContext context: contexts) {
-                                    if (context instanceof ConfigContext) {
-                                        ((ConfigContext) context).setBaseCollector(configCollector);
-                                    }
-                                }
+//                                LogCollector configLogCollector = collectorManager.newLogCollector("Volume", 8192);
+//                                setLogCollector(ConfigContext.class, configLogCollector);
+//                                timedCollector.scheduleTimedLogUpload(
+//                                        configLogCollector,
+//                                        (period == null) ? 30 * 60000 : period.longValue(),
+//                                        (initialDelay == null) ? 5000 : initialDelay.longValue(),
+//                                        (name == null) ? "Volume" : name
+//                                );
+//                                for (BaseContext context: contexts) {
+//                                    if (context instanceof ConfigContext) {
+//                                        ((ConfigContext) context).setBaseCollector(configCollector);
+//                                    }
+//                                }
                                 break;
                             default:
                                 break;

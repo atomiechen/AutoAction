@@ -351,7 +351,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
             JSONObject json = new JSONObject();
             JSONUtils.jsonPut(json, "devices", deviceManager.getDeviceIDs());
 //            JSONUtils.jsonPut(json, "positions", positionManager.getPositionList());
-            record(current_call, incLogID(), "period_30m", "", "", json.toString());
+//            record(current_call, incLogID(), "period_30m", "", "", json.toString());
             last_record_all = current_call;
         }
     }
@@ -546,7 +546,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 //                    notifyContext(NEED_SCAN, timestamp, logID, "Bluetooth on via broadcast");
                 }
             } else if ("KeyEvent".equals(type)) {
-                record = true;
+//                record = true;
                 int keycode = extras.getInt("code");
                 int keyAction = extras.getInt("action");
                 JSONUtils.jsonPut(json, "keycodeString", KeyEvent.keyCodeToString(keycode));
