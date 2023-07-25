@@ -23,7 +23,7 @@ public class SocketManager extends TriggerManager {
         URI serverUrl;
         try {
             serverUrl = new URI(volEventListener.getServerUrl());
-        } catch (URISyntaxException e) {
+        } catch (Exception e) {
             e.printStackTrace();
             return;
         }
