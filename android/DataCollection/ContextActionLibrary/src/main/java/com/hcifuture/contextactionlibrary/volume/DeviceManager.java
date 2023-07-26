@@ -172,7 +172,8 @@ public class DeviceManager extends TriggerManager {
         checkDevice();
 
         if (scheduledDeviceDetection == null) {
-            futureList.add(scheduledDeviceDetection = scheduledExecutorService.scheduleAtFixedRate(this::checkDevice, 3000, 60000, TimeUnit.MILLISECONDS));
+            // check device every hour
+            futureList.add(scheduledDeviceDetection = scheduledExecutorService.scheduleAtFixedRate(this::checkDevice, 3000, 60*60000, TimeUnit.MILLISECONDS));
         }
     }
 
@@ -306,6 +307,10 @@ public class DeviceManager extends TriggerManager {
         return currentDevice.deviceID;
     }
 
+    public Device getCurrentDevice() {
+        return currentDevice;
+    }
+
     private void setPresentDevice(Device device) {
         currentDevice = device;
         latest_device = currentDevice.deviceID.hashCode();
@@ -342,6 +347,21 @@ public class DeviceManager extends TriggerManager {
         @Override
         public int hashCode() {
             return Objects.hash(deviceID);
+        }
+
+        public String getDeviceTypeString() {
+            switch (deviceType) {
+                case MediaRouter.RouteInfo.DEVICE_TYPE_UNKNOWN:
+                    return "unknown";
+                case MediaRouter.RouteInfo.DEVICE_TYPE_TV:
+                    return "tv";
+                case MediaRouter.RouteInfo.DEVICE_TYPE_SPEAKER:
+                    return "speaker";
+                case MediaRouter.RouteInfo.DEVICE_TYPE_BLUETOOTH:
+                    return "bluetooth";
+                default:
+                    return "other";
+            }
         }
     }
 }

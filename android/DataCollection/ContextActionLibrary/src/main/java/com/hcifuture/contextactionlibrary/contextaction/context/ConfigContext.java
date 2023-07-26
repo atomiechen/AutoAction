@@ -250,24 +250,25 @@ public class ConfigContext extends BaseContext implements VolEventListener {
     @RequiresApi(api = Build.VERSION_CODES.Q)
     @Override
     public synchronized void start() {
+        Log.e(TAG, "start");
         isStarted = true;
 //        record_all("start");
 //        socketManager.start();
         appManager.start();
-        noiseManager.start();
+//        noiseManager.start();
         deviceManager.start();
-        positionManager.start();
-        crowdManager.start();
-        soundManager.start();
+//        positionManager.start();
+//        crowdManager.start();
+//        soundManager.start();
 //        motionManager.start();
         activityManager.start();
         myNotificationListener.start();
-        networkManager.start();
+//        networkManager.start();
 
-        // get audio capture permission
-        if (!soundManager.hasCapturePermission()) {
-            notifyRequestRecordPermission();
-        }
+//        // get audio capture permission
+//        if (!soundManager.hasCapturePermission()) {
+//            notifyRequestRecordPermission();
+//        }
     }
 
     @Override
@@ -279,14 +280,14 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         myNotificationListener.stop();
         activityManager.stop();
 //        motionManager.stop();
-        soundManager.stop();
-        crowdManager.stop();
-        positionManager.stop();
+//        soundManager.stop();
+//        crowdManager.stop();
+//        positionManager.stop();
         deviceManager.stop();
-        noiseManager.stop();
+//        noiseManager.stop();
         appManager.stop();
 //        socketManager.stop();
-        networkManager.stop();
+//        networkManager.stop();
         isStarted = false;
     }
 
@@ -299,14 +300,14 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         myNotificationListener.pause();
         activityManager.pause();
 //        motionManager.pause();
-        soundManager.pause();
-        crowdManager.pause();
-        positionManager.pause();
+//        soundManager.pause();
+//        crowdManager.pause();
+//        positionManager.pause();
         deviceManager.pause();
-        noiseManager.pause();
+//        noiseManager.pause();
         appManager.pause();
 //        socketManager.pause();
-        networkManager.pause();
+//        networkManager.pause();
     }
 
     @RequiresApi(api = Build.VERSION_CODES.Q)
@@ -315,20 +316,20 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 //        record_all("resume");
 //        socketManager.resume();
         appManager.resume();
-        noiseManager.resume();
+//        noiseManager.resume();
         deviceManager.resume();
-        positionManager.resume();
-        crowdManager.resume();
-        soundManager.resume();
+//        positionManager.resume();
+//        crowdManager.resume();
+//        soundManager.resume();
 //        motionManager.resume();
         activityManager.resume();
         myNotificationListener.resume();
-        networkManager.resume();
+//        networkManager.resume();
 
-        // get audio capture permission
-        if (!soundManager.hasCapturePermission()) {
-            notifyRequestRecordPermission();
-        }
+//        // get audio capture permission
+//        if (!soundManager.hasCapturePermission()) {
+//            notifyRequestRecordPermission();
+//        }
     }
 
     @Override
@@ -608,6 +609,7 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         if (!bundle.containsKey("type"))
             return;
         String type = bundle.getString("type");
+        Log.e(TAG, "onExternalEvent: type=" + type);
         if (EXTERNAL_TYPE_NOTIFICATION.equals(type)) {
             String event = bundle.getString("event");
             Log.e(TAG, "onExternalEvent: " + event);
@@ -773,11 +775,21 @@ public class ConfigContext extends BaseContext implements VolEventListener {
         }
         else if (EXTERNAL_TYPE_AGENT.equals(type)) {
             // context information request from frontend App
-            // TODO
-            String activity = activityManager.getActivity();
             Bundle result = new Bundle();
+
+            String activity = activityManager.getActivity();
             result.putString("activity", activity);
-            notifyFrontend(CONTEXT_AGENT, result);
+
+            DeviceManager.Device device = deviceManager.getCurrentDevice();
+            result.putString("audio_device", "type:"+device.getDeviceTypeString()+", name:"+device.name+", description:"+device.description);
+
+            result.putString("app_name", appManager.getPresentApp());
+
+            positionManager.scanAmap().thenAccept(location -> {
+                result.putString("location", location);
+                notifyFrontend(CONTEXT_AGENT, result);
+            });
+
         }
     }
 

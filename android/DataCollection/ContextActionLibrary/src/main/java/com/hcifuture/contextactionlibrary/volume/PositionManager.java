@@ -23,6 +23,7 @@ import java.io.File;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -210,8 +211,8 @@ public class PositionManager extends TriggerManager {
     }
 
     @RequiresApi(api = Build.VERSION_CODES.O)
-    public void scanAmap() {
-        locationCollector.getData(new TriggerConfig()).thenApply(v -> {
+    public CompletableFuture<String> scanAmap() {
+        return locationCollector.getData(new TriggerConfig()).thenApply(v -> {
             try {
                 LocationData locationData = (LocationData) v.getData();
                 String poiname = locationData.getPoiName();
