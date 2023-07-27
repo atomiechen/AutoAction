@@ -39,6 +39,7 @@ public class NetworkManager extends TriggerManager {
     private List<ScheduledFuture<?>> futureList;
     private WifiManager wifiManager;
     private int network_delay;
+    private ConnectivityManager.NetworkCallback networkCallback;
 
     public NetworkManager(VolEventListener volEventListener, Context context, ScheduledExecutorService scheduledExecutorService, List<ScheduledFuture<?>> futureList, WifiCollector wifiCollector) {
         super(volEventListener);
@@ -48,36 +49,6 @@ public class NetworkManager extends TriggerManager {
         network_delay = -1;
         //获取ConnectivityManager
         connectivityManager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
-        //创建NetworkRequest对象，定制化监听
-        NetworkRequest customMonitor = new NetworkRequest.Builder()
-                .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
-                .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
-                .build();
-        //创建网路变化监听器
-        ConnectivityManager.NetworkCallback networkCallback = new ConnectivityManager.NetworkCallback() {
-            //当网络连接可用时回调
-            @Override
-            public void onAvailable(@NonNull Network network) {
-                super.onAvailable(network);
-                Log.i(TAG, "on network connected");
-                refreshNetworkInfo();
-            }
-            //当网络断开时回调
-            @Override
-            public void onLost(@NonNull Network network) {
-                super.onLost(network);
-                Log.i(TAG, "on network disconnected");
-                refreshNetworkInfo();
-            }
-            //当网络属性变化时回调
-            @Override
-            public void onCapabilitiesChanged(@NonNull Network network, @NonNull NetworkCapabilities networkCapabilities) {
-                super.onCapabilitiesChanged(network, networkCapabilities);
-                refreshNetworkInfo();
-            }
-        };
-        //注册网络监听器
-        connectivityManager.registerNetworkCallback(customMonitor, networkCallback);
         this.scheduledExecutorService = scheduledExecutorService;
         this.futureList = futureList;
         this.wifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
@@ -113,7 +84,9 @@ public class NetworkManager extends TriggerManager {
         if (networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
             networkType = "connected to Wi-Fi";
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                Log.i(TAG, ((WifiInfo)networkCapabilities.getTransportInfo()).toString());
+                WifiInfo wifiInfo = (WifiInfo) networkCapabilities.getTransportInfo();
+                if (wifiInfo != null)
+                    Log.i(TAG, wifiInfo.toString());
             }
         }
         else if (networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {
@@ -136,6 +109,39 @@ public class NetworkManager extends TriggerManager {
     @Override
     @RequiresApi(api = Build.VERSION_CODES.N)
     public void start() {
+        if (connectivityManager != null) {
+            //创建NetworkRequest对象，定制化监听
+            NetworkRequest customMonitor = new NetworkRequest.Builder()
+                    .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
+                    .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+                    .build();
+            //创建网路变化监听器
+            networkCallback = new ConnectivityManager.NetworkCallback() {
+                //当网络连接可用时回调
+                @Override
+                public void onAvailable(@NonNull Network network) {
+                    super.onAvailable(network);
+                    Log.i(TAG, "on network connected");
+                    refreshNetworkInfo();
+                }
+                //当网络断开时回调
+                @Override
+                public void onLost(@NonNull Network network) {
+                    super.onLost(network);
+                    Log.i(TAG, "on network disconnected");
+                    refreshNetworkInfo();
+                }
+                //当网络属性变化时回调
+                @Override
+                public void onCapabilitiesChanged(@NonNull Network network, @NonNull NetworkCapabilities networkCapabilities) {
+                    super.onCapabilitiesChanged(network, networkCapabilities);
+                    refreshNetworkInfo();
+                }
+            };
+            //注册网络监听器
+            connectivityManager.registerNetworkCallback(customMonitor, networkCallback);
+        }
+
         if (network_delay_detect == null) {
             network_delay_detect = scheduledExecutorService.scheduleAtFixedRate(() -> {
                 try {
@@ -191,6 +197,10 @@ public class NetworkManager extends TriggerManager {
         if (network_delay_detect != null) {
             network_delay_detect.cancel(true);
             network_delay_detect = null;
+        }
+
+        if (connectivityManager != null && networkCallback != null) {
+            connectivityManager.unregisterNetworkCallback(networkCallback);
         }
     }
 
