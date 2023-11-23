@@ -86,7 +86,7 @@ public class ActivityManager extends TriggerManager {
             if (imuScores[i] > imuScores[activity])
                 activity = i;
         }
-        Log.i(TAG, "Label: " + activity);
+//        Log.i(TAG, "Label: " + activity);
         String curActivity = ACTION_OTHERS;
         if (activity <= 3 || activity == 15 || activity == 16)
             curActivity = ACTION_WALKING;
@@ -114,7 +114,7 @@ public class ActivityManager extends TriggerManager {
                 prevActivity = curActivity;
             }
         }
-        Log.i(TAG, curActivity);
+//        Log.i(TAG, "Activity: " + curActivity);
     }
 
     public String getActivity() {
