@@ -785,10 +785,12 @@ public class ConfigContext extends BaseContext implements VolEventListener {
 
             result.putString("app_name", appManager.getPresentApp());
 
-            positionManager.scanAmap().thenAccept(location -> {
-                result.putString("location", location);
-                notifyFrontend(CONTEXT_AGENT, result);
-            });
+            notifyFrontend(CONTEXT_AGENT, result);
+
+//            positionManager.scanAmap().thenAccept(location -> {
+//                result.putString("location", location);
+//                notifyFrontend(CONTEXT_AGENT, result);
+//            });
 
         }
     }
